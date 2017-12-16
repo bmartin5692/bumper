@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, socket, _thread, re, time, logging, uuid
-import xml.etree.ElementTree as ET
+import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
 
 
 class XMPPServer():
@@ -9,35 +8,46 @@ class XMPPServer():
     bot_id = 'bumpy'
     client_id = None
     clients = []
+    exit_flag = False
 
-    def __init__(self):
+    def __init__(self, address):
         try:
             # Initialize bot server
-            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server_address = (socket.gethostbyname(socket.gethostname()), 5223)
-            server.bind(server_address)
-            server.listen(1)
-            logging.info('XMPPServer: listening on {}:{}'.format(server_address[0], server_address[1]))
-            while True:
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.socket.bind(address)
+            self.socket.listen(1)
+            logging.info('XMPPServer: listening on {}:{}'.format(address[0], address[1]))
+            while not self.exit_flag:
                 logging.info('XMPPServer: awaiting connection')
-                connection, client_address = server.accept()
+                connection, client_address = self.socket.accept()
                 # disconnect any clients with this ip
                 for client in self.clients:
                     if client.address == client_address[0]:
                         client.disconnect()
-                _thread.start_new_thread(Client,(connection, client_address))
-        except KeyboardInterrupt:
-            logging.info('keyboard interrupt')
-            server.shutdown(2)
-            server.close()
+                thread_id = uuid.uuid4()
+                client = Client(thread_id, connection, client_address)
+                client.start()
+                self.clients.append(client)
+            self.socket.close()
         except Exception as e:
-            server.shutdown(2)
-            server.close()
-            logging.error(e)
+            logging.error('e: ' + e)
+        except KeyboardInterrupt:
+            logging.debug('XMPPServer: Keyboard interrupt')
+        finally:
+            self.disconnect()
+            logging.info('XMPPServer: bye')
+
+    def disconnect(self):
+        logging.info('XMPPServer: waiting for all client threads to exit')
+        for client in self.clients:
+            client.disconnect()
+            client.join()
+        self.exit_flag = True
+        logging.info('XMPPServer: shutting down...')
 
 
-class Client():
+class Client(threading.Thread):
     IDLE = 0
     CONNECT = 1
     INIT = 2
@@ -48,14 +58,13 @@ class Client():
     BOT = 1
     CONTROLLER = 2
 
-    def __init__(self, connection, client_address):
-        self.id = uuid.uuid4()
+    def __init__(self, thread_id, connection, client_address):
+        threading.Thread.__init__(self)
+        self.id = thread_id
         self.type = self.UNKNOWN
         self.state = self.IDLE
         self.connection = connection
         self.address = client_address[0]
-        XMPPServer.clients.append(self)
-        self._main()
 
     def send(self, command):
         logging.debug('to {}: {}'.format(self.address, command))
@@ -102,7 +111,7 @@ class Client():
                 logging.debug('sending result: ' + data.decode('utf-8'))
                 client.send(data.decode('utf-8'))
 
-    def _main(self):
+    def run(self):
         try:
             logging.info('client connected: {}'.format(self.address))
             self._set_state('CONNECT')
