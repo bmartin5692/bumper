@@ -14,9 +14,13 @@ class BumperVacBot(VacBot):
         self.xmpp.wait_until_ready()
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)-8s %(message)s')
-
-# Change server address to the machine running Bumper
 server_address = ('xxx.xxx.xxx.xxx', 5223)
 
-bumper_client = BumperVacBot(server_address)
-bumper_client.connect_and_wait_until_ready()
+# Initialize
+vacbot = BumperVacBot(server_address)
+
+# Connect
+vacbot.connect_and_wait_until_ready()
+
+# Send a command
+vacbot.run(Clean())
