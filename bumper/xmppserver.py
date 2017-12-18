@@ -31,7 +31,7 @@ class XMPPServer():
                 self.clients.append(client)
             self.socket.close()
         except Exception as e:
-            logging.error('e: ' + e)
+            logging.error('XMPPServer: {}'.format(e))
         except KeyboardInterrupt:
             logging.debug('XMPPServer: Keyboard interrupt')
         finally:
@@ -76,14 +76,14 @@ class Client(threading.Thread):
         self._set_state('DISCONNECT')
 
     def _tag_strip_uri(self, tag):
-        if tag[0] == "{":
-            uri, ignore, tag = tag[1:].partition("}")
+        if tag[0] == '{':
+            uri, ignore, tag = tag[1:].partition('}')
         return tag
 
     def _set_state(self, state):
         new_state = getattr(Client, state)
         if self.state > new_state:
-            raise Exception("{} illegal state change {}->{}".format(self.address, self.state, new_state))
+            raise Exception('{} illegal state change {}->{}'.format(self.address, self.state, new_state))
         logging.info('{} state: {}'.format(self.address, state))
         self.state = new_state
 
@@ -108,7 +108,6 @@ class Client(threading.Thread):
         # forward
         for client in XMPPServer.clients:
             if client.address != self.address and client.state == client.READY:
-                logging.debug('sending result: ' + data.decode('utf-8'))
                 client.send(data.decode('utf-8'))
 
     def run(self):
@@ -134,17 +133,13 @@ class Client(threading.Thread):
                             child = self._tag_strip_uri(xml[0].tag)
                         else:
                             child = None
-                        if xml.get('id'):
-                            last_id = xml.get('id')
-                        else:
-                            last_id = '0'
                         if xml.tag == 'iq':
                             res = None
                             if child == 'bind':
-                                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(last_id, XMPPServer.bot_id)
+                                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(xml.get('id'), XMPPServer.bot_id)
                                 self._set_state('BIND')
                             elif child == 'session':
-                                res = '<iq type="result" id="{}" />'.format(last_id)
+                                res = '<iq type="result" id="{}" />'.format(xml.get('id'))
                                 self._set_state('READY')
                             elif child == 'query':
                                 self._handle_ctl(xml, data)
@@ -166,12 +161,12 @@ class Client(threading.Thread):
                                 self.type = self.CONTROLLER
                                 logging.info('{} type set to CONTROLLER (based on presence tag)'.format(self.address))
                     except ET.ParseError as e:
-                        logging.debug("error: {}".format(e))
+                        logging.debug('error: {}'.format(e))
                     except Exception as e:
-                        logging.error(e)
+                        logging.error('XMPPServer: {}'.format(e))
                         self._set_state('DISCONNECT')
         except Exception as e:
-            logging.error(e)
+            logging.error('XMPPServer: {}'.format(e))
             self._set_state('DISCONNECT')
         finally:
             self.disconnect()

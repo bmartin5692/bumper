@@ -37,7 +37,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
         except Exception as e:
-            logging.error(e)
+            logging.error('ConfServer: {}'.format(e))
 
 
 class HTTPServerThread(HTTPServer, Thread):
@@ -55,7 +55,7 @@ class HTTPServerThread(HTTPServer, Thread):
             while not self.exit_flag:
                 self.handle_request()
         except Exception as e:
-            logging.error(e)
+            logging.error('ConfServer: {}'.format(e))
     def disconnect(self):
         self.exit_flag = True
         # make a connection to
@@ -79,7 +79,7 @@ class ConfServer():
                 except KeyboardInterrupt:
                     self.disconnect()
         except Exception as e:
-            logging.error(e)
+            logging.error('ConfServer: {}'.format(e))
     def disconnect(self):
         logging.info('ConfServer: shutting down...')
         self.server.disconnect()
