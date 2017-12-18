@@ -1,3 +1,5 @@
 __pycache__
 .DS_Store
 Pipfile.lock
+/bumper.sublime-project
+/bumper.sublime-workspace
