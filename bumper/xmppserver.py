@@ -104,6 +104,16 @@ class Client(threading.Thread):
                         data = data.encode()
                 client.send(data.decode('utf-8'))
 
+
+    def _handle_ping(self, xml, data):
+        if(xml.get('to').find('@') == -1):
+            # Ping to server - respond
+            self.send('<iq type="result" id="{}" from="{}" />'.format(xml.get('id'), xml.get('to')))
+        else:
+            for client in XMPPServer.clients:
+                if client.address != self.address and client.state == client.READY:
+                    client.send(data.decode('utf-8'))
+
     def _handle_result(self, data):
         # forward
         for client in XMPPServer.clients:
@@ -144,8 +154,7 @@ class Client(threading.Thread):
                             elif child == 'query':
                                 self._handle_ctl(xml, data)
                             elif child == 'ping':
-                                # respond to ping request
-                                res = '<iq type="result" id="{}" from="{}" />'.format(last_id, xml.get('to'))
+                                self._handle_ping(xml, data)
                             elif xml.get('type') == 'result':
                                 self._handle_result(data)
                             if res:
