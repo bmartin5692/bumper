@@ -45,7 +45,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                     body = {
                             "devices": [
                             {
-                            "class": "tmpClass",
+                            "class": "ls1ok3",
                             "company": "eco-ng",
                             "did": "tmpDeviceID",
                             "name": "tmpName",
