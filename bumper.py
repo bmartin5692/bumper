@@ -3,6 +3,7 @@
 import logging
 import bumper
 import sys, socket
+import time
 
 logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(levelname)-8s %(message)s')
@@ -14,11 +15,20 @@ xmpp_address = ("0.0.0.0", 5223)
 #mqtt_address = (socket.gethostbyname(socket.gethostname()), 8883)
 mqtt_address = ("0.0.0.0", 8883)
 
-# start conf server (async)
-conf_server = bumper.ConfServer(conf_address, usessl=True, run_async=True)
-# start mqtt server (async)
-mqtt_server = bumper.MQTTServer(mqtt_address, run_async=True)
+# A default bot could be set here to automatically add it as available
+# dbot = bumper.VacBotDevice("did", "class", "resource", "name","nick" )
+# bclient = bumper.bumper_clients_var
+# bclienttemp = bclient.get()
+# bclienttemp.append(dbot.asdict())
+# bclient.set(bclienttemp)
 
+# start mqtt server (async)
+mqtt_server = bumper.MQTTServer(mqtt_address, run_async=True,bumper_clients=bumper.bumper_clients_var)
+time.sleep(1.5) #Wait for broker startup
+# start mqtt server (async)
+mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address, run_async=True,bumper_clients=bumper.bumper_clients_var)
+# start conf server (async)
+conf_server = bumper.ConfServer(conf_address, usessl=True, run_async=True, bumper_clients=bumper.bumper_clients_var, helperbot=mqtt_helperbot)
 # start xmpp server (sync)
 xmpp_server = bumper.XMPPServer(xmpp_address)
 

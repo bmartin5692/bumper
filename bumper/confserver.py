@@ -6,12 +6,19 @@ from http.server import BaseHTTPRequestHandler
 from http import HTTPStatus
 from threading import Thread
 import socket, logging, ssl, json, sys
+import asyncio
+import contextvars
+import bumper
+import string
+import random
 
 
 class RequestHandler(BaseHTTPRequestHandler):
-#class RequestHandler(SimpleHTTPRequestHandler):
+    bumper_clients = contextvars.ContextVar
+    helperbot = object
+
     def do_POST(self):
-        try:
+        try:            
             self.protocol_version = 'HTTP/1.1'
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
@@ -23,6 +30,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 body = {"code":0,"data":[{"classid":"dl8fht","product":{"_id":"5acb0fa87c295c0001876ecf","name":"DEEBOT 600 Series","icon":"5acc32067c295c0001876eea","UILogicId":"dl8fht","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea"}},{"classid":"02uwxm","product":{"_id":"5ae1481e7ccd1a0001e1f69e","name":"DEEBOT OZMO Slim10 Series","icon":"5b1dddc48bc45700014035a1","UILogicId":"02uwxm","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1"}},{"classid":"y79a7u","product":{"_id":"5b04c0227ccd1a0001e1f6a8","name":"DEEBOT OZMO 900","icon":"5b04c0217ccd1a0001e1f6a7","UILogicId":"y79a7u","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7"}},{"classid":"jr3pqa","product":{"_id":"5b43077b8bc457000140363e","name":"DEEBOT 711","icon":"5b5ac4cc8d5a56000111e769","UILogicId":"jr3pqa","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769"}},{"classid":"uv242z","product":{"_id":"5b5149b4ac0b87000148c128","name":"DEEBOT 710","icon":"5b5ac4e45f21100001882bb9","UILogicId":"uv242z","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9"}},{"classid":"ls1ok3","product":{"_id":"5b6561060506b100015c8868","name":"DEEBOT 900 Series","icon":"5ba4a2cb6c2f120001c32839","UILogicId":"ls1ok3","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839"}}]}
             elif "notify_engine.do" in str(self.path):
                 body = {"ret":"ok"}
+            elif "iot/devmanager.do" in str(self.path): #Handle rest commands
+                randomid = ''.join(random.sample(string.ascii_letters,6))
+                retcmd = self.helperbot.send_command(json_body, randomid)
+                body = retcmd
             else:
                 todo = json_body['todo']
                 if todo == 'FindBest':
@@ -40,19 +51,9 @@ class RequestHandler(BaseHTTPRequestHandler):
                             "token": json_body["token"]
                             }
                 elif todo == 'GetDeviceList':
-                    #Find a way to handle this automatically
-                    #Maybe keep a list of devices from those that have checked into MQTT/XMPP/etc and return them
+                    active_bots = self.bumper_clients.get()
                     body = {
-                            "devices": [
-                            {
-                            "class": "ls1ok3",
-                            "company": "eco-ng",
-                            "did": "tmpDeviceID",
-                            "name": "tmpName",
-                            "nick": "tmpNick",
-                            "resource": "tmpResource"
-                            }
-                            ],
+                            "devices": active_bots,
                             "result": "ok",
                             "todo": "result"
                             }
@@ -73,8 +74,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.protocol_version = 'HTTP/1.1'
             logging.debug("Path: " + self.path)
             
-            if "/login?" in str(self.path):
-              
+            if "/login?" in str(self.path):              
                 #Could implement basic auth if you wanted, or just accept anything
                 #Next up parse the path for variables
                 body = {
@@ -136,11 +136,18 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 class HTTPServerThread(HTTPServer, Thread):
-    def __init__(self, server_address):
+    bumper_clients = contextvars.ContextVar
+    def __init__(self, server_address, bumper_clients, helperbot):
         Thread.__init__(self)
         self.server_address = server_address
+        self.bumper_clients = bumper_clients
+        self.helperbot = helperbot
         self.handler = RequestHandler
+        self.handler.bumper_clients = self.bumper_clients
+        self.handler.helperbot = self.helperbot
+        
         self.exit_flag = False
+        
         HTTPServer.__init__(self, self.server_address, self.handler)
         
     def handle_error(self, request, client_address):
@@ -161,14 +168,18 @@ class HTTPServerThread(HTTPServer, Thread):
 
 
 class ConfServer():
-    def __init__(self, address, usessl=False, run_async=True):
-        self.run_async = run_async
-        self.server = HTTPServerThread(address)
+    bumper_clients = contextvars.ContextVar
+   
+    def __init__(self, address, usessl=False, run_async=True, bumper_clients=contextvars.ContextVar, helperbot=None):
+        self.run_async = run_async        
+        self.server = HTTPServerThread(address, bumper_clients, helperbot)
+        
         try:            
             if usessl:
                 self.server.socket = ssl.wrap_socket(self.server.socket, keyfile='./certs/key.pem', certfile='./certs/cert.pem', server_side=True)
             if self.run_async:
                 self.server.start()
+                
             else:
                 try:
                     self.server.run()
@@ -176,6 +187,7 @@ class ConfServer():
                     self.disconnect()
         except Exception as e:
             logging.error('ConfServer: {}'.format(e))
+
     def disconnect(self):
         logging.info('ConfServer: shutting down...')
         self.server.disconnect()
