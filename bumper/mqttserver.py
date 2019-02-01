@@ -16,6 +16,7 @@ from paho.mqtt import publish as MQTTPublish
 from paho.mqtt import subscribe as MQTTSubscribe
 import bumper
 import json
+from datetime import datetime, timedelta
 
 
 class BumperMQTTPlugin:    
@@ -26,6 +27,8 @@ class BumperMQTTPlugin:
         except KeyError:
              self.context.logger.warning("'bots' section not found in context configuration")
         logging.debug('Bumper Plugin Initialized')
+
+        
 
     async def on_broker_client_connected(self, client_id):
         logging.debug('Bumper Connection: %s connected' % client_id)
@@ -56,20 +59,21 @@ class BumperMQTTPlugin:
 
 class MQTTHelperBot(ClientMQTT):
 
-
     def __init__(self, address, run_async=False, bumper_clients=contextvars.ContextVar):
-        ClientMQTT.__init__(self)
+        ClientMQTT.__init__(self)        
+
         self.address = address
         self._client_id = "helper1@bumper/helper1"
+        
         self.command_responses = contextvars.ContextVar('command_responses', default=[])
 
         try:            
             if run_async: 
                 hloop = asyncio.new_event_loop()                
                 logging.debug("Starting MQTT HelperBot Thread: 1")
-                mserver = Thread(name="MQTTHelperBot_Thread",target=self.run_helperbot, args=(hloop,))
-                mserver.setDaemon(True)
-                mserver.start()                    
+                helperbot = Thread(name="MQTTHelperBot_Thread",target=self.run_helperbot, args=(hloop,))
+                helperbot.setDaemon(True)
+                helperbot.start()                    
                 
             else:
                 self.run_helperbot()
@@ -79,9 +83,10 @@ class MQTTHelperBot(ClientMQTT):
             pass    
 
     def run_helperbot(self, loop):           
-        formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        logging.basicConfig(level=logging.INFO, format=formatter)   
+        #formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
+        #logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
+        
         loop.run_until_complete(self.start_helper_bot())      
         loop.run_forever() 
     
@@ -118,15 +123,23 @@ class MQTTHelperBot(ClientMQTT):
     def get_msg(self, client, userdata, message):
         logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
         logging.debug(str(message.payload.decode("utf-8")))
-        cresp = self.command_responses.get()
-        #str(message.payload.decode("utf-8")
-        cresp.append({"topic": message.topic,"payload":str(message.payload.decode("utf-8"))})
+        cresp = self.command_responses.get()        
+        
+        #Cleanup "expired messages" > 60 seconds from time
+        for msg in cresp:           
+            expire_time = (datetime.fromtimestamp(msg['time']) + timedelta(seconds=10)).timestamp()
+            if time.time() > expire_time:
+                logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                cresp.remove(msg)                                  
+
+        cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.payload.decode("utf-8"))})
         self.command_responses.set(cresp)                          
+        logging.debug("MQTT Command Response List Count: %s" %len(cresp))
 
     async def wait_for_resp(self, requestid):               
-        t_end = time.time() + 10
+        t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
         while time.time() < t_end:
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.3)
             responses = self.command_responses.get()   
             if len(responses) > 0:    
                 for msg in responses:
@@ -150,13 +163,12 @@ class MQTTHelperBot(ClientMQTT):
 
         return { "id": requestid, "errno": "timeout", "ret": "fail" }
 
-    def send_command(self, cmdjson, requestid):
+    async def send_command(self, cmdjson, requestid):
         ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(cmdjson["cmdName"],
         cmdjson["toId"], cmdjson["toType"], cmdjson["toRes"], requestid, cmdjson["payloadType"])
         self.publish(ttopic, str(cmdjson["payload"]))
 
-        loop = asyncio.new_event_loop()
-        resp = loop.run_until_complete(self.wait_for_resp(requestid))     
+        resp = await self.wait_for_resp(requestid)        
         
         logging.debug(resp)        
         return resp
@@ -169,13 +181,21 @@ class MQTTServer():
 
     async def broker_coro(self):         
         broker = hbmqtt.broker.Broker(config=self.default_config) 
-        for plugin in broker.plugins_manager.plugins:
-            if plugin.name == 'broker_sys':
-                broker.plugins_manager.plugins.remove(plugin)            
-            if plugin.name == 'packet_logger_plugin':
-                broker.plugins_manager.plugins.remove(plugin)        
         
+        logging.debug(broker.plugins_manager.plugins)
         await broker.start()  
+
+        logging.debug("Removing Plugin: broker_sys")
+        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('broker_sys'))
+
+        logging.debug("Removing Plugin: topic_taboo")
+        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('topic_taboo'))
+        
+        logging.debug("Removing Plugin: packet_logger_plugin")
+        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('packet_logger_plugin'))
+
+        logging.debug("Started Broker and Removed Plugins")
+                
 
     async def active_bot_listing(self):               
         while True:
@@ -224,9 +244,9 @@ class MQTTServer():
             if run_async:
                 sloop = asyncio.new_event_loop()                
                 logging.debug("Starting MQTTServer Thread: 1")
-                mserver = Thread(name="MQTTServer_Thread",target=self.run_server, args=(sloop,))
-                mserver.setDaemon(True)
-                mserver.start()                   
+                mqttserver = Thread(name="MQTTServer_Thread",target=self.run_server, args=(sloop,))
+                mqttserver.setDaemon(True)
+                mqttserver.start()                   
                 
             else:
                 self.run_server()
@@ -237,8 +257,8 @@ class MQTTServer():
     
 
     def run_server(self, loop):           
-        formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        logging.basicConfig(level=logging.INFO, format=formatter)   
+        #formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
+        #logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.broker_coro())
         #loop.run_until_complete(self.active_bot_listing())                     

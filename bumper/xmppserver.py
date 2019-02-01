@@ -27,6 +27,7 @@ class XMPPServer():
                         client.disconnect()
                 thread_id = uuid.uuid4()
                 client = Client(thread_id, connection, client_address)
+                
                 client.start()
                 self.clients.append(client)
             self.socket.close()
@@ -61,6 +62,7 @@ class Client(threading.Thread):
     def __init__(self, thread_id, connection, client_address):
         threading.Thread.__init__(self)
         self.id = thread_id
+        self.name = "XMPP Thread {}".format(self.id)
         self.type = self.UNKNOWN
         self.state = self.IDLE
         self.connection = connection

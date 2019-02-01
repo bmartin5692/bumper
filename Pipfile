@@ -6,5 +6,6 @@ name = "pypi"
 [packages]
 hbmqtt = "*"
 paho-mqtt = "*"
+aiohttp = "*"
 
 [dev-packages]
