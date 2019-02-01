@@ -9,11 +9,11 @@ import time
 args = sys.argv
 if len(args) > 0:
     if '--debug' in args:
-        logging.basicConfig(level=logging.DEBUG,
-            format='%(asctime)s %(levelname)-8s %(message)s')
+        logging.basicConfig(level=logging.DEBUG,        
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s")
     else:
         logging.basicConfig(level=logging.INFO,
-            format='%(asctime)s %(levelname)-8s %(message)s')      
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s")
 
 #conf_address = (socket.gethostbyname(socket.gethostname()), 443)
 conf_address = ("0.0.0.0", 443)

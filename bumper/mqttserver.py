@@ -3,9 +3,8 @@
 import logging
 import asyncio
 import os
-from hbmqtt.broker import Broker
-from hbmqtt.client import MQTTClient
 import hbmqtt
+from hbmqtt.broker import Broker
 import pkg_resources
 import contextvars
 import time
@@ -26,9 +25,7 @@ class BumperMQTTPlugin:
             self.bots = self.context.config['bots']
         except KeyError:
              self.context.logger.warning("'bots' section not found in context configuration")
-        logging.debug('Bumper Plugin Initialized')
-
-        
+            
 
     async def on_broker_client_connected(self, client_id):
         logging.debug('Bumper Connection: %s connected' % client_id)
@@ -55,7 +52,16 @@ class BumperMQTTPlugin:
 
     async def on_broker_client_disconnected(self, client_id):
         logging.debug('Bumper Connection: %s disconnected' % client_id)
-        #To do handle removing bot
+        connected_bots = self.bots['connected_bots'].get()                
+        didsplit = str(client_id).split("@")
+        #If the did is in the list, remove it
+        for bot in connected_bots:
+            if didsplit[0] == bot['did']:
+                logging.debug("Removing bot from list: {}".format(bot))
+                connected_bots.remove(bot)
+                self.bots['connected_bots'].set(connected_bots)
+
+        logging.debug('Connected Bots: %s' %self.bots['connected_bots'].get())
 
 class MQTTHelperBot(ClientMQTT):
 
@@ -83,8 +89,6 @@ class MQTTHelperBot(ClientMQTT):
             pass    
 
     def run_helperbot(self, loop):           
-        #formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        #logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
         
         loop.run_until_complete(self.start_helper_bot())      
@@ -121,15 +125,14 @@ class MQTTHelperBot(ClientMQTT):
                                                       
 
     def get_msg(self, client, userdata, message):
-        logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-        logging.debug(str(message.payload.decode("utf-8")))
+        #logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
         cresp = self.command_responses.get()        
         
         #Cleanup "expired messages" > 60 seconds from time
         for msg in cresp:           
             expire_time = (datetime.fromtimestamp(msg['time']) + timedelta(seconds=10)).timestamp()
             if time.time() > expire_time:
-                logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                #logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
                 cresp.remove(msg)                                  
 
         cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.payload.decode("utf-8"))})
@@ -145,12 +148,11 @@ class MQTTHelperBot(ClientMQTT):
                 for msg in responses:
                     topic = str(msg['topic']).split("/")
                     if (topic[6] == "helper1" and topic[10] == requestid):
-                        logging.debug('Vac Responses MQTT: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
+                        logging.debug('VacBot MQTT Response: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
                         if topic[11] == "j":
                             resppayload = json.loads(msg['payload'])
                         else:                            
                             resppayload = str(msg['payload'])
-                        logging.debug("Resp Payload: %s" % resppayload)
                         resp = {
                             "id": requestid,
                             "ret": "ok",
@@ -169,20 +171,17 @@ class MQTTHelperBot(ClientMQTT):
         self.publish(ttopic, str(cmdjson["payload"]))
 
         resp = await self.wait_for_resp(requestid)        
-        
-        logging.debug(resp)        
+             
         return resp
         
 
 class MQTTServer():    
-    exit_flag = False
     default_config = {}  
     bumper_clients = []
 
     async def broker_coro(self):         
-        broker = hbmqtt.broker.Broker(config=self.default_config) 
-        
-        logging.debug(broker.plugins_manager.plugins)
+        broker = hbmqtt.broker.Broker(config=self.default_config)        
+              
         await broker.start()  
 
         logging.debug("Removing Plugin: broker_sys")
@@ -203,6 +202,7 @@ class MQTTServer():
             logging.debug('Connected bots: %s' % self.bumper_clients.get())     
 
     def __init__(self, address, run_async=False, bumper_clients=contextvars.ContextVar):
+        
         #The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
         distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
         bumper_plugin = pkg_resources.EntryPoint.parse('bumper = bumper.mqttserver:BumperMQTTPlugin', dist=distribution)        
@@ -257,8 +257,6 @@ class MQTTServer():
     
 
     def run_server(self, loop):           
-        #formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        #logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.broker_coro())
         #loop.run_until_complete(self.active_bot_listing())                     
