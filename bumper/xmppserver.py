@@ -125,7 +125,8 @@ class Client(threading.Thread):
             logging.info('client connected: {}'.format(self.address))
             self._set_state('CONNECT')
             while True:
-                data = self.connection.recv(4096)
+                if not self.connection._closed:               
+                    data = self.connection.recv(4096)
                 if data:
                     logging.debug('from {}: {}'.format(self.address, data.decode('utf-8')))
                     try:
@@ -174,6 +175,9 @@ class Client(threading.Thread):
                     except Exception as e:
                         logging.error('XMPPServer: {}'.format(e))
                         self._set_state('DISCONNECT')
+        except OSError as e:
+            logging.error('XMPPServer: {}'.format(e))
+            self._set_state('DISCONNECT')
         except Exception as e:
             logging.error('XMPPServer: {}'.format(e))
             self._set_state('DISCONNECT')

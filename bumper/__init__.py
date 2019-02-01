@@ -6,8 +6,14 @@ from .mqttserver import MQTTHelperBot
 from .xmppserver import XMPPServer
 import asyncio
 import contextvars
+import time
 
 bumper_clients_var = contextvars.ContextVar('bumper_clients', default=[])
+current_milli_time = lambda: int(round(time.time() * 1000))
+
+def get_milli_time(timetoconvert):
+    return int(round(timetoconvert * 1000))
+
 
 class VacBotDevice(object):
     def __init__(self,did="", vac_bot_device_class="",resource="" , name="", nick="", company="eco-ng"):        

@@ -9,12 +9,13 @@ import hbmqtt
 import pkg_resources
 import contextvars
 import time
-import bumper
 from threading import Thread
 import ssl
 from paho.mqtt.client import Client as ClientMQTT
 from paho.mqtt import publish as MQTTPublish
 from paho.mqtt import subscribe as MQTTSubscribe
+import bumper
+import json
 
 
 class BumperMQTTPlugin:    
@@ -79,7 +80,7 @@ class MQTTHelperBot(ClientMQTT):
 
     def run_helperbot(self, loop):           
         formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        logging.basicConfig(level=logging.DEBUG, format=formatter)   
+        logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.start_helper_bot())      
         loop.run_forever() 
@@ -116,8 +117,9 @@ class MQTTHelperBot(ClientMQTT):
 
     def get_msg(self, client, userdata, message):
         logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-        print(str(message.payload.decode("utf-8")))
+        logging.debug(str(message.payload.decode("utf-8")))
         cresp = self.command_responses.get()
+        #str(message.payload.decode("utf-8")
         cresp.append({"topic": message.topic,"payload":str(message.payload.decode("utf-8"))})
         self.command_responses.set(cresp)                          
 
@@ -131,10 +133,15 @@ class MQTTHelperBot(ClientMQTT):
                     topic = str(msg['topic']).split("/")
                     if (topic[6] == "helper1" and topic[10] == requestid):
                         logging.debug('Vac Responses MQTT: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
+                        if topic[11] == "j":
+                            resppayload = json.loads(msg['payload'])
+                        else:                            
+                            resppayload = str(msg['payload'])
+                        logging.debug("Resp Payload: %s" % resppayload)
                         resp = {
                             "id": requestid,
                             "ret": "ok",
-                            "resp": msg['payload']
+                            "resp": resppayload
                         }
                         cresp = self.command_responses.get()
                         cresp.remove(msg)                    
@@ -146,12 +153,12 @@ class MQTTHelperBot(ClientMQTT):
     def send_command(self, cmdjson, requestid):
         ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(cmdjson["cmdName"],
         cmdjson["toId"], cmdjson["toType"], cmdjson["toRes"], requestid, cmdjson["payloadType"])
-        self.publish(ttopic, cmdjson["payload"])
+        self.publish(ttopic, str(cmdjson["payload"]))
 
         loop = asyncio.new_event_loop()
         resp = loop.run_until_complete(self.wait_for_resp(requestid))     
         
-        print(resp)        
+        logging.debug(resp)        
         return resp
         
 
@@ -231,7 +238,7 @@ class MQTTServer():
 
     def run_server(self, loop):           
         formatter = "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s"
-        logging.basicConfig(level=logging.DEBUG, format=formatter)   
+        logging.basicConfig(level=logging.INFO, format=formatter)   
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self.broker_coro())
         #loop.run_until_complete(self.active_bot_listing())                     
