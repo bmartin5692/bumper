@@ -9,7 +9,6 @@ import contextvars
 import time
 
 bumper_clients_var = contextvars.ContextVar('bumper_clients', default=[])
-current_milli_time = lambda: int(round(time.time() * 1000))
 
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))

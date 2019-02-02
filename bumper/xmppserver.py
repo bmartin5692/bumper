@@ -127,6 +127,7 @@ class Client(threading.Thread):
             logging.info('client connected: {}'.format(self.address))
             self._set_state('CONNECT')
             while True:
+                time.sleep(0.2)
                 if not self.connection._closed:               
                     data = self.connection.recv(4096)
                 if data:

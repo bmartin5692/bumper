@@ -5,74 +5,26 @@ import asyncio
 import os
 import hbmqtt
 from hbmqtt.broker import Broker
+from hbmqtt.client import MQTTClient
+from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
 import contextvars
 import time
 from threading import Thread
 import ssl
-from paho.mqtt.client import Client as ClientMQTT
-from paho.mqtt import publish as MQTTPublish
-from paho.mqtt import subscribe as MQTTSubscribe
 import bumper
 import json
 from datetime import datetime, timedelta
 
 
-class BumperMQTTPlugin:    
-    def __init__(self, context):
-        self.context = context        
-        try:
-            self.bots = self.context.config['bots']
-        except KeyError:
-             self.context.logger.warning("'bots' section not found in context configuration")
-            
-
-    async def on_broker_client_connected(self, client_id):
-        logging.debug('Bumper Connection: %s connected' % client_id)
-        connected_bots = self.bots['connected_bots'].get()                
-        didsplit = str(client_id).split("@")
-        #If this isn't a fake user (fuid) then add as a bot
-        if not (str(didsplit[0]).startswith("fuid") or str(didsplit[0]).startswith("helper")):
-            tmpbotdetail = str(didsplit[1]).split("/")        
-            newbot = bumper.VacBotDevice()
-            newbot.did = didsplit[0]        
-            newbot.vac_bot_device_class = tmpbotdetail[0]
-            newbot.resource = tmpbotdetail[1]
-            botactive = False
-            for bot in connected_bots:
-                if bot['did'] == newbot.did:
-                    botactive = True
-            
-            if botactive == False:
-                connected_bots.append(newbot.asdict())
-            
-            self.bots['connected_bots'].set(connected_bots)
-
-        logging.debug('Connected Bots: %s' %self.bots['connected_bots'].get())
-
-    async def on_broker_client_disconnected(self, client_id):
-        logging.debug('Bumper Connection: %s disconnected' % client_id)
-        connected_bots = self.bots['connected_bots'].get()                
-        didsplit = str(client_id).split("@")
-        #If the did is in the list, remove it
-        for bot in connected_bots:
-            if didsplit[0] == bot['did']:
-                logging.debug("Removing bot from list: {}".format(bot))
-                connected_bots.remove(bot)
-                self.bots['connected_bots'].set(connected_bots)
-
-        logging.debug('Connected Bots: %s' %self.bots['connected_bots'].get())
-
-class MQTTHelperBot(ClientMQTT):
-
+class MQTTHelperBot():
+    Client = MQTTClient()
     def __init__(self, address, run_async=False, bumper_clients=contextvars.ContextVar):
-        ClientMQTT.__init__(self)        
-
-        self.address = address
-        self._client_id = "helper1@bumper/helper1"
         
+        self.address = address
+        self.client_id = "helper1@bumper/helper1"       
         self.command_responses = contextvars.ContextVar('command_responses', default=[])
-
+        
         try:            
             if run_async: 
                 hloop = asyncio.new_event_loop()                
@@ -88,61 +40,52 @@ class MQTTHelperBot(ClientMQTT):
             logging.exception("Exception")
             pass    
 
-    def run_helperbot(self, loop):           
-        asyncio.set_event_loop(loop)
+    def run_helperbot(self, loop):     
         
-        loop.run_until_complete(self.start_helper_bot())      
+        asyncio.set_event_loop(loop)                
+        self.Client = MQTTClient(client_id=self.client_id, config={'check_hostname':False})      
+        loop.run_until_complete(self.start_helper_bot())    
+        loop.run_until_complete(self.get_msg()) 
         loop.run_forever() 
     
     async def start_helper_bot(self):        
-        #self._on_log = self.on_log #This provides more logging than needed, even for debug
-        self._on_message = self.get_msg
-        self._on_connect = self.on_connect        
 
-        #TODO: This is pretty insecure and accepts any cert, maybe actually check?
-        ssl_ctx = ssl.create_default_context()
-        ssl_ctx.check_hostname = False
-        ssl_ctx.verify_mode = ssl.CERT_NONE
-        self.tls_set_context(ssl_ctx)
-        self.tls_insecure_set(True)
+        try:
+            await self.Client.connect('mqtts://{}:{}/'.format(self.address[0], self.address[1]), cafile='./certs/CA/cacert.pem')
+            await self.Client.subscribe([
+                ('iot/p2p/+/+/+/+/helper1/bumper/helper1/+/+/+',QOS_0),
+                ('iot/p2p/+',QOS_0)                
+            ])    
+        except hbmqtt.client.ClientException as ce:
+            logging.exception("Client exception: %s" % ce)
 
-        self.connect(self.address[0], self.address[1])
-        self.loop_start()        
-        
 
-    def on_connect(self, client, userdata, flags, rc):        
-        if rc != 0:
-            logging.error("HelperBot - error connecting with MQTT Return {}".format(rc))
-            raise RuntimeError("HelperBot - error connecting with MQTT Return {}".format(rc))
-                 
-        else:
-            logging.debug("HelperBot - Connected with result code "+str(rc))
-            logging.debug("HelperBot - Subscribing to all")        
+    async def get_msg(self):
+        try:
+            while True:
+                message = await self.Client.deliver_message()          
+            
+                #logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
+                cresp = self.command_responses.get()        
+                
+                #Cleanup "expired messages" > 60 seconds from time
+                for msg in cresp:           
+                    expire_time = (datetime.fromtimestamp(msg['time']) + timedelta(seconds=10)).timestamp()
+                    if time.time() > expire_time:
+                        #logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                        cresp.remove(msg)                                  
 
-        
-            self.subscribe('iot/p2p/+/+/+/+/helper1/bumper/helper1/+/+/+', qos=0)
-            self.subscribe('iot/p2p/+', qos=0)
-                                                      
-
-    def get_msg(self, client, userdata, message):
-        #logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-        cresp = self.command_responses.get()        
-        
-        #Cleanup "expired messages" > 60 seconds from time
-        for msg in cresp:           
-            expire_time = (datetime.fromtimestamp(msg['time']) + timedelta(seconds=10)).timestamp()
-            if time.time() > expire_time:
-                #logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
-                cresp.remove(msg)                                  
-
-        cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.payload.decode("utf-8"))})
-        self.command_responses.set(cresp)                          
-        logging.debug("MQTT Command Response List Count: %s" %len(cresp))
+                cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.data.decode("utf-8"))})
+                self.command_responses.set(cresp)                          
+                logging.debug("MQTT Command Response List Count: %s" %len(cresp))
+        except hbmqtt.client.ClientException as ce:
+            logging.error("Client exception: %s" % ce)
+   
 
     async def wait_for_resp(self, requestid):               
         t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
         while time.time() < t_end:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.1)
             responses = self.command_responses.get()   
             if len(responses) > 0:    
                 for msg in responses:
@@ -166,13 +109,17 @@ class MQTTHelperBot(ClientMQTT):
         return { "id": requestid, "errno": "timeout", "ret": "fail" }
 
     async def send_command(self, cmdjson, requestid):
+        
         ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(cmdjson["cmdName"],
-        cmdjson["toId"], cmdjson["toType"], cmdjson["toRes"], requestid, cmdjson["payloadType"])
-        self.publish(ttopic, str(cmdjson["payload"]))
-
+            cmdjson["toId"], cmdjson["toType"], cmdjson["toRes"], requestid, cmdjson["payloadType"])
+        try:                
+            await self.Client.publish(ttopic, str(cmdjson["payload"]).encode(),QOS_0)
+        except:
+            logging.exception("Exception at send_command")
+        
         resp = await self.wait_for_resp(requestid)        
-             
-        return resp
+                
+        return resp        
         
 
 class MQTTServer():    
@@ -180,21 +127,8 @@ class MQTTServer():
     bumper_clients = []
 
     async def broker_coro(self):         
-        broker = hbmqtt.broker.Broker(config=self.default_config)        
-              
-        await broker.start()  
-
-        logging.debug("Removing Plugin: broker_sys")
-        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('broker_sys'))
-
-        logging.debug("Removing Plugin: topic_taboo")
-        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('topic_taboo'))
-        
-        logging.debug("Removing Plugin: packet_logger_plugin")
-        broker.plugins_manager.plugins.remove(broker.plugins_manager.get_plugin('packet_logger_plugin'))
-
-        logging.debug("Started Broker and Removed Plugins")
-                
+        broker = hbmqtt.broker.Broker(config=self.default_config)
+        await broker.start()                
 
     async def active_bot_listing(self):               
         while True:
@@ -205,11 +139,9 @@ class MQTTServer():
         
         #The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
         distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
-        bumper_plugin = pkg_resources.EntryPoint.parse('bumper = bumper.mqttserver:BumperMQTTPlugin', dist=distribution)        
+        bumper_plugin = pkg_resources.EntryPoint.parse('bumper = bumper.mqttserver:BumperMQTTServer_Plugin', dist=distribution)        
         distribution._ep_map = {"hbmqtt.broker.plugins": {"bumper": bumper_plugin}}
         pkg_resources.working_set.add(distribution)
-        #for entry_point in pkg_resources.iter_entry_points("hbmqtt.broker.plugins"):
-        #   print(entry_point)
 
         self.bumper_clients = bumper_clients
         try:            
@@ -262,3 +194,47 @@ class MQTTServer():
         #loop.run_until_complete(self.active_bot_listing())                     
         loop.run_forever()  
 
+class BumperMQTTServer_Plugin:    
+    def __init__(self, context):
+        self.context = context        
+        try:
+            self.bots = self.context.config['bots']
+        except KeyError:
+             self.context.logger.warning("'bots' section not found in context configuration")
+            
+
+    async def on_broker_client_connected(self, client_id):
+        logging.debug('Bumper Connection: %s connected' % client_id)
+        connected_bots = self.bots['connected_bots'].get()                
+        didsplit = str(client_id).split("@")
+        #If this isn't a fake user (fuid) then add as a bot
+        if not (str(didsplit[0]).startswith("fuid") or str(didsplit[0]).startswith("helper")):
+            tmpbotdetail = str(didsplit[1]).split("/")        
+            newbot = bumper.VacBotDevice()
+            newbot.did = didsplit[0]        
+            newbot.vac_bot_device_class = tmpbotdetail[0]
+            newbot.resource = tmpbotdetail[1]
+            botactive = False
+            for bot in connected_bots:
+                if bot['did'] == newbot.did:
+                    botactive = True
+            
+            if botactive == False:
+                connected_bots.append(newbot.asdict())
+            
+            self.bots['connected_bots'].set(connected_bots)
+
+        logging.debug('Connected Bots: %s' %self.bots['connected_bots'].get())
+
+    async def on_broker_client_disconnected(self, client_id):
+        logging.debug('Bumper Connection: %s disconnected' % client_id)
+        connected_bots = self.bots['connected_bots'].get()                
+        didsplit = str(client_id).split("@")
+        #If the did is in the list, remove it
+        for bot in connected_bots:
+            if didsplit[0] == bot['did']:
+                logging.debug("Removing bot from list: {}".format(bot))
+                connected_bots.remove(bot)
+                self.bots['connected_bots'].set(connected_bots)
+
+        logging.debug('Connected Bots: %s' %self.bots['connected_bots'].get())

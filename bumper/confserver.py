@@ -93,13 +93,13 @@ class ConfServer():
                 "username": "fusername_1" #Random chars 8
                 },
                 "msg": "操作成功",
-                "time": bumper.current_milli_time()
+                "time": bumper.get_milli_time(time.time())
                 }    
                                             
         return web.json_response(body)
 
     async def handle_logout(self, request):                      
-        body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.current_milli_time()}
+        body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}
                                             
         return web.json_response(body)        
 
@@ -112,7 +112,7 @@ class ConfServer():
                 "ecovacsUid": "fuid_1" #Date(14)_RandomChars(32)
                 },
                 "msg": "操作成功",
-                "time": bumper.current_milli_time()
+                "time": bumper.get_milli_time(time.time())
                 }         
                                                     
         return web.json_response(body)     
@@ -130,7 +130,7 @@ class ConfServer():
                     "v": None
                 },
                 "msg": "操作成功",
-                "time": bumper.current_milli_time()
+                "time": bumper.get_milli_time(time.time())
             }        
                                                     
         return web.json_response(body)            
@@ -140,7 +140,7 @@ class ConfServer():
                 "code": "0000",
                 "data": [],
                 "msg": "操作成功",
-                "time": bumper.current_milli_time()
+                "time": bumper.get_milli_time(time.time())
             
             }     
                                                     
@@ -157,10 +157,10 @@ class ConfServer():
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.current_milli_time()
+                    "serverTime": bumper.get_milli_time(time.time())
                 },
                 "msg": "操作成功",
-                "time": bumper.current_milli_time()
+                "time": bumper.get_milli_time(time.time())
             }   
                                                 
         return web.json_response(body)          
