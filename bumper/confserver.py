@@ -56,7 +56,7 @@ class ConfServer():
         
         app.add_routes([
             web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login', self.handle_login),
-            web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin', self.handle_login),            
+        #    web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin', self.handle_checkLogin),            
             web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout', self.handle_logout),
             web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode', self.handle_getAuthCode),            
             web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement', self.handle_checkAgreement),
@@ -100,6 +100,25 @@ class ConfServer():
                 }    
                                             
         return web.json_response(body)
+
+    async def handle_checkLogin(self, request):              
+        # The app seems to remember it's last uid and accessToken
+        # If these don't match, it fails
+        countrycode = request.match_info.get('country', "us")            
+        body = {
+                "code": "0000",
+                "data": {
+                "accessToken": "tempaccesstoken", #Random chars 32 length
+                "country": countrycode,
+                "email": "null@null.com",
+                "uid": "fuid_{}".format(''.join(random.sample(string.ascii_letters,6))), #Date(14)_RandomChars(32)
+                "username": "fusername_{}".format(''.join(random.sample(string.ascii_letters,6))) #Random chars 8
+                },
+                "msg": "操作成功",
+                "time": bumper.get_milli_time(time.time())
+                }    
+                                            
+        return web.json_response(body)        
 
     async def handle_logout(self, request):                      
         body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}
