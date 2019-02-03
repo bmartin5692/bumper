@@ -24,18 +24,18 @@ mqtt_address = ("0.0.0.0", 8883)
 
 # A default bot could be set here to automatically add it as available
 # dbot = bumper.VacBotDevice("did", "class", "resource", "name","nick" )
-# bclient = bumper.bumper_clients_var
+# bclient = bumper.bumper_bots_var
 # bclienttemp = bclient.get()
 # bclienttemp.append(dbot.asdict())
 # bclient.set(bclienttemp)
 
 # start mqtt server (async)
-mqtt_server = bumper.MQTTServer(mqtt_address, run_async=True,bumper_clients=bumper.bumper_clients_var)
+mqtt_server = bumper.MQTTServer(mqtt_address, run_async=True,bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
 time.sleep(1.5) #Wait for broker startup
 # start mqtt server (async)
-mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address, run_async=True,bumper_clients=bumper.bumper_clients_var)
+mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address, run_async=True,bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
 # start conf server (async)
-conf_server = bumper.ConfServer(conf_address, usessl=True, run_async=True, bumper_clients=bumper.bumper_clients_var, helperbot=mqtt_helperbot)
+conf_server = bumper.ConfServer(conf_address, usessl=True, run_async=True,bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var, helperbot=mqtt_helperbot)
 # start xmpp server (sync)
 xmpp_server = bumper.XMPPServer(xmpp_address)
 
