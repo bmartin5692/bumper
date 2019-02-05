@@ -97,14 +97,14 @@ EcoVacs servers provide authentication of accounts and match those up to registe
 So far two protocols have been identified that various models of EcoVacs robots use: **XMPP** and **MQTT**.  These appear to be mutually exclusive and your robot model will use one of these two protocols for communication.  ***Bumper*** provides an implementation of both protocols handling communication between the app and robots.
 
 ----
-**Login/Authentication/RestAPI**
+### Login/Authentication/RestAPI
 
 ***Bumper*** provides a fully simulated central server that handles login/authentication for the app/clients.  At this time no authentication layer is implemented and you can use any e-mail/password when logging in.  Future versions should add additional options here for security.
 
 This means however, that once a robot has been configured to access your WiFi it never needs to communicate with EcoVac's servers again.
 
 ----
-**XMPP**
+### XMPP
 
 *Example Model:* Deebot M81 Pro
 
@@ -116,8 +116,8 @@ Both the app and robot connect to the central XMPP server, which relays messages
 
 **Note:** It's been observed that the apps will attempt to utilize XMPP regardless of robot model.  For models that utilize MQTT, no activity is performed over XMPP just pings.
 
-----
-**MQTT**
+
+### MQTT
 
 *Example Model:* Deebot 900/901
 
