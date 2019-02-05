@@ -81,8 +81,8 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 ![Example of emailing CA cert](docs/images/emailcert.png)
 
 - Import the cert as a CA, and trust it
-	- Instructions here are different for iPhone vs Android
-##### Importing the CA Cert on iOS
+	- Instructions here are different for [iOS](#importing-the-ca-cert-on-ios) vs [Android](#importing-the-ca-cert-on-android)
+#### Importing the CA Cert on iOS
 
 1. Open the e-mail on your iOS device, and click the attached cert
 
@@ -108,6 +108,25 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 8. Click continue when prompted
 9. That's it, you can now [Use the app](#use-the-app)
 
+#### Importing the CA Cert on Android
+
+1. Open the e-mail on your Android device
+
+**Quick Method**
+
+2. Click the cert, and if prompted provide a name
+3. Under "Used for", select "VPN and apps"
+
+**Long Method**
+
+2. Save the attached cert file
+3. Go to Settings > Lock screen and security > Other security settings
+4. Under "Credential storage", click "Install from device storage"
+5. Browse to the downloaded cert, select it, then click "Done"
+6. Click the cert, and if prompted provide a name
+7. Under "Used for", select "VPN and apps"
+
+Now, start [using the app](#use-the-app).
 
 ### Use the app
  
