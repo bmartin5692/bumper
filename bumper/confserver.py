@@ -195,22 +195,29 @@ class ConfServer():
 
     async def handle_usersapi(self, request):    
         body = {}
-
-        json_body = json.loads(await request.text())
-        todo = json_body['todo']
+        postbody = {}
+        if request.content_type == "application/x-www-form-urlencoded":
+            postbody = await request.post()
+            
+        else:
+            postbody = json.loads(await request.text())
+                
+        logging.debug(postbody)
+        
+        todo = postbody['todo']
         if todo == 'FindBest':
-            service = json_body['service']
+            service = postbody['service']
             if service == 'EcoMsgNew':
                 body = {"result":"ok","ip":socket.gethostbyname(socket.gethostname()),"port":5223}
             elif service == 'EcoUpdate':
                 body = {"result":"ok","ip":"47.88.66.164","port":8005}
         elif todo == 'loginByItToken':
             body = {
-                "resource": json_body["resource"],
+                "resource": postbody["resource"],
                 "result": "ok",
                 "todo": "result",
-                "token": json_body["token"], #RandomChar(32) 
-                "userId": json_body["userId"] #RandomChar(16)
+                "token": postbody["token"], #RandomChar(32) 
+                "userId": postbody["userId"] #RandomChar(16)
                 }   
         elif todo == 'GetDeviceList':
             active_bots = self.bumper_bots.get()
