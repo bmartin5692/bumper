@@ -83,9 +83,30 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 - Import the cert as a CA, and trust it
 	- Instructions here are different for iPhone vs Android
 ##### Importing the CA Cert on iOS
-- Open the e-mail on your iOS device, and click the attached cert
+
+1. Open the e-mail on your iOS device, and click the attached cert
 
 ![Example of email on iOS device](docs/images/ios_email_cert.png)
+
+2. Install the profile by clicking "Install", and entering your pass code if prompted
+
+![Example of install profile on iOS device](docs/images/ios_install_profile.png)
+
+3. Accept the certificate warning by clicking "Install" again
+
+![Example of cert warning on iOS device](docs/images/ios_cert_warning_install.png)
+
+4. Click "Done" to exit the profile installation
+5. Go to Settings > General > About
+6. Scroll to the bottom and click "Certificate Trust Settings"
+7. Enable Full Trust for the Bumper CA Cert, by moving the slider to the right
+
+![Example of enable trust cert on iOS device](docs/images/ios_cert_trust.png)
+
+![Example of enable trust cert on iOS device 2](docs/images/ios_cert_trust_continue.png)
+
+8. Click continue when prompted
+9. That's it, you can now [Use the app](#use-the-app)
 
 
 ### Use the app
