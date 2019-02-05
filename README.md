@@ -13,7 +13,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | Deebot M81 Pro | XMPP |
 | Deebot 900/901 | MQTT |
 
-For more information about the protocols and how it works, see the [How does it work?](README.md#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.
+For more information about the protocols and how it works, see the [How does it work?](#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.
 
 ## Why?
 For fun, mostly :)
@@ -74,16 +74,21 @@ Instructions (verified to work with Sucks 0.8.3)
 ## Using with the official Android/iOS App 
 Bumper *can* be used with the official app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.  
 ### DNS
-- Configure your DNS server as described above in the DNS section. 
+- Configure your DNS server as described above in the [DNS](#dns) section. 
 ### Import the Bumper CA Cert
 - E-mail yourself the Bumper CA cert (located at `./certs/CA/cacert.pem`)
+![Example of emailing CA cert](docs/images/emailcert.png)
 - Import the cert as a CA, and trust it
 	- Instructions here are different for iPhone vs Android
+##### Importing the CA Cert on iOS
+- Open the e-mail on your iOS device, and click the attached cert
+![Example of email on iOS device](docs/images/ios_email_cert.png)
+
 
 ### Use the app
  
  - Open the app
- - At this time there is no authentication layer, you can enter any email address and password (as long as it is 6 characters) and you will be authenticated
+ - At this time there is no authentication layer, you can enter any e-mail address and password (as long as it is 6 characters) and you will be authenticated
  - If your robot has already checked into Bumper, then it will be available in the list of robots  
 - The app now does a ping to the robot to make sure it is online, and if it is you can now control the robot
 
