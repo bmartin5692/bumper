@@ -81,7 +81,7 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 	- Instructions here are different for iPhone vs Android
 
 ### Use the app
-
+ 
  - Open the app
  - At this time there is no authentication layer, you can enter any email address and password (as long as it is 6 characters) and you will be authenticated
  - If your robot has already checked into Bumper, then it will be available in the list of robots  
@@ -89,19 +89,23 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 
 ## How does it work? 
 **App/Authentication**
+
 EcoVacs servers provide authentication of accounts and match those up to registered robots.  Once authenticated, users can control the robots via the app.  ***Bumper*** provides an implementation of the central servers providing authentication and matching.
 
 **Robots**
+
 So far two protocols have been identified that various models of EcoVacs robots use: **XMPP** and **MQTT**.  These appear to be mutually exclusive and your robot model will use one of these two protocols for communication.  ***Bumper*** provides an implementation of both protocols handling communication between the app and robots.
 
 ----
 **Login/Authentication/RestAPI**
+
 ***Bumper*** provides a fully simulated central server that handles login/authentication for the app/clients.  At this time no authentication layer is implemented and you can use any e-mail/password when logging in.  Future versions should add additional options here for security.
 
 This means however, that once a robot has been configured to access your WiFi it never needs to communicate with EcoVac's servers again.
 
 ----
 **XMPP**
+
 *Example Model:* Deebot M81 Pro
 
 The robot utilizes XMPP for control.  When the robot boots up it sends a HTTP request to `lbo.ecovacs.net:8007` asking for the IP address and port of the XMPP server. Because of our DNS override, this request will be received by Bumper. We tell the robot to connect over XMPP to our local machine.
@@ -114,6 +118,7 @@ Both the app and robot connect to the central XMPP server, which relays messages
 
 ----
 **MQTT**
+
 *Example Model:* Deebot 900/901
 
 The robot utilizes MQTT for control.  On startup it connects to an MQTT broker (`mq-{countrycode}.ecovacs.com`) and subscribes to a `p2p` topic where commands are issued.  
