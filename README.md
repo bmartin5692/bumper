@@ -76,7 +76,8 @@ Bumper *can* be used with the official app, but with limitations. Your phone nee
 ### DNS
 - Configure your DNS server as described above in the [DNS](#dns) section. 
 ### Import the Bumper CA Cert
-- E-mail yourself the Bumper CA cert (located at `./certs/CA/cacert.pem`)
+- E-mail yourself the Bumper CA cert (located at `./certs/CA/cacert.crt`)
+**Note:** Make sure you select the `cacert.crt` file, which is a DER encoded version that will work on either Android or iOS.
 
 ![Example of emailing CA cert](docs/images/emailcert.png)
 
