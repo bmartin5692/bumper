@@ -13,7 +13,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | Deebot M81 Pro | XMPP |
 | Deebot 900/901 | MQTT |
 
-For more information about the protocols and how it works, see the "**[How does it work?](README.md#how-does-it-work)**" section at the end.  If you test against another model and it works, please report it so it can be added to the list.
+For more information about the protocols and how it works, see the [How does it work?](README.md#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.
 
 ## Why?
 For fun, mostly :)
@@ -30,7 +30,7 @@ But seriously, there are a several reasons for eliminating the central server:
 - Python 3 and pipenv
 - A network router that has functionality for overriding DNS queries
 - A client that can connect to Bumper and talk to the robot over the Ecovacs protocol.
-  - The Android or iOS apps can be used if configured properly. See "**Using with the official Android/iOS App**" below.
+  - The Android or iOS apps can be used if configured properly. See [Using with the official Android/iOS App](#using-with-the-official-androidios-app) below.
   - [Sucks](https://github.com/wpietri/sucks) can also be used, which can act as a client and control the robots via command-line.
 
 ## Usage
