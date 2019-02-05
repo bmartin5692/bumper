@@ -13,7 +13,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | Deebot M81 Pro | XMPP |
 | Deebot 900/901 | MQTT |
 
-For more information about the protocols and how it works, see the "**How does it work?**" section at the end.  If you test against another model and it works, please report it so it can be added to the list.
+For more information about the protocols and how it works, see the "**[How does it work?](README.md#how-does-it-work?)**" section at the end.  If you test against another model and it works, please report it so it can be added to the list.
 
 ## Why?
 For fun, mostly :)
@@ -116,7 +116,7 @@ Both the app and robot connect to the central XMPP server, which relays messages
 
 **Note:** It's been observed that the apps will attempt to utilize XMPP regardless of robot model.  For models that utilize MQTT, no activity is performed over XMPP just pings.
 
-
+----
 ### MQTT
 
 *Example Model:* Deebot 900/901
