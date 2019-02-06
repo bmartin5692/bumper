@@ -2,6 +2,7 @@
 
 import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
 
+xmppserverlog = logging.getLogger("xmppserver")
 
 class XMPPServer():
     server_id = 'bumper'
@@ -17,9 +18,8 @@ class XMPPServer():
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.socket.bind(address)
             self.socket.listen(1)
-            logging.info('XMPPServer: listening on {}:{}'.format(address[0], address[1]))
+            xmppserverlog.debug('listening on {}:{}'.format(address[0], address[1]))
             while not self.exit_flag:
-                logging.info('XMPPServer: awaiting connection')
                 connection, client_address = self.socket.accept()
                 # disconnect any clients with this ip
                 for client in self.clients:
@@ -34,27 +34,27 @@ class XMPPServer():
             self.socket.close()
         except PermissionError as e:
             if "bind" in e.strerror:
-                logging.exception("Error binding xmppserver, exiting. Try using a different hostname or IP.\r\n {}".format(e))        
+                xmppserverlog.exception("Error binding XMPPServer, exiting. Try using a different hostname or IP - {}".format(e))        
             exit(1)            
         except Exception as e:
-            logging.exception('XMPPServer: {}'.format(e))
+            xmppserverlog.exception('{}'.format(e))
             exit(1)
-        except KeyboardInterrupt:
-            logging.exception('XMPPServer: Keyboard interrupt')
+        except KeyboardInterrupt as e:
+            xmppserverlog.exception('{}'.format(e))
         finally:
             self.disconnect()
-            logging.info('XMPPServer: bye')
+            xmppserverlog.info('disconnecting')
 
     def disconnect(self):
         try:
-            logging.info('XMPPServer: waiting for all client threads to exit')
+            xmppserverlog.debug('waiting for all client threads to exit')
             for client in self.clients:
                 client.disconnect()
                 client.join()
             self.exit_flag = True
-            logging.info('XMPPServer: shutting down...')
+            xmppserverlog.debug('shutting down')
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))  
+            xmppserverlog.exception("{}".format(e))  
 
 
 class Client(threading.Thread):
@@ -80,23 +80,23 @@ class Client(threading.Thread):
 
     def send(self, command):
         try:
-            logging.debug('XMPPServer to {}: {}'.format(self.address, command))
+            xmppserverlog.debug('send {} - {}'.format(self.address, command))
             self.connection.send(command.encode())
         except OSError as e:
-            logging.error('XMPPServer: {}'.format(e))            
+            xmppserverlog.error('{}'.format(e))            
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))
+            xmppserverlog.exception("{}".format(e))
 
 
 
     def disconnect(self):
         try:
-            logging.info('XMPPServer: {} with resource {} disconnecting'.format(self.address, self.clientresource))
+            xmppserverlog.debug('client {} with resource {} disconnecting'.format(self.address, self.clientresource))
             self.connection.close()
             self._set_state('DISCONNECT')
  
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))        
+            xmppserverlog.exception("{}".format(e))        
 
     def _tag_strip_uri(self, tag):
         try:
@@ -104,25 +104,25 @@ class Client(threading.Thread):
                 uri, ignore, tag = tag[1:].partition('}')
             return tag
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))           
+            xmppserverlog.exception("{}".format(e))           
 
     def _set_state(self, state):
         try:
             new_state = getattr(Client, state)
             if self.state > new_state:
-                raise Exception('XMPPServer: {} illegal state change {}->{}'.format(self.address, self.state, new_state))
-            logging.debug('XMPPServer: {} state: {}'.format(self.address, state))
+                raise Exception('{} illegal state change {}->{}'.format(self.address, self.state, new_state))
+            xmppserverlog.debug('{} state: {}'.format(self.address, state))
             self.state = new_state
             if new_state == '5':
                 self.join()
         except Exception as e:
-            logging.exception("XMPPServer: Exception: {}".format(e))            
+            xmppserverlog.exception("{}".format(e))            
 
     def _handle_ctl(self, xml, data):
         try:
             ctl = xml[0][0]
             if ctl.get('admin') and self.type == self.BOT:
-                logging.debug('XMPPServer: admin username received from bot: {}'.format(ctl.get('admin')))
+                xmppserverlog.debug('admin username received from bot: {}'.format(ctl.get('admin')))
                 XMPPServer.client_id = ctl.get('admin')
                 return
             # forward
@@ -136,7 +136,7 @@ class Client(threading.Thread):
                             data = data.encode()
                     client.send(data.decode('utf-8'))
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))
+            xmppserverlog.exception("{}".format(e))
 
 
     def _handle_ping(self, xml, data):
@@ -155,19 +155,24 @@ class Client(threading.Thread):
                 if client.address != self.address and client.state == client.READY:
                     client.send(data.decode('utf-8'))
         except Exception as e:
-            logging.exception("XMPPServer Exception: {}".format(e))            
+            xmppserverlog.exception("{}".format(e))            
 
     def run(self):
         try:
-            logging.info('XMPPServer: client connected: {}'.format(self.address))
+            xmppserverlog.info('client connected - {}'.format(self.address))
             self._set_state('CONNECT')
             data = ""
             while True:
                 time.sleep(0.2)
-                if not self.connection._closed:               
-                    data = self.connection.recv(4096)
+                if not self.connection._closed:       
+                    try:        
+                        data = self.connection.recv(4096)
+                    except ConnectionResetError as e:
+                        xmppserverlog.error('{}'.format(e))
+                    except Exception as e:
+                        xmppserverlog.exception('{}'.format(e))
                 if data:
-                    logging.debug('XMPPServer: from {}: {}'.format(self.address, data.decode('utf-8')))
+                    xmppserverlog.debug('from {} - {}'.format(self.address, data.decode('utf-8')))
                     try:
                         if self.state == self.CONNECT:
                             if data.decode('utf-8').find('jabber:client') > -1:
@@ -179,7 +184,6 @@ class Client(threading.Thread):
                                 self.send('<stream:features><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"/><session xmlns="urn:ietf:params:xml:ns:xmpp-session"/></stream:features>')
                             continue
                         xml = ET.fromstring(data)
-                        logging.debug("XMPPXML: {}".format(data))
                         if len(xml):
                             child = self._tag_strip_uri(xml[0].tag)
                         else:
@@ -191,7 +195,7 @@ class Client(threading.Thread):
                                 clientresourcexml = clientbindxml[0].getchildren()
                                 self.clientresource = clientresourcexml[0].text
                                 self.name = "XMPP Thread {}".format(self.clientresource)
-                                logging.info("XMPP Client {} using resource {}".format(self.address, self.clientresource))
+                                xmppserverlog.debug("new client {} using resource {}".format(self.address, self.clientresource))
                                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(xml.get('id'), XMPPServer.bot_id)
                                 self._set_state('BIND')
                             elif child == 'session':
@@ -209,27 +213,27 @@ class Client(threading.Thread):
                             if len(xml) and xml[0].tag == 'status':
                                 # bot announcing arrival
                                 self.type = self.BOT
-                                logging.debug('XMPPServer: {} type set to BOT (based on presence tag)'.format(self.address))
+                                xmppserverlog.debug('{} type set to BOT (based on presence tag)'.format(self.address))
                                 # send a command from an unknown user  - the response will contain the correct admin username
                                 self.send('<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="GetCleanState" /></query></iq>'.format(uuid.uuid4(), 'unknown@ecouser.net', XMPPServer.bot_id))
                             elif xml.get('type') == 'available':
                                 self.type = self.CONTROLLER
-                                logging.debug('XMPPServer: {} type set to CONTROLLER (based on presence tag)'.format(self.address))
+                                xmppserverlog.debug('{} type set to CONTROLLER (based on presence tag)'.format(self.address))
                     except ET.ParseError as e:
-                        logging.debug('error: {}'.format(e))
+                        xmppserverlog.debug('parse error - {}'.format(e))
                     except Exception as e:
-                        logging.error('XMPPServer: {}'.format(e))
+                        xmppserverlog.exception('{}'.format(e))
                         self._set_state('DISCONNECT')
         except OSError as e:
-            logging.error('XMPPServer: {}'.format(e))
+            xmppserverlog.error('{}'.format(e))
             self._set_state('DISCONNECT')
 
         except ConnectionResetError as e:
-            logging.error('XMPPServer: {}'.format(e))
+            xmppserverlog.error('{}'.format(e))
             self._set_state('DISCONNECT')
                         
         except Exception as e:
-            logging.error('XMPPServer: {}'.format(e))
+            xmppserverlog.exception('{}'.format(e))
             self._set_state('DISCONNECT')
                         
         finally:

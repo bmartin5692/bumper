@@ -16,8 +16,17 @@ import bumper
 import json
 from datetime import datetime, timedelta
 
+helperbotlog = logging.getLogger("helperbot")
+mqttserverlog = logging.getLogger("mqttserver")
+
+logging.getLogger("transitions").setLevel(logging.CRITICAL + 1) #Ignore this logger
+logging.getLogger("passlib").setLevel(logging.CRITICAL + 1) #Ignore this logger
+logging.getLogger("hbmqtt.broker").setLevel(logging.CRITICAL + 1) #Ignore this logger #There are some sublogs that could be set if needed (.plugins)
+logging.getLogger("hbmqtt.mqtt.protocol").setLevel(logging.CRITICAL + 1) #Ignore this logger
+logging.getLogger("hbmqtt.client").setLevel(logging.CRITICAL + 1) #Ignore this logger
 
 class MQTTHelperBot():
+    
     Client = MQTTClient()
     def __init__(self, address, run_async=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
         
@@ -28,7 +37,7 @@ class MQTTHelperBot():
         try:            
             if run_async: 
                 hloop = asyncio.new_event_loop()                
-                logging.debug("Starting MQTT HelperBot Thread: 1")
+                helperbotlog.debug("Starting MQTT HelperBot Thread: 1")
                 helperbot = Thread(name="MQTTHelperBot_Thread",target=self.run_helperbot, args=(hloop,))
                 helperbot.setDaemon(True)
                 helperbot.start()                    
@@ -37,7 +46,7 @@ class MQTTHelperBot():
                 self.run_helperbot()
 
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))
+            helperbotlog.exception('{}'.format(e))
             pass    
 
     def run_helperbot(self, loop):     
@@ -48,7 +57,7 @@ class MQTTHelperBot():
             loop.run_until_complete(self.get_msg()) 
             loop.run_forever() 
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))            
+            helperbotlog.exception('{}'.format(e))            
     
     async def start_helper_bot(self):        
 
@@ -60,35 +69,29 @@ class MQTTHelperBot():
             ])    
 
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))            
-        #except hbmqtt.client.ClientException as ce:
-        #    logging.exception("Client exception: %s" % ce)
-
+            helperbotlog.exception('{}'.format(e))            
 
     async def get_msg(self):
         try:
             while True:
                 message = await self.Client.deliver_message()          
             
-                #logging.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
+                #helperbotlog.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
                 cresp = self.command_responses.get()        
                 
                 #Cleanup "expired messages" > 60 seconds from time
                 for msg in cresp:           
                     expire_time = (datetime.fromtimestamp(msg['time']) + timedelta(seconds=10)).timestamp()
                     if time.time() > expire_time:
-                        #logging.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                        #helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
                         cresp.remove(msg)                                  
 
                 cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.data.decode("utf-8"))})
                 self.command_responses.set(cresp)                          
-                logging.debug("MQTT Command Response List Count: %s" %len(cresp))
+                #helperbotlog.debug("MQTT Command Response List Count: %s" %len(cresp))
         
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))        
-        #except hbmqtt.client.ClientException as ce:
-        #    logging.error("Client exception: %s" % ce)
-   
+            helperbotlog.exception('{}'.format(e))          
 
     async def wait_for_resp(self, requestid):               
         try:
@@ -100,7 +103,7 @@ class MQTTHelperBot():
                     for msg in responses:
                         topic = str(msg['topic']).split("/")
                         if (topic[6] == "helper1" and topic[10] == requestid):
-                            logging.debug('VacBot MQTT Response: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
+                            #helperbotlog.debug('VacBot MQTT Response: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
                             if topic[11] == "j":
                                 resppayload = json.loads(msg['payload'])
                             else:                            
@@ -116,9 +119,10 @@ class MQTTHelperBot():
                             return resp
 
             return { "id": requestid, "errno": "timeout", "ret": "fail" }
-        
+        except asyncio.CancelledError as e:
+            helperbotlog.debug('wait_for_resp cancelled by asyncio')
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))            
+            helperbotlog.exception('{}'.format(e))            
 
     async def send_command(self, cmdjson, requestid):
         try:
@@ -126,15 +130,15 @@ class MQTTHelperBot():
                 cmdjson["toId"], cmdjson["toType"], cmdjson["toRes"], requestid, cmdjson["payloadType"])
             try:                
                 await self.Client.publish(ttopic, str(cmdjson["payload"]).encode(),QOS_0)
-            except:
-                logging.exception("Exception at send_command")
+            except Exception as e:
+                helperbotlog.exception("{}".format(e))
             
             resp = await self.wait_for_resp(requestid)        
                     
             return resp        
 
         except Exception as e:
-            logging.error('Helperbot: {}'.format(e))
+            helperbotlog.exception('{}'.format(e))
         
 
 class MQTTServer():    
@@ -149,21 +153,21 @@ class MQTTServer():
         
         except PermissionError as e:
             if "bind" in e.strerror:
-                logging.exception("Error binding mqttserver, exiting. Try using a different hostname or IP.\r\n {}".format(e))        
+                mqttserverlog.exception("Error binding mqttserver, exiting. Try using a different hostname or IP - {}".format(e))        
             exit(1)  
 
         except Exception as e:
-            logging.exception('MQTTServer: {}'.format(e))
+            mqttserverlog.exception('{}'.format(e))
             exit(1)
 
     async def active_bot_listing(self):        
         try:       
             while True:
                 await asyncio.sleep(5)
-                logging.debug('Connected bots: %s' % self.bumper_bots.get())     
+                mqttserverlog.debug('connected bots - %s' % self.bumper_bots.get())     
 
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))                
+            mqttserverlog.exception('{}'.format(e))                
 
     def __init__(self, address, run_async=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
         try:
@@ -206,7 +210,7 @@ class MQTTServer():
             }
             if run_async:
                 sloop = asyncio.new_event_loop()                
-                logging.debug("Starting MQTTServer Thread: 1")
+                mqttserverlog.debug("Starting MQTTServer Thread: 1")
                 mqttserver = Thread(name="MQTTServer_Thread",target=self.run_server, args=(sloop,))
                 mqttserver.setDaemon(True)
                 mqttserver.start()                   
@@ -215,11 +219,7 @@ class MQTTServer():
                 self.run_server()
         
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))
-
-        #except:
-        #    logging.exception("Exception")
-        #    pass              
+            mqttserverlog.exception('{}'.format(e))    
     
 
     def run_server(self, loop):      
@@ -230,7 +230,7 @@ class MQTTServer():
             loop.run_forever()  
         
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))            
+            mqttserverlog.exception('{}'.format(e))            
 
 class BumperMQTTServer_Plugin:    
     def __init__(self, context):
@@ -240,11 +240,11 @@ class BumperMQTTServer_Plugin:
         except KeyError:
              self.context.logger.warning("'clients' section not found in context configuration")
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))    
+            mqttserverlog.exception('{}'.format(e))    
 
     async def on_broker_client_connected(self, client_id):
         try:
-            logging.debug('Bumper Connection: %s connected' % client_id)
+            #mqttserverlog.debug('%s connected' % client_id)
             connected_bots = self.clients['connected_bots'].get()      
             connected_clients = self.clients['connected_clients'].get()          
             didsplit = str(client_id).split("@")
@@ -262,7 +262,7 @@ class BumperMQTTServer_Plugin:
                 
                 if botactive == False:
                     connected_bots.append(newbot.asdict())
-                    logging.info("Adding bot to list: {}".format(newbot.asdict()))
+                    mqttserverlog.info("new bot {}".format(newbot.did))
                 
                 self.clients['connected_bots'].set(connected_bots)
             else:
@@ -279,41 +279,39 @@ class BumperMQTTServer_Plugin:
                 
                 if clientactive == False:
                     connected_clients.append(newuser.asdict())
-                    logging.info("Adding client to list: {}".format(newuser.asdict()))
+                    mqttserverlog.info("new client {}".format(newuser.userid))
                 
                 self.clients['connected_clients'].set(connected_clients)
 
-
-            logging.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
-            logging.debug('Connected Clients: %s' %self.clients['connected_clients'].get())
+            #mqttserverlog.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
+            #mqttserverlog.debug('Connected Clients: %s' %self.clients['connected_clients'].get())
 
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))            
+            mqttserverlog.exception('{}'.format(e))            
         
 
 
     async def on_broker_client_disconnected(self, client_id):
         try:
-            logging.debug('Bumper Connection: %s disconnected' % client_id)
+            #mqttserverlog.debug('%s disconnected' % client_id)
             connected_bots = self.clients['connected_bots'].get()       
             connected_clients = self.clients['connected_clients'].get()               
             didsplit = str(client_id).split("@")
             #If the did is in the list, remove it
             for bot in connected_bots:
                 if didsplit[0] == bot['did']:
-                    logging.info("Removing bot from list: {}".format(bot['did']))
+                    mqttserverlog.info("bot disconnected {}".format(bot['did']))
                     connected_bots.remove(bot)
-                    self.clients['connected_bots'].set(connected_bots)
-
-            logging.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
+                    self.clients['connected_bots'].set(connected_bots)           
 
             for client in connected_clients:
                 if didsplit[0] == client['userid']:
-                    logging.info("Removing client from list: {}".format(client['userid']))
+                    mqttserverlog.info("client disconnected {}".format(client['userid']))
                     connected_clients.remove(client)
                     self.clients['connected_clients'].set(connected_clients)
 
-            logging.debug('Connected Clients: %s' %self.clients['connected_clients'].get())
+            #mqttserverlog.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
+            #mqttserverlog.debug('Connected Clients: %s' %self.clients['connected_clients'].get())
 
         except Exception as e:
-            logging.error('MQTTServer: {}'.format(e))
+            mqttserverlog.exception('{}'.format(e))

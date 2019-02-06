@@ -11,6 +11,23 @@ import asyncio
 import contextvars
 from aiohttp import web
 
+class aiohttp_filter(logging.Filter):
+    
+    def filter(self, record):
+        if record.name == "aiohttp.access" and record.levelno == 20:  #Filters aiohttp.access log to switch it from INFO to DEBUG
+            record.levelno = 10
+            record.levelname = "DEBUG"             
+        
+        if record.levelno == 10 and logging.getLogger("confserver").getEffectiveLevel() == 10:
+            return True
+        else:
+            return False
+
+confserverlog = logging.getLogger("confserver")
+
+logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1) #Ignore this logger
+logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
+
 class ConfServer():
     bumper_clients = contextvars.ContextVar
     bumper_bots = contextvars.ContextVar
@@ -26,7 +43,7 @@ class ConfServer():
 
         try:                        
             if run_async:
-                logging.debug("Starting ConfServer Thread: 1")
+                confserverlog.debug("Starting ConfServer Thread: 1")
                 confserver = Thread(name="ConfServer_Thread",target=self.run_server)
                 self.server = confserver
                 confserver.setDaemon(True)
@@ -38,7 +55,7 @@ class ConfServer():
                 except KeyboardInterrupt:
                     self.disconnect()
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))
+            confserverlog.exception('{}'.format(e))
 
 
     def run_server(self):
@@ -51,7 +68,7 @@ class ConfServer():
             loop.run_until_complete(self.start_server())
             loop.run_forever()
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))            
+            confserverlog.exception('{}'.format(e))            
                 
 
     async def start_server(self):              
@@ -76,7 +93,7 @@ class ConfServer():
             ])    
             
 
-            runner = web.AppRunner(app)#, access_log=None) #access_log=None so the output isn't nuts
+            runner = web.AppRunner(app)
             await runner.setup()
             
             if self.usessl:
@@ -91,11 +108,11 @@ class ConfServer():
         
         except PermissionError as e:
             if "bind" in e.strerror:
-                logging.exception("Error binding confserver, exiting. Try using a different hostname or IP.\r\n {}".format(e))        
+                confserverlog.exception("Error binding confserver, exiting. Try using a different hostname or IP - {}".format(e))        
             exit(1)
 
         except Exception as e:
-            logging.exception('ConfServer: {}'.format(e))            
+            confserverlog.exception('{}'.format(e))            
             exit(1)
 
     async def handle_login(self, request):              
@@ -118,7 +135,7 @@ class ConfServer():
             return web.json_response(body)
         
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_checkLogin(self, request):              
         try:
@@ -141,7 +158,7 @@ class ConfServer():
             return web.json_response(body)        
         
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))  
+            confserverlog.exception('{}'.format(e))  
 
     async def handle_logout(self, request):                      
         try:
@@ -151,7 +168,7 @@ class ConfServer():
             return web.json_response(body)        
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_getAuthCode(self, request):                      
         try:
@@ -169,7 +186,7 @@ class ConfServer():
             return web.json_response(body)      
         
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_checkVersion(self, request):              
         try:
@@ -191,7 +208,7 @@ class ConfServer():
             return web.json_response(body)            
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_checkAgreement(self, request):              
         try:
@@ -206,7 +223,7 @@ class ConfServer():
             return web.json_response(body)  
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_homePageAlert(self, request):              
         try:
@@ -229,7 +246,7 @@ class ConfServer():
             return web.json_response(body)          
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_getProductIotMap(self, request):              
         try:
@@ -238,7 +255,7 @@ class ConfServer():
             return web.json_response(body)  
         
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))              
+            confserverlog.exception('{}'.format(e))              
 
     async def handle_usersapi(self, request):    
         try:
@@ -249,10 +266,8 @@ class ConfServer():
                 postbody = await request.post()
                 
             else:
-                postbody = json.loads(await request.text())
-                    
-            logging.debug(postbody)
-            
+                postbody = json.loads(await request.text())                  
+                       
             todo = postbody['todo']
             if todo == 'FindBest':
                 service = postbody['service']
@@ -275,11 +290,12 @@ class ConfServer():
                         "result": "ok",
                         "todo": "result"
                         }            
-                                                            
+
+            confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(postbody,body))                                                            
             return web.json_response(body)      
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))    
+            confserverlog.exception('{}'.format(e))    
 
     async def handle_lookup(self, request):    
         try:
@@ -292,7 +308,7 @@ class ConfServer():
             else:
                 postbody = json.loads(await request.text())
                     
-            logging.debug(postbody)
+            confserverlog.debug(postbody)
             
             todo = postbody['todo']
             if todo == 'FindBest':
@@ -302,33 +318,32 @@ class ConfServer():
                 elif service == 'EcoUpdate':
                     body = {"result":"ok","ip":"47.88.66.164","port":8005}
                               
+            confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(postbody,body))                              
             return web.json_response(body)      
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))                          
+            confserverlog.exception('{}'.format(e))                          
 
     async def handle_devmanager_botcommand(self, request):
         try:
-            json_body = json.loads(await request.text())
-            logging.info("Device Request: {}".format(json_body))
+            json_body = json.loads(await request.text())            
             randomid = ''.join(random.sample(string.ascii_letters,6))
             retcmd = await self.helperbot.send_command(json_body, randomid)
             body = retcmd
 
-            logging.info("Device Response: {}".format(body))
+            confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(json_body,body))            
             return web.json_response(body)   
 
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))  
+            confserverlog.exception('{}'.format(e))  
 
     def disconnect(self):
         try:
-            logging.info('ConfServer: shutting down...')        
+            confserverlog.info('shutting down')        
             if(self.run_async):
                 self.server.join()
             else:
-                self.server.disconnect()
-            logging.info('ConfServer: bye')        
+                self.server.disconnect()  
     
         except Exception as e:
-            logging.error('ConfServer: {}'.format(e))      
+            confserverlog.exception('{}'.format(e))      
