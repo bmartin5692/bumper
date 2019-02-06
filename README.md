@@ -42,6 +42,7 @@ The easiest way is overriding the main domains used by EcoVacs using DNSMasq/PiH
 
     address=/ecouser.net/{bumper server ip}
     address=/ecovacs.com/{bumper server ip}
+    address=/ecovacs.net/{bumper server ip}
 
 If this isn't an option, you'll need to configure your router DNS to point a number of domains used by the app/robot to the Bumper server.  
 **Note:** Depending on country, your phone may be using a different domain.  Most of these domains contain country-specific placeholders.
@@ -49,11 +50,11 @@ If this isn't an option, you'll need to configure your router DNS to point a num
 
 | Address | Description |
 |--|--|
-| `lbo.ecovacs.net` | Load-balancer that is checked by the app/robot |
+| `lb-{countrycode}.ecovacs.net` | Load-balancer that is checked by the app/robot |
 | `eco-{countrycode}-api.ecovacs.com` | Used for Login |
 | `portal-{countrycode}.ecouser.net` | Used for Login and Rest API |
 | `msg-{countrycode}.ecouser.net` | Used for XMPP |
-| `mq-{countrycode}.ecovacs.com` | Used for MQTT |
+| `mq-ww.ecouser.net` | Used for MQTT |
 
 ### Starting Bumper
 - Start Bumper with `pipenv run python bumper.py`
