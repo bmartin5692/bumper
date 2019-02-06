@@ -32,10 +32,15 @@ class XMPPServer():
                 client.start()
                 self.clients.append(client)
             self.socket.close()
+        except PermissionError as e:
+            if "bind" in e.strerror:
+                logging.exception("Error binding xmppserver, exiting. Try using a different hostname or IP.\r\n {}".format(e))        
+            exit(1)            
         except Exception as e:
-            logging.error('XMPPServer: {}'.format(e))
+            logging.exception('XMPPServer: {}'.format(e))
+            exit(1)
         except KeyboardInterrupt:
-            logging.debug('XMPPServer: Keyboard interrupt')
+            logging.exception('XMPPServer: Keyboard interrupt')
         finally:
             self.disconnect()
             logging.info('XMPPServer: bye')
