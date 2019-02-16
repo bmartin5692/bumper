@@ -32,33 +32,37 @@ class ConfServer():
     bumper_clients = contextvars.ContextVar
     bumper_bots = contextvars.ContextVar
 
-    def __init__(self, address, usessl=False, run_async=True, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar, helperbot=None):
+    def __init__(self, address, usessl=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar, remove_clients=contextvars.ContextVar,helperbot=None):
         self.bumper_bots = bumper_bots
         self.bumper_clients = bumper_clients
+        self.remove_clients = remove_clients
         self.helperbot = helperbot
         self.usessl = usessl
-        self.run_async = run_async
         self.address = address  
-        
+        self.confthread = None
 
+        
+    def run(self, run_async=False):
         try:                        
             if run_async:
                 confserverlog.debug("Starting ConfServer Thread: 1")
-                confserver = Thread(name="ConfServer_Thread",target=self.run_server)
-                self.server = confserver
-                confserver.setDaemon(True)
-                confserver.start()
+                self.confthread = Thread(name="ConfServer_{}_Thread".format(self.address[1]),target=self.run_server)
+                self.confthread.setDaemon(True)
+                self.confthread.start()
                 
             else:
                 try:
                     self.run_server()
                 except KeyboardInterrupt:
                     self.disconnect()
+
         except Exception as e:
             confserverlog.exception('{}'.format(e))
 
 
     def run_server(self):
+        logging.info("Starting ConfServer at {}".format(self.address))
+        print("Starting ConfServer at {}".format(self.address))
         try:
             loop = asyncio.get_event_loop()
         except:
@@ -76,6 +80,7 @@ class ConfServer():
             app = web.Application()        
             
             app.add_routes([
+                web.get('', self.handle_base),
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login', self.handle_login),
             #    web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin', self.handle_checkLogin),            
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout', self.handle_logout),
@@ -114,6 +119,16 @@ class ConfServer():
         except Exception as e:
             confserverlog.exception('{}'.format(e))            
             exit(1)
+
+    async def handle_base(self, request):              
+        try:
+            
+            text = "Bumper!"
+                                                
+            return web.json_response(text)
+        
+        except Exception as e:
+            confserverlog.exception('{}'.format(e))                          
 
     async def handle_login(self, request):              
         try:
@@ -162,8 +177,14 @@ class ConfServer():
 
     async def handle_logout(self, request):                      
         try:
+            uid = request.query['uid']
             body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}
-            #TODO - when logging out close out any other connections MQTT/XMPP
+            # QUERY String
+            # 'uid=fuid_CUOVIn&accessToken=tempaccesstoken&requestId=e584de79f9cca854df6fb3352c6893b6&authTimespan=1550168440575&authTimeZone=GMT-5&authAppkey=eJUWrzRv34qFSaYk&authSign=14e38f95c7316e111c5815cf15f0f972'     
+            if not uid == "":
+                remove_clients = self.remove_clients.get()
+                remove_clients.append(request.query['uid'])
+                self.remove_clients.set(remove_clients)                
             
             return web.json_response(body)        
 
@@ -341,9 +362,9 @@ class ConfServer():
         try:
             confserverlog.info('shutting down')        
             if(self.run_async):
-                self.server.join()
+                self.confthread.join()
             else:
-                self.server.disconnect()  
+                self.confthread.disconnect()  
     
         except Exception as e:
             confserverlog.exception('{}'.format(e))      

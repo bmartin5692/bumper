@@ -28,28 +28,28 @@ logging.getLogger("hbmqtt.client").setLevel(logging.CRITICAL + 1) #Ignore this l
 class MQTTHelperBot():
     
     Client = MQTTClient()
-    def __init__(self, address, run_async=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
-        
+    def __init__(self, address,  bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):        
         self.address = address
         self.client_id = "helper1@bumper/helper1"       
         self.command_responses = contextvars.ContextVar('command_responses', default=[])
-        
-        try:            
-            if run_async: 
+        self.helperthread = None        
+    
+
+    def run(self, run_async=False):
+        if run_async: 
                 hloop = asyncio.new_event_loop()                
                 helperbotlog.debug("Starting MQTT HelperBot Thread: 1")
-                helperbot = Thread(name="MQTTHelperBot_Thread",target=self.run_helperbot, args=(hloop,))
-                helperbot.setDaemon(True)
-                helperbot.start()                    
+                self.helperthread = Thread(name="MQTTHelperBot_Thread",target=self.run_helperbot, args=(hloop,))
+                self.helperthread.setDaemon(True)
+                self.helperthread.start()                    
                 
-            else:
-                self.run_helperbot()
+        else:
+            self.run_helperbot()
 
-        except Exception as e:
-            helperbotlog.exception('{}'.format(e))
-            pass    
 
-    def run_helperbot(self, loop):     
+    def run_helperbot(self, loop):    
+        logging.info("Starting MQTT HelperBot")
+        print("Starting MQTT HelperBot") 
         try:
             asyncio.set_event_loop(loop)                
             self.Client = MQTTClient(client_id=self.client_id, config={'check_hostname':False})      
@@ -77,7 +77,10 @@ class MQTTHelperBot():
                 message = await self.Client.deliver_message()          
             
                 #helperbotlog.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-                cresp = self.command_responses.get()        
+                cresp = self.command_responses.get()    
+                
+                if (str(message.topic).split("/")[6] == "helper1"):
+                    cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.data.decode("utf-8"))})                          
                 
                 #Cleanup "expired messages" > 60 seconds from time
                 for msg in cresp:           
@@ -85,8 +88,7 @@ class MQTTHelperBot():
                     if time.time() > expire_time:
                         #helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
                         cresp.remove(msg)                                  
-
-                cresp.append({"time": time.time() ,"topic": message.topic,"payload":str(message.data.decode("utf-8"))})
+                                                           
                 self.command_responses.set(cresp)                          
                 #helperbotlog.debug("MQTT Command Response List Count: %s" %len(cresp))
         
@@ -95,7 +97,9 @@ class MQTTHelperBot():
 
     async def wait_for_resp(self, requestid):               
         try:
+            
             t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
+            
             while time.time() < t_end:
                 await asyncio.sleep(0.1)
                 responses = self.command_responses.get()   
@@ -118,6 +122,7 @@ class MQTTHelperBot():
                             self.command_responses.set(cresp)                             
                             return resp
 
+            
             return { "id": requestid, "errno": "timeout", "ret": "fail" }
         except asyncio.CancelledError as e:
             helperbotlog.debug('wait_for_resp cancelled by asyncio')
@@ -169,15 +174,21 @@ class MQTTServer():
         except Exception as e:
             mqttserverlog.exception('{}'.format(e))                
 
-    def __init__(self, address, run_async=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
+    def __init__(self, address, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar,remove_clients=contextvars.ContextVar):
         try:
+           
+            self.bumper_bots = bumper_bots
+            self.bumper_clients = bumper_clients      
+            self.remove_clients = remove_clients      
+            self.mqttserverthread = None  
+            self.address = address
+
             #The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
             distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
-            bumper_plugin = pkg_resources.EntryPoint.parse('bumper = bumper.mqttserver:BumperMQTTServer_Plugin', dist=distribution)        
+            bumper_plugin = pkg_resources.EntryPoint.parse('bumper = bumper.mqttserver:BumperMQTTServer_Plugin', dist=distribution)                            
             distribution._ep_map = {"hbmqtt.broker.plugins": {"bumper": bumper_plugin}}
             pkg_resources.working_set.add(distribution)
-            self.bumper_bots = bumper_bots
-            self.bumper_clients = bumper_clients        
+
             # Initialize bot server
             self.default_config = {
                 'listeners': {
@@ -203,26 +214,32 @@ class MQTTServer():
                     'enabled': False
                 },
                 'clients':{
-                    'connected_bots': bumper_bots,
-                    'connected_clients': bumper_clients
-
-                }
-            }
-            if run_async:
-                sloop = asyncio.new_event_loop()                
-                mqttserverlog.debug("Starting MQTTServer Thread: 1")
-                mqttserver = Thread(name="MQTTServer_Thread",target=self.run_server, args=(sloop,))
-                mqttserver.setDaemon(True)
-                mqttserver.start()                   
-                
-            else:
-                self.run_server()
+                    'connected_bots': self.bumper_bots,
+                    'connected_clients': self.bumper_clients,
+                    'remove_clients': self.remove_clients
+                },                               
+            }            
         
         except Exception as e:
             mqttserverlog.exception('{}'.format(e))    
-    
 
-    def run_server(self, loop):      
+    def run(self, run_async=False,):
+
+        if run_async:
+                sloop = asyncio.new_event_loop()                
+                mqttserverlog.debug("Starting MQTTServer Thread: 1")
+                self.mqttserverthread = Thread(name="MQTTServer_Thread",target=self.run_server, args=(sloop,))
+                self.mqttserverthread.setDaemon(True)
+                self.mqttserverthread.start()                   
+                
+        else:
+            self.run_server()            
+
+
+    def run_server(self, loop):     
+        
+        logging.info("Starting MQTT Server at {}".format(self.address))
+        print("Starting MQTT Server at {}".format(self.address))
         try:     
             asyncio.set_event_loop(loop)
             loop.run_until_complete(self.broker_coro())
@@ -237,6 +254,7 @@ class BumperMQTTServer_Plugin:
         self.context = context        
         try:            
             self.clients = self.context.config['clients']
+
         except KeyError:
              self.context.logger.warning("'clients' section not found in context configuration")
         except Exception as e:
@@ -277,7 +295,7 @@ class BumperMQTTServer_Plugin:
                     if client['userid'] == newuser.userid:
                         clientactive = True
                 
-                if clientactive == False:
+                if clientactive == False and newuser.userid != 'helper1':
                     connected_clients.append(newuser.asdict())
                     mqttserverlog.info("new client {}".format(newuser.userid))
                 
@@ -295,20 +313,25 @@ class BumperMQTTServer_Plugin:
         try:
             #mqttserverlog.debug('%s disconnected' % client_id)
             connected_bots = self.clients['connected_bots'].get()       
-            connected_clients = self.clients['connected_clients'].get()               
+            connected_clients = self.clients['connected_clients'].get()     
+            remove_clients = self.clients['remove_clients'].get()     
             didsplit = str(client_id).split("@")
             #If the did is in the list, remove it
             for bot in connected_bots:
                 if didsplit[0] == bot['did']:
                     mqttserverlog.info("bot disconnected {}".format(bot['did']))
                     connected_bots.remove(bot)
-                    self.clients['connected_bots'].set(connected_bots)           
+                    #remove_clients.append(bot['did'])                    
+                    self.clients['connected_bots'].set(connected_bots)                          
 
             for client in connected_clients:
-                if didsplit[0] == client['userid']:
-                    mqttserverlog.info("client disconnected {}".format(client['userid']))
+                if didsplit[0] == client['userid'] and client['userid'] != 'helper1':
+                    mqttserverlog.info("client disconnected {}".format(client['userid']))                    
                     connected_clients.remove(client)
+                    #remove_clients.append(client['userid'])                                    
                     self.clients['connected_clients'].set(connected_clients)
+                    
+            #self.clients['remove_clients'].set(remove_clients)        
 
             #mqttserverlog.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
             #mqttserverlog.debug('Connected Clients: %s' %self.clients['connected_clients'].get())

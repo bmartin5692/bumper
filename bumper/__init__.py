@@ -7,12 +7,29 @@ from .xmppserver import XMPPServer
 import asyncio
 import contextvars
 import time
+import logging
 
 bumper_clients_var = contextvars.ContextVar('bumper_clients', default=[])
 bumper_bots_var = contextvars.ContextVar('bumper_bots', default=[])
+bumper_removeclients_var = contextvars.ContextVar('bumper_removeclients', default=[])
 ca_cert = './certs/CA/cacert.pem'
 server_cert = './certs/cert.pem'
 server_key = './certs/key.pem'
+
+#Logs
+bumperlog = logging.getLogger("bumper")
+confserverlog = logging.getLogger("confserver")
+#Override the logging level
+#confserverlog.setLevel(logging.INFO) 
+mqttserverlog = logging.getLogger("mqttserver")
+#Override the logging level
+#mqttserverlog.setLevel(logging.INFO)
+helperbotlog = logging.getLogger("helperbot")
+#Override the logging level
+#helperbotlog.setLevel(logging.INFO)
+xmppserverlog = logging.getLogger("xmppserver")
+#Override the logging level
+#xmppserverlog.setLevel(logging.INFO)
 
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
