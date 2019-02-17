@@ -174,12 +174,11 @@ class MQTTServer():
         except Exception as e:
             mqttserverlog.exception('{}'.format(e))                
 
-    def __init__(self, address, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar,remove_clients=contextvars.ContextVar):
+    def __init__(self, address, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
         try:
            
             self.bumper_bots = bumper_bots
             self.bumper_clients = bumper_clients      
-            self.remove_clients = remove_clients      
             self.mqttserverthread = None  
             self.address = address
 
@@ -216,7 +215,6 @@ class MQTTServer():
                 'clients':{
                     'connected_bots': self.bumper_bots,
                     'connected_clients': self.bumper_clients,
-                    'remove_clients': self.remove_clients
                 },                               
             }            
         
@@ -285,7 +283,7 @@ class BumperMQTTServer_Plugin:
                 self.clients['connected_bots'].set(connected_bots)
             else:
                 tmpuserdetail = str(didsplit[1]).split("/")    
-                newuser = bumper.VacBotUser()
+                newuser = bumper.VacBotClient()
                 newuser.userid = didsplit[0]        
                 newuser.realm = tmpuserdetail[0]        
                 newuser.resource = tmpuserdetail[1]
@@ -314,7 +312,7 @@ class BumperMQTTServer_Plugin:
             #mqttserverlog.debug('%s disconnected' % client_id)
             connected_bots = self.clients['connected_bots'].get()       
             connected_clients = self.clients['connected_clients'].get()     
-            remove_clients = self.clients['remove_clients'].get()     
+            #remove_clients = self.clients['remove_clients'].get()     
             didsplit = str(client_id).split("@")
             #If the did is in the list, remove it
             for bot in connected_bots:

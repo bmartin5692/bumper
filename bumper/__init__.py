@@ -8,10 +8,12 @@ import asyncio
 import contextvars
 import time
 import logging
+from base64 import b64decode, b64encode
 
+bumper_users_var = contextvars.ContextVar('bumper_users', default=[])
 bumper_clients_var = contextvars.ContextVar('bumper_clients', default=[])
 bumper_bots_var = contextvars.ContextVar('bumper_bots', default=[])
-bumper_removeclients_var = contextvars.ContextVar('bumper_removeclients', default=[])
+
 ca_cert = './certs/CA/cacert.pem'
 server_cert = './certs/cert.pem'
 server_key = './certs/key.pem'
@@ -35,6 +37,47 @@ def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
 
+class BumperUser(object):
+    def __init__(self,userid=""):
+        self.userid = userid
+        self.devices = []        
+        self.tokens = []
+        self.authcodes = []
+        self.bots = []
+
+    def add_device(self, devid):
+        if not devid in self.devices:
+            self.devices.append(devid)
+
+    def remove_device(self, devid):
+        if devid in self.devices:
+            self.devices.remove(devid)
+
+
+    def add_token(self, token):
+        if not token in self.tokens:
+            self.tokens.append(token)
+
+    def revoke_token(self, token):
+        if token in self.tokens:
+            self.tokens.remove(token)
+
+    def add_authcode(self, authcode):
+        if not authcode in self.authcodes:
+            self.authcodes.append(authcode)
+
+    def revoke_authcode(self, authcode):
+        if authcode in self.authcodes:
+            self.authcodes.remove(authcode)            
+
+    def add_bot(self, botdid):
+        if not botdid in self.bots:
+            self.bots.append(botdid)
+
+    def remove_bot(self, botdid):
+        if botdid in self.bots:
+            self.bots.remove(botdid)            
+
 class VacBotDevice(object):
     def __init__(self,did="", vac_bot_device_class="",resource="" , name="", nick="", company="eco-ng"):        
         self.vac_bot_device_class = vac_bot_device_class
@@ -48,12 +91,11 @@ class VacBotDevice(object):
         return {"class": self.vac_bot_device_class, "company": self.company,
             "did": self.did, "name": self.name, "nick": self.nick, "resource": self.resource}
 
-class VacBotUser(object):
+class VacBotClient(object):
     def __init__(self,userid="",realm="",token=""):
         self.userid = userid
         self.realm = realm
         self.resource = token
-
 
     def asdict(self):
         return {"userid": self.userid,"realm": self.realm,"resource": self.resource}

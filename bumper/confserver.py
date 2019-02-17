@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import asyncio
 import contextvars
 from aiohttp import web
+import uuid
 
 class aiohttp_filter(logging.Filter):
     
@@ -32,10 +33,10 @@ class ConfServer():
     bumper_clients = contextvars.ContextVar
     bumper_bots = contextvars.ContextVar
 
-    def __init__(self, address, usessl=False, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar, remove_clients=contextvars.ContextVar,helperbot=None):
+    def __init__(self, address, usessl=False, bumper_users=contextvars.ContextVar, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar, helperbot=None):
+        self.bumper_users = bumper_users
         self.bumper_bots = bumper_bots
-        self.bumper_clients = bumper_clients
-        self.remove_clients = remove_clients
+        self.bumper_clients = bumper_clients    
         self.helperbot = helperbot
         self.usessl = usessl
         self.address = address  
@@ -82,7 +83,7 @@ class ConfServer():
             app.add_routes([
                 web.get('', self.handle_base),
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login', self.handle_login),
-            #    web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin', self.handle_checkLogin),            
+                web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin', self.handle_login),            
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout', self.handle_logout),
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode', self.handle_getAuthCode),            
                 web.get('/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement', self.handle_checkAgreement),
@@ -96,6 +97,9 @@ class ConfServer():
                 
                 web.post('/lookup.do', self.handle_lookup),
             ])    
+            #Direct register from app:
+            #/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
+            
             
 
             runner = web.AppRunner(app)
@@ -130,61 +134,65 @@ class ConfServer():
         except Exception as e:
             confserverlog.exception('{}'.format(e))                          
 
-    async def handle_login(self, request):              
+    async def handle_login(self, request):  
+        
         try:
-            #Could implement basic auth if you wanted, or just accept anything    
-            countrycode = request.match_info.get('country', "us")            
+            user_devid = request.match_info.get('devid', "")
+            countrycode = request.match_info.get('country', "us")   
+            if not user_devid == "": #Performing basic "auth" using devid, super insecure
+                users = bumper.bumper_users_var.get()
+                for user in users:
+                    if user_devid in user.devices:
+                        tmpaccesstoken = ''                    
+                        if 'checkLogin' in request.path:    
+                            if request.query['accessToken'] in user.tokens and request.query['uid'] == "fuid_{}".format(user.userid):
+                                tmpaccesstoken = request.query['accessToken']                        
+                        else:
+                            if tmpaccesstoken == '':
+                                tmpaccesstoken = uuid.uuid4().hex
+                                user.add_token(tmpaccesstoken)    
+                             
+                        body = {
+                                "code": "0000",
+                                "data": {
+                                "accessToken": tmpaccesstoken, #Random chars 32 length
+                                "country": countrycode,
+                                "email": "null@null.com",
+                                "uid": "fuid_{}".format(user.userid),
+                                "username": "fusername_{}".format(user.userid),
+                                },
+                                "msg": "操作成功",
+                                "time": bumper.get_milli_time(time.time())
+                                }    
+                        bumper.bumper_users_var.set(users)                                    
+                        return web.json_response(body)
+            
             body = {
-                    "code": "0000",
-                    "data": {
-                    "accessToken": "tempaccesstoken", #Random chars 32 length
-                    "country": countrycode,
-                    "email": "null@null.com",
-                    "uid": "fuid_{}".format(''.join(random.sample(string.ascii_letters,6))), #Date(14)_RandomChars(32)
-                    "username": "fusername_{}".format(''.join(random.sample(string.ascii_letters,6))) #Random chars 8
-                    },
-                    "msg": "操作成功",
+                    "code": "1005",
+                    "data": None,
+                    "msg": "当前密码错误",
                     "time": bumper.get_milli_time(time.time())
-                    }    
-                                                
+                    }                          
+                                                        
             return web.json_response(body)
+
         
         except Exception as e:
             confserverlog.exception('{}'.format(e))              
 
-    async def handle_checkLogin(self, request):              
-        try:
-            # The app seems to remember it's last uid and accessToken
-            # If these don't match, it fails
-            countrycode = request.match_info.get('country', "us")            
-            body = {
-                    "code": "0000",
-                    "data": {
-                    "accessToken": "tempaccesstoken", #Random chars 32 length
-                    "country": countrycode,
-                    "email": "null@null.com",
-                    "uid": "fuid_{}".format(''.join(random.sample(string.ascii_letters,6))), #Date(14)_RandomChars(32)
-                    "username": "fusername_{}".format(''.join(random.sample(string.ascii_letters,6))) #Random chars 8
-                    },
-                    "msg": "操作成功",
-                    "time": bumper.get_milli_time(time.time())
-                    }    
-                                                
-            return web.json_response(body)        
-        
-        except Exception as e:
-            confserverlog.exception('{}'.format(e))  
 
     async def handle_logout(self, request):                      
-        try:
-            uid = request.query['uid']
-            body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}
-            # QUERY String
-            # 'uid=fuid_CUOVIn&accessToken=tempaccesstoken&requestId=e584de79f9cca854df6fb3352c6893b6&authTimespan=1550168440575&authTimeZone=GMT-5&authAppkey=eJUWrzRv34qFSaYk&authSign=14e38f95c7316e111c5815cf15f0f972'     
-            if not uid == "":
-                remove_clients = self.remove_clients.get()
-                remove_clients.append(request.query['uid'])
-                self.remove_clients.set(remove_clients)                
+        try:            
+            user_devid = request.match_info.get('devid', "")
+            if not user_devid == "":
+                users = bumper.bumper_users_var.get()
+                for user in users:
+                    if user_devid in user.devices:
+                        if request.query['uid'] == "fuid_{}".format(user.userid) and request.query['accessToken'] in user.tokens:                                       
+                            user.revoke_token(request.query['accessToken'])  
+                bumper.bumper_users_var.set(users)                                                                                                        
+            
+            body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}                       
             
             return web.json_response(body)        
 
@@ -193,19 +201,37 @@ class ConfServer():
 
     async def handle_getAuthCode(self, request):                      
         try:
-            countrycode = request.match_info.get('country', "us")       
-            body = {
-                    "code": "0000",
-                    "data": {
-                    "authCode": "{}_tempauthcode".format(countrycode), #countrycode_randomchars(32)
-                    "ecovacsUid": "fuid_{}".format(''.join(random.sample(string.ascii_letters,6))) #Date(14)_RandomChars(32)
-                    },
-                    "msg": "操作成功",
-                    "time": bumper.get_milli_time(time.time())
-                    }         
-                                                        
-            return web.json_response(body)      
+            
+            user_devid = request.match_info.get('devid', "")
+            if not user_devid == "":
+                users = bumper.bumper_users_var.get()
+                for user in users:
+                    if user_devid in user.devices and request.query['accessToken'] in user.tokens:                                       
+                        countrycode = request.match_info.get('country', "us")   
+                        tmpauthcode = "{}_{}".format(countrycode,uuid.uuid4().hex)
+                        user.add_authcode(tmpauthcode)  
+            
+                        body = {
+                                "code": "0000",
+                                "data": {
+                                "authCode": tmpauthcode,
+                                "ecovacsUid": request.query['uid']
+                                },
+                                "msg": "操作成功",
+                                "time": bumper.get_milli_time(time.time())
+                                }         
+                        bumper.bumper_users_var.set(users)                                                                                                        
+                        return web.json_response(body)      
         
+            body = {
+                    "code": "1005",
+                    "data": None,
+                    "msg": "当前密码错误",
+                    "time": bumper.get_milli_time(time.time())
+                    }                          
+                                                        
+            return web.json_response(body)
+
         except Exception as e:
             confserverlog.exception('{}'.format(e))              
 
@@ -271,7 +297,6 @@ class ConfServer():
 
     async def handle_getProductIotMap(self, request):              
         try:
-            #json_body = json.loads(await request.text())  
             body = {"code":0,"data":[{"classid":"dl8fht","product":{"_id":"5acb0fa87c295c0001876ecf","name":"DEEBOT 600 Series","icon":"5acc32067c295c0001876eea","UILogicId":"dl8fht","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea"}},{"classid":"02uwxm","product":{"_id":"5ae1481e7ccd1a0001e1f69e","name":"DEEBOT OZMO Slim10 Series","icon":"5b1dddc48bc45700014035a1","UILogicId":"02uwxm","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1"}},{"classid":"y79a7u","product":{"_id":"5b04c0227ccd1a0001e1f6a8","name":"DEEBOT OZMO 900","icon":"5b04c0217ccd1a0001e1f6a7","UILogicId":"y79a7u","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7"}},{"classid":"jr3pqa","product":{"_id":"5b43077b8bc457000140363e","name":"DEEBOT 711","icon":"5b5ac4cc8d5a56000111e769","UILogicId":"jr3pqa","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769"}},{"classid":"uv242z","product":{"_id":"5b5149b4ac0b87000148c128","name":"DEEBOT 710","icon":"5b5ac4e45f21100001882bb9","UILogicId":"uv242z","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9"}},{"classid":"ls1ok3","product":{"_id":"5b6561060506b100015c8868","name":"DEEBOT 900 Series","icon":"5ba4a2cb6c2f120001c32839","UILogicId":"ls1ok3","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839"}}]}
             return web.json_response(body)  
         
@@ -297,13 +322,18 @@ class ConfServer():
                 elif service == 'EcoUpdate':
                     body = {"result":"ok","ip":"47.88.66.164","port":8005}
             elif todo == 'loginByItToken':
-                body = {
-                    "resource": postbody["resource"],
-                    "result": "ok",
-                    "todo": "result",
-                    "token": postbody["token"], #RandomChar(32) 
-                    "userId": postbody["userId"] #RandomChar(16)
-                    }   
+                            
+                users = bumper.bumper_users_var.get()
+                for user in users:
+                    if postbody['userId'] == "fuid_{}".format(user.userid) and postbody['token'] in user.authcodes:                
+                        body = {
+                            "resource": postbody["resource"],
+                            "result": "ok",
+                            "todo": "result",
+                            "token": postbody["token"], 
+                            "userId": postbody["userId"] 
+                            }   
+
             elif todo == 'GetDeviceList':
                 active_bots = self.bumper_bots.get()
                 body = {

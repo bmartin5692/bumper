@@ -4,6 +4,7 @@ from threading import Thread
 import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
 import base64
 import ssl
+import contextvars
 import bumper
 
 xmppserverlog = logging.getLogger("xmppserver")
@@ -15,9 +16,12 @@ class XMPPServer():
     clients = []
     exit_flag = False
 
-    def __init__(self, address):
+    def __init__(self, address, bumper_users=contextvars.ContextVar, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
         # Initialize bot server
         self.address = address
+        self.bumper_users = bumper_users
+        self.bumper_bots = bumper_bots
+        self.bumper_clients = bumper_clients  
         
 
     def run(self, run_async=False):    
@@ -86,9 +90,7 @@ class XMPPServer():
             self.disconnect()
             xmppserverlog.info('disconnecting')                    
 
-        self.socket.close()
-        
-        
+        self.socket.close()                
 
     def disconnect(self):
         try:
@@ -339,8 +341,8 @@ class Client(threading.Thread):
 
                     elif 'resource' in aitem.tag:
                         self.clientresource = aitem.text
-                             
-                if True:
+                
+                if self.check_authcode(self.uid, password):  
                     #Client authenticated, move to next state                
                     self._set_state('INIT')    
                     
@@ -364,6 +366,13 @@ class Client(threading.Thread):
         except Exception as e:
             xmppserverlog.exception('{}'.format(e))  
 
+    def check_authcode(self, uid, authcode):
+        users = bumper.bumper_users_var.get()
+        for user in users:
+            if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
+                return True
+
+        return False 
 
     def _handle_sasl_auth(self, data):                                                      
         try:
@@ -375,18 +384,18 @@ class Client(threading.Thread):
             resource = saslauth[1]
             self.clientresource = resource
             authcode = saslauth[2]
-            
-            if authcode == "us_tempauthcode": #Handle auth                
+
+            if self.check_authcode(self.uid, authcode):            
                 #Send response
                 self.send('<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Success
 
                 #Client authenticated, move to next state                
                 self._set_state('INIT')    
-                
+                    
             else:
                 #Failed to authenticate
                 self.send('<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Fail
-            
+                
         except ET.ParseError as e:
             if "no element found" in e.msg:
                 xmppserverlog.debug('xml parse error - {} - {} - this is common with ecovac protocol'.format(data.decode('utf-8'), e))                                                   
