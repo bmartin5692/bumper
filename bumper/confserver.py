@@ -146,29 +146,49 @@ class ConfServer():
                         tmpaccesstoken = ''                    
                         if 'checkLogin' in request.path:    
                             if request.query['accessToken'] in user.tokens and request.query['uid'] == "fuid_{}".format(user.userid):
-                                tmpaccesstoken = request.query['accessToken']                        
+                                tmpaccesstoken = request.query['accessToken']
+                                body = {
+                                    "code": bumper.RETURN_API_SUCCESS,
+                                    "data": {
+                                    "accessToken": tmpaccesstoken, #Random chars 32 length
+                                    "country": countrycode,
+                                    "email": "null@null.com",
+                                    "uid": "fuid_{}".format(user.userid),
+                                    "username": "fusername_{}".format(user.userid),
+                                    },
+                                    "msg": "操作成功",
+                                    "time": bumper.get_milli_time(time.time())
+                                    }  
+                            else:
+                                body = {
+                                "code": bumper.ERR_TOKEN_INVALID,
+                                "data": None,
+                                "msg": "当前密码错误",
+                                "time": bumper.get_milli_time(time.time())
+                                }                          
                         else:
                             if tmpaccesstoken == '':
                                 tmpaccesstoken = uuid.uuid4().hex
                                 user.add_token(tmpaccesstoken)    
                              
-                        body = {
-                                "code": "0000",
-                                "data": {
-                                "accessToken": tmpaccesstoken, #Random chars 32 length
-                                "country": countrycode,
-                                "email": "null@null.com",
-                                "uid": "fuid_{}".format(user.userid),
-                                "username": "fusername_{}".format(user.userid),
-                                },
-                                "msg": "操作成功",
-                                "time": bumper.get_milli_time(time.time())
-                                }  
-                        self.bumper_users.set(users)                        
+                            body = {
+                                    "code": bumper.RETURN_API_SUCCESS,
+                                    "data": {
+                                    "accessToken": tmpaccesstoken, #Random chars 32 length
+                                    "country": countrycode,
+                                    "email": "null@null.com",
+                                    "uid": "fuid_{}".format(user.userid),
+                                    "username": "fusername_{}".format(user.userid),
+                                    },
+                                    "msg": "操作成功",
+                                    "time": bumper.get_milli_time(time.time())
+                                    }  
+                            self.bumper_users.set(users)                        
+                        
                         return web.json_response(body)
             
             body = {
-                    "code": "1005",
+                    "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
                     "time": bumper.get_milli_time(time.time())
@@ -192,7 +212,7 @@ class ConfServer():
                             user.revoke_token(request.query['accessToken'])  
                 self.bumper_users.set(users)                                                                                                     
             
-            body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}                       
+            body = {"code": bumper.RETURN_API_SUCCESS,"data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}                       
             
             return web.json_response(body)        
 
@@ -212,7 +232,7 @@ class ConfServer():
                         user.add_authcode(tmpauthcode)  
             
                         body = {
-                                "code": "0000",
+                                "code": bumper.RETURN_API_SUCCESS,
                                 "data": {
                                 "authCode": tmpauthcode,
                                 "ecovacsUid": request.query['uid']
@@ -224,7 +244,7 @@ class ConfServer():
                         return web.json_response(body)      
         
             body = {
-                    "code": "1005",
+                    "code": bumper.ERR_TOKEN_INVALID,
                     "data": None,
                     "msg": "当前密码错误",
                     "time": bumper.get_milli_time(time.time())
@@ -238,7 +258,7 @@ class ConfServer():
     async def handle_checkVersion(self, request):              
         try:
             body = {
-                    "code": "0000",
+                    "code": bumper.RETURN_API_SUCCESS,
                     "data": {
                         "c": None,
                         "img": None,
@@ -260,7 +280,7 @@ class ConfServer():
     async def handle_checkAgreement(self, request):              
         try:
             body = {
-                    "code": "0000",
+                    "code": bumper.RETURN_API_SUCCESS,
                     "data": [],
                     "msg": "操作成功",
                     "time": bumper.get_milli_time(time.time())
@@ -277,7 +297,7 @@ class ConfServer():
             nextAlert = bumper.get_milli_time((datetime.now() + timedelta(hours=12)).timestamp())
             
             body = {
-                    "code": "0000",
+                    "code": bumper.RETURN_API_SUCCESS,
                     "data": {
                         "clickSchemeUrl": None,
                         "clickWebUrl": None,
@@ -297,7 +317,7 @@ class ConfServer():
 
     async def handle_getProductIotMap(self, request):              
         try:
-            body = {"code":0,"data":[{"classid":"dl8fht","product":{"_id":"5acb0fa87c295c0001876ecf","name":"DEEBOT 600 Series","icon":"5acc32067c295c0001876eea","UILogicId":"dl8fht","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea"}},{"classid":"02uwxm","product":{"_id":"5ae1481e7ccd1a0001e1f69e","name":"DEEBOT OZMO Slim10 Series","icon":"5b1dddc48bc45700014035a1","UILogicId":"02uwxm","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1"}},{"classid":"y79a7u","product":{"_id":"5b04c0227ccd1a0001e1f6a8","name":"DEEBOT OZMO 900","icon":"5b04c0217ccd1a0001e1f6a7","UILogicId":"y79a7u","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7"}},{"classid":"jr3pqa","product":{"_id":"5b43077b8bc457000140363e","name":"DEEBOT 711","icon":"5b5ac4cc8d5a56000111e769","UILogicId":"jr3pqa","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769"}},{"classid":"uv242z","product":{"_id":"5b5149b4ac0b87000148c128","name":"DEEBOT 710","icon":"5b5ac4e45f21100001882bb9","UILogicId":"uv242z","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9"}},{"classid":"ls1ok3","product":{"_id":"5b6561060506b100015c8868","name":"DEEBOT 900 Series","icon":"5ba4a2cb6c2f120001c32839","UILogicId":"ls1ok3","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839"}}]}
+            body = {"code":bumper.RETURN_API_SUCCESS,"data":[{"classid":"dl8fht","product":{"_id":"5acb0fa87c295c0001876ecf","name":"DEEBOT 600 Series","icon":"5acc32067c295c0001876eea","UILogicId":"dl8fht","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea"}},{"classid":"02uwxm","product":{"_id":"5ae1481e7ccd1a0001e1f69e","name":"DEEBOT OZMO Slim10 Series","icon":"5b1dddc48bc45700014035a1","UILogicId":"02uwxm","ota":False,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1"}},{"classid":"y79a7u","product":{"_id":"5b04c0227ccd1a0001e1f6a8","name":"DEEBOT OZMO 900","icon":"5b04c0217ccd1a0001e1f6a7","UILogicId":"y79a7u","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7"}},{"classid":"jr3pqa","product":{"_id":"5b43077b8bc457000140363e","name":"DEEBOT 711","icon":"5b5ac4cc8d5a56000111e769","UILogicId":"jr3pqa","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769"}},{"classid":"uv242z","product":{"_id":"5b5149b4ac0b87000148c128","name":"DEEBOT 710","icon":"5b5ac4e45f21100001882bb9","UILogicId":"uv242z","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9"}},{"classid":"ls1ok3","product":{"_id":"5b6561060506b100015c8868","name":"DEEBOT 900 Series","icon":"5ba4a2cb6c2f120001c32839","UILogicId":"ls1ok3","ota":True,"iconUrl":"https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839"}}]}
             return web.json_response(body)  
         
         except Exception as e:
