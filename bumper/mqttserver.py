@@ -148,8 +148,10 @@ class MQTTHelperBot():
 
 class MQTTServer():    
     default_config = {}  
+    bumper_users = []
     bumper_clients = []
     bumper_bots = []
+
 
     async def broker_coro(self):        
         try: 
@@ -174,9 +176,9 @@ class MQTTServer():
         except Exception as e:
             mqttserverlog.exception('{}'.format(e))                
 
-    def __init__(self, address, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
+    def __init__(self, address,bumper_users=contextvars.ContextVar, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):
         try:
-           
+            self.bumper_users = bumper_users
             self.bumper_bots = bumper_bots
             self.bumper_clients = bumper_clients      
             self.mqttserverthread = None  
@@ -203,18 +205,19 @@ class MQTTServer():
                 },
                 'sys_interval': 10,
                 'auth': {
-                    'allow-anonymous': True,
+                    'allow-anonymous': False,
                     'password-file': os.path.join(os.path.dirname(os.path.realpath(__file__)), "passwd"),
                     'plugins': [
-                        '' #No plugins == no auth
+                        'bumper' #No plugins == no auth
                     ]
                 },
                 'topic-check': {
                     'enabled': False
                 },
-                'clients':{
-                    'connected_bots': self.bumper_bots,
-                    'connected_clients': self.bumper_clients,
+                'bumper':{
+                    'bumper_users' : self.bumper_users,
+                    'bumper_bots': self.bumper_bots,
+                    'bumper_clients': self.bumper_clients,
                 },                               
             }            
         
@@ -251,18 +254,79 @@ class BumperMQTTServer_Plugin:
     def __init__(self, context):
         self.context = context        
         try:            
-            self.clients = self.context.config['clients']
+            self.bumper_config = self.context.config['bumper']
+            self.auth_config = self.context.config['auth']
 
         except KeyError:
-             self.context.logger.warning("'clients' section not found in context configuration")
+             self.context.logger.warning("'bumper' section not found in context configuration")
         except Exception as e:
             mqttserverlog.exception('{}'.format(e))    
+
+
+    async def authenticate(self, *args, **kwargs):
+        if not self.auth_config:
+            # auth config section not found
+            self.context.logger.warning("'auth' section not found in context configuration")
+            return False
+                
+        allow_anonymous = self.auth_config.get('allow-anonymous', True)  # allow anonymous by default
+        if allow_anonymous:
+            authenticated = True
+            self.context.logger.debug("Authentication success: config allows anonymous")
+        else:
+            try:
+                bumper_users = self.bumper_config['bumper_users'].get()
+                bumper_bots = self.bumper_config['bumper_bots'].get()       
+                bumper_clients = self.bumper_config['bumper_clients'].get()    
+                session = kwargs.get('session', None)
+                username = session.username
+                password = session.password
+                client_id = session.client_id
+                
+                didsplit = str(client_id).split("@")
+                #If this isn't a fake user (fuid) then add as a bot
+                if not (str(didsplit[0]).startswith("fuid") or str(didsplit[0]).startswith("helper")):
+                    tmpbotdetail = str(didsplit[1]).split("/")        
+                    newbot = bumper.VacBotDevice()
+                    newbot.did = didsplit[0]        
+                    newbot.name = username
+                    newbot.vac_bot_device_class = tmpbotdetail[0]
+                    newbot.resource = tmpbotdetail[1]
+                    bumper_bots.append(newbot.asdict())
+                    mqttserverlog.info("new bot authenticated {}".format(newbot.asdict()))
+                    self.bumper_config['bumper_bots'].set(bumper_bots)
+                    authenticated = True
+                
+                else:
+                    if didsplit[0] == "helper1":
+                        authenticated = True
+                    
+                    elif bumper.check_authcode(didsplit[0], password):
+                        tmpclientdetail = str(didsplit[1]).split("/")    
+                        newclient = bumper.VacBotClient()
+                        newclient.userid = didsplit[0]        
+                        newclient.realm = tmpclientdetail[0]        
+                        newclient.resource = tmpclientdetail[1]
+                        bumper_clients.append(newclient.asdict())
+                        mqttserverlog.info("new client authenticated {}".format(newclient.asdict()))
+                        self.bumper_config['bumper_clients'].set(bumper_clients)                                                    
+                        authenticated = True
+                    
+                    else:
+                        authenticated = False
+            
+            except KeyError:
+                self.context.logger.warning("Session informations not available")
+                authenticated = False
+        return authenticated
+
 
     async def on_broker_client_connected(self, client_id):
         try:
             #mqttserverlog.debug('%s connected' % client_id)
-            connected_bots = self.clients['connected_bots'].get()      
-            connected_clients = self.clients['connected_clients'].get()          
+            bumper_users = self.bumper_config['bumper_users'].get()
+            bumper_bots = self.bumper_config['bumper_bots'].get()      
+            bumper_clients = self.bumper_config['bumper_clients'].get()          
             didsplit = str(client_id).split("@")
             #If this isn't a fake user (fuid) then add as a bot
             if not (str(didsplit[0]).startswith("fuid") or str(didsplit[0]).startswith("helper")):
@@ -271,33 +335,34 @@ class BumperMQTTServer_Plugin:
                 newbot.did = didsplit[0]        
                 newbot.vac_bot_device_class = tmpbotdetail[0]
                 newbot.resource = tmpbotdetail[1]
-                botactive = False
-                for bot in connected_bots:
-                    if bot['did'] == newbot.did:
-                        botactive = True
+                #botactive = False
+                #for bot in bumper_bots:
+                #    if bot['did'] == newbot.did:
+                #        botactive = True
                 
-                if botactive == False:
-                    connected_bots.append(newbot.asdict())
-                    mqttserverlog.info("new bot {}".format(newbot.did))
+                #if botactive == False:
+                #    bumper_bots.append(newbot.asdict())
+                mqttserverlog.debug("bot connected {}".format(newbot.did))
                 
-                self.clients['connected_bots'].set(connected_bots)
+                #self.bumper_config['bumper_bots'].set(bumper_bots)
+            
             else:
-                tmpuserdetail = str(didsplit[1]).split("/")    
-                newuser = bumper.VacBotClient()
-                newuser.userid = didsplit[0]        
-                newuser.realm = tmpuserdetail[0]        
-                newuser.resource = tmpuserdetail[1]
+                tmpclientdetail = str(didsplit[1]).split("/")    
+                newclient = bumper.VacBotClient()
+                newclient.userid = didsplit[0]        
+                newclient.realm = tmpclientdetail[0]        
+                newclient.resource = tmpclientdetail[1]
+            
+                #clientactive = False
+                #for client in bumper_clients:
+                #    if client['userid'] == newuser.userid:
+                #        clientactive = True
                 
-                clientactive = False
-                for client in connected_clients:
-                    if client['userid'] == newuser.userid:
-                        clientactive = True
+                #if clientactive == False and newuser.userid != 'helper1':
+                    #bumper_clients.append(newuser.asdict())
+                mqttserverlog.debug("client connected {}".format(newclient.userid))
                 
-                if clientactive == False and newuser.userid != 'helper1':
-                    connected_clients.append(newuser.asdict())
-                    mqttserverlog.info("new client {}".format(newuser.userid))
-                
-                self.clients['connected_clients'].set(connected_clients)
+                #self.bumper['bumper_clients'].set(bumper_clients)
 
             #mqttserverlog.debug('Connected Bots: %s' %self.clients['connected_bots'].get())
             #mqttserverlog.debug('Connected Clients: %s' %self.clients['connected_clients'].get())
@@ -306,28 +371,28 @@ class BumperMQTTServer_Plugin:
             mqttserverlog.exception('{}'.format(e))            
         
 
-
     async def on_broker_client_disconnected(self, client_id):
         try:
             #mqttserverlog.debug('%s disconnected' % client_id)
-            connected_bots = self.clients['connected_bots'].get()       
-            connected_clients = self.clients['connected_clients'].get()     
+            bumper_users = self.bumper_config['bumper_users'].get()
+            bumper_bots = self.bumper_config['bumper_bots'].get()       
+            bumper_clients = self.bumper_config['bumper_clients'].get()     
             #remove_clients = self.clients['remove_clients'].get()     
             didsplit = str(client_id).split("@")
             #If the did is in the list, remove it
-            for bot in connected_bots:
+            for bot in bumper_bots:
                 if didsplit[0] == bot['did']:
                     mqttserverlog.info("bot disconnected {}".format(bot['did']))
-                    connected_bots.remove(bot)
+                    #bumper_bots.remove(bot)
                     #remove_clients.append(bot['did'])                    
-                    self.clients['connected_bots'].set(connected_bots)                          
+                    #self.clients['bumper_bots'].set(bumper_bots)                          
 
-            for client in connected_clients:
+            for client in bumper_clients:
                 if didsplit[0] == client['userid'] and client['userid'] != 'helper1':
                     mqttserverlog.info("client disconnected {}".format(client['userid']))                    
-                    connected_clients.remove(client)
+                    #bumper_clients.remove(client)
                     #remove_clients.append(client['userid'])                                    
-                    self.clients['connected_clients'].set(connected_clients)
+                    #self.bumper_config['bumper_clients'].set(bumper_clients)
                     
             #self.clients['remove_clients'].set(remove_clients)        
 

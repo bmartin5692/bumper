@@ -140,7 +140,7 @@ class ConfServer():
             user_devid = request.match_info.get('devid', "")
             countrycode = request.match_info.get('country', "us")   
             if not user_devid == "": #Performing basic "auth" using devid, super insecure
-                users = bumper.bumper_users_var.get()
+                users = self.bumper_users.get()                
                 for user in users:
                     if user_devid in user.devices:
                         tmpaccesstoken = ''                    
@@ -163,8 +163,8 @@ class ConfServer():
                                 },
                                 "msg": "操作成功",
                                 "time": bumper.get_milli_time(time.time())
-                                }    
-                        bumper.bumper_users_var.set(users)                                    
+                                }  
+                        self.bumper_users.set(users)                        
                         return web.json_response(body)
             
             body = {
@@ -185,12 +185,12 @@ class ConfServer():
         try:            
             user_devid = request.match_info.get('devid', "")
             if not user_devid == "":
-                users = bumper.bumper_users_var.get()
+                users = self.bumper_users.get()
                 for user in users:
                     if user_devid in user.devices:
                         if request.query['uid'] == "fuid_{}".format(user.userid) and request.query['accessToken'] in user.tokens:                                       
                             user.revoke_token(request.query['accessToken'])  
-                bumper.bumper_users_var.set(users)                                                                                                        
+                self.bumper_users.set(users)                                                                                                     
             
             body = {"code": "0000","data": None,"msg": "操作成功", "time": bumper.get_milli_time(time.time())}                       
             
@@ -204,7 +204,7 @@ class ConfServer():
             
             user_devid = request.match_info.get('devid', "")
             if not user_devid == "":
-                users = bumper.bumper_users_var.get()
+                users = self.bumper_users.get()
                 for user in users:
                     if user_devid in user.devices and request.query['accessToken'] in user.tokens:                                       
                         countrycode = request.match_info.get('country', "us")   
@@ -220,7 +220,7 @@ class ConfServer():
                                 "msg": "操作成功",
                                 "time": bumper.get_milli_time(time.time())
                                 }         
-                        bumper.bumper_users_var.set(users)                                                                                                        
+                        self.bumper_users.set(users)
                         return web.json_response(body)      
         
             body = {
@@ -323,7 +323,7 @@ class ConfServer():
                     body = {"result":"ok","ip":"47.88.66.164","port":8005}
             elif todo == 'loginByItToken':
                             
-                users = bumper.bumper_users_var.get()
+                users = self.bumper_users.get()
                 for user in users:
                     if postbody['userId'] == "fuid_{}".format(user.userid) and postbody['token'] in user.authcodes:                
                         body = {
@@ -341,6 +341,17 @@ class ConfServer():
                         "result": "ok",
                         "todo": "result"
                         }            
+
+            elif todo == 'SetDeviceNick':
+                bots = self.bumper_bots.get()
+                for bot in bots:
+                    if postbody['did'] == bot['did']:
+                        bot['nick'] = postbody['nick']    
+                        self.bumper_bots.set(bots)                        
+                        body = {
+                            "result": "ok",
+                            "todo": "result",
+                            }   
 
             confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(postbody,body))                                                            
             return web.json_response(body)      

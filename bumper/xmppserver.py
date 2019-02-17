@@ -342,7 +342,7 @@ class Client(threading.Thread):
                     elif 'resource' in aitem.tag:
                         self.clientresource = aitem.text
                 
-                if self.check_authcode(self.uid, password):  
+                if bumper.check_authcode(self.uid, password):  
                     #Client authenticated, move to next state                
                     self._set_state('INIT')    
                     
@@ -366,14 +366,6 @@ class Client(threading.Thread):
         except Exception as e:
             xmppserverlog.exception('{}'.format(e))  
 
-    def check_authcode(self, uid, authcode):
-        users = bumper.bumper_users_var.get()
-        for user in users:
-            if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
-                return True
-
-        return False 
-
     def _handle_sasl_auth(self, data):                                                      
         try:
             xml = ET.fromstring(data.decode('utf-8'))                  
@@ -385,7 +377,7 @@ class Client(threading.Thread):
             self.clientresource = resource
             authcode = saslauth[2]
 
-            if self.check_authcode(self.uid, authcode):            
+            if bumper.check_authcode(self.uid, authcode):            
                 #Send response
                 self.send('<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Success
 

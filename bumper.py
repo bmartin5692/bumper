@@ -31,7 +31,7 @@ def main():
     mqtt_address = (listen_host, 8883)
     
     xmpp_server = bumper.XMPPServer(xmpp_address, bumper_users=bumper.bumper_users_var, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
-    mqtt_server = bumper.MQTTServer(mqtt_address, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
+    mqtt_server = bumper.MQTTServer(mqtt_address,bumper_users=bumper.bumper_users_var, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var)
     conf_server = bumper.ConfServer(conf_address_443, usessl=True,bumper_users=bumper.bumper_users_var, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var,helperbot=mqtt_helperbot)
     conf_server_2 = bumper.ConfServer(conf_address_8007, usessl=False,bumper_users=bumper.bumper_users_var, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var, helperbot=mqtt_helperbot)
@@ -39,8 +39,8 @@ def main():
     #add user
     users = bumper.bumper_users_var.get()    
     user1 = bumper.BumperUser('user1')
-    user1.add_device('user_phone')
-    user1.add_bot('bot_id')   
+    user1.add_device('devid')
+    user1.add_bot('bot_did')   
     users.append(user1)    
     bumper.bumper_users_var.set(users)
     

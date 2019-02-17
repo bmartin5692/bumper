@@ -99,3 +99,11 @@ class VacBotClient(object):
 
     def asdict(self):
         return {"userid": self.userid,"realm": self.realm,"resource": self.resource}
+
+def check_authcode(uid, authcode):
+        users = bumper_users_var.get()
+        for user in users:
+            if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
+                return True
+
+        return False 
