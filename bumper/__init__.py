@@ -86,6 +86,8 @@ class VacBotDevice(object):
         self.name = name
         self.nick = nick
         self.resource = resource
+        self.mqtt_connection = False
+        self.xmpp_connection = False
 
     def asdict(self):
         return {"class": self.vac_bot_device_class, "company": self.company,
@@ -96,6 +98,8 @@ class VacBotClient(object):
         self.userid = userid
         self.realm = realm
         self.resource = token
+        self.mqtt_connection = False
+        self.xmpp_connection = False
 
     def asdict(self):
         return {"userid": self.userid,"realm": self.realm,"resource": self.resource}

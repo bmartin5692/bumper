@@ -67,7 +67,7 @@ class XMPPServer():
                 
                 xmppserverlog.debug('starting new client with ip {}'.format(client_address[0]))
                 thread_id = uuid.uuid4()                
-                client = Client(thread_id, connection, client_address)       
+                client = Client(thread_id, connection, client_address, self.bumper_users, self.bumper_bots, self.bumper_clients)       
                 client.setDaemon(True)         
                 client.start()
                 self.clients.append(client)       
@@ -138,7 +138,7 @@ class Client(threading.Thread):
     BOT = 1
     CONTROLLER = 2
 
-    def __init__(self, thread_id, connection, client_address):        
+    def __init__(self, thread_id, connection, client_address,bumper_users=contextvars.ContextVar, bumper_bots=contextvars.ContextVar, bumper_clients=contextvars.ContextVar):        
         threading.Thread.__init__(self)
         self.id = thread_id
         self.name = "XMPP_Client_{}".format(client_address[0])
@@ -150,6 +150,9 @@ class Client(threading.Thread):
         self.uid = ""        
         self.log_sent_message = False #Set to true to log sends
         self.log_incoming_data = True #Set to true to log sends
+        self.bumper_users = bumper_users
+        self.bumper_bots = bumper_bots
+        self.bumper_clients = bumper_clients  
 
         xmppserverlog.debug('new client thread init for client with ip {}'.format(self.address))
 
@@ -177,7 +180,22 @@ class Client(threading.Thread):
 
     def _disconnect(self):
         try:
-            xmppserverlog.debug('client {} with resource {} disconnecting'.format(self.address, self.clientresource))
+            bumper_bots = self.bumper_bots.get()
+            bumper_clients = self.bumper_clients.get()
+            for bot in bumper_bots:
+                if self.uid == bot.did:
+                    bot.xmpp_connection = False
+                    xmppserverlog.info("bot disconnected {}".format(bot.did))
+            
+            self.bumper_bots.set(bumper_bots)
+
+            for client in bumper_clients:
+                if self.uid == client.userid and client.userid != 'helper1':
+                    client.xmpp_connection = False
+                    xmppserverlog.info("client disconnected {}".format(client.userid))                    
+            
+            self.bumper_clients.set(bumper_clients)
+            #xmppserverlog.debug('client {} with resource {} disconnecting'.format(self.address, self.clientresource))
             self.connection.close()
  
         except Exception as e:
@@ -343,6 +361,22 @@ class Client(threading.Thread):
                         self.clientresource = aitem.text
                 
                 if bumper.check_authcode(self.uid, password):  
+                    bumper_bots = self.bumper_bots.get()
+                    bumper_clients = self.bumper_clients.get()
+                    for bot in bumper_bots:
+                        if self.uid == bot.did:
+                            bot.xmpp_connection = True
+                            xmppserverlog.info("bot connected {}".format(bot.did))
+                    
+                    self.bumper_config['bumper_bots'].set(bumper_bots)
+
+                    for client in bumper_clients:
+                        if self.uid == client.userid and client.userid != 'helper1':
+                            client.xmpp_connection = True
+                            xmppserverlog.info("client connected {}".format(client.userid))                    
+                    
+                    self.bumper_config['bumper_clients'].set(bumper_clients)                   
+
                     #Client authenticated, move to next state                
                     self._set_state('INIT')    
                     
@@ -351,9 +385,7 @@ class Client(threading.Thread):
 
                 else:
                     #Failed auth
-                    self.send('<iq type="error" id="{}"><error code="401" type="auth"><not-authorized xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(xml.get('id')))                                                       
-              
-
+                    self.send('<iq type="error" id="{}"><error code="401" type="auth"><not-authorized xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(xml.get('id')))
                                                     
         except ET.ParseError as e:
             if "no element found" in e.msg:
@@ -377,7 +409,8 @@ class Client(threading.Thread):
             self.clientresource = resource
             authcode = saslauth[2]
 
-            if bumper.check_authcode(self.uid, authcode):            
+            if bumper.check_authcode(self.uid, authcode):     
+
                 #Send response
                 self.send('<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Success
 

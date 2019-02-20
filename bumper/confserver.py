@@ -356,8 +356,11 @@ class ConfServer():
 
             elif todo == 'GetDeviceList':
                 active_bots = self.bumper_bots.get()
+                bot_list = []
+                for bot in active_bots:
+                    bot_list.append(bot.asdict())
                 body = {
-                        "devices": active_bots,
+                        "devices": bot_list,
                         "result": "ok",
                         "todo": "result"
                         }            
@@ -365,8 +368,8 @@ class ConfServer():
             elif todo == 'SetDeviceNick':
                 bots = self.bumper_bots.get()
                 for bot in bots:
-                    if postbody['did'] == bot['did']:
-                        bot['nick'] = postbody['nick']    
+                    if postbody['did'] == bot.did:
+                        bot.nick = postbody['nick']    
                         self.bumper_bots.set(bots)                        
                         body = {
                             "result": "ok",
