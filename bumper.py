@@ -37,13 +37,12 @@ def main():
     conf_server_2 = bumper.ConfServer(conf_address_8007, usessl=False,bumper_users=bumper.bumper_users_var, bumper_bots=bumper.bumper_bots_var,bumper_clients=bumper.bumper_clients_var, helperbot=mqtt_helperbot)
     
     #add user
-    users = bumper.bumper_users_var.get()    
-    user1 = bumper.BumperUser('user1')
-    user1.add_device('devid')
-    user1.add_bot('bot_did')   
-    users.append(user1)    
-    bumper.bumper_users_var.set(users)
-    
+    # users = bumper.bumper_users_var.get()    
+    # user1 = bumper.BumperUser('user1')
+    # user1.add_device('devid')
+    # user1.add_bot('bot_did')   
+    # users.append(user1)    
+    # bumper.bumper_users_var.set(users)
 
     # start xmpp server on port 5223 (sync)
     xmpp_server.run(run_async=True) #Start in new thread

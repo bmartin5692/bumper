@@ -134,72 +134,133 @@ class ConfServer():
         except Exception as e:
             confserverlog.exception('{}'.format(e))                          
 
-    async def handle_login(self, request):  
-        
+    async def handle_login(self, request):          
         try:
             user_devid = request.match_info.get('devid', "")
             countrycode = request.match_info.get('country', "us")   
-            if not user_devid == "": #Performing basic "auth" using devid, super insecure
-                users = self.bumper_users.get()                
-                for user in users:
-                    if user_devid in user.devices:
-                        tmpaccesstoken = ''                    
-                        if 'checkLogin' in request.path:    
-                            if request.query['accessToken'] in user.tokens and request.query['uid'] == "fuid_{}".format(user.userid):
-                                tmpaccesstoken = request.query['accessToken']
-                                body = {
-                                    "code": bumper.RETURN_API_SUCCESS,
-                                    "data": {
-                                    "accessToken": tmpaccesstoken, #Random chars 32 length
-                                    "country": countrycode,
-                                    "email": "null@null.com",
-                                    "uid": "fuid_{}".format(user.userid),
-                                    "username": "fusername_{}".format(user.userid),
-                                    },
-                                    "msg": "操作成功",
+            confserverlog.info('client with devid {} attempting login'.format(user_devid)) 
+            if bumper.use_auth:
+                if not user_devid == "": #Performing basic "auth" using devid, super insecure
+                    users = self.bumper_users.get()                
+                    for user in users:
+                        if user_devid in user.devices:
+                            tmpaccesstoken = ''                    
+                            if 'checkLogin' in request.path:    
+                                if request.query['accessToken'] in user.tokens and request.query['uid'] == "fuid_{}".format(user.userid):
+                                    tmpaccesstoken = request.query['accessToken']
+                                    body = {
+                                        "code": bumper.RETURN_API_SUCCESS,
+                                        "data": {
+                                        "accessToken": tmpaccesstoken, #Random chars 32 length
+                                        "country": countrycode,
+                                        "email": "null@null.com",
+                                        "uid": "fuid_{}".format(user.userid),
+                                        "username": "fusername_{}".format(user.userid),
+                                        },
+                                        "msg": "操作成功",
+                                        "time": bumper.get_milli_time(time.time())
+                                        }  
+                                else:
+                                    body = {
+                                    "code": bumper.ERR_TOKEN_INVALID,
+                                    "data": None,
+                                    "msg": "当前密码错误",
                                     "time": bumper.get_milli_time(time.time())
-                                    }  
+                                    }                          
                             else:
+                                if tmpaccesstoken == '':
+                                    tmpaccesstoken = uuid.uuid4().hex
+                                    user.add_token(tmpaccesstoken)    
+                                
                                 body = {
-                                "code": bumper.ERR_TOKEN_INVALID,
-                                "data": None,
-                                "msg": "当前密码错误",
-                                "time": bumper.get_milli_time(time.time())
-                                }                          
-                        else:
-                            if tmpaccesstoken == '':
-                                tmpaccesstoken = uuid.uuid4().hex
-                                user.add_token(tmpaccesstoken)    
-                             
-                            body = {
-                                    "code": bumper.RETURN_API_SUCCESS,
-                                    "data": {
-                                    "accessToken": tmpaccesstoken, #Random chars 32 length
-                                    "country": countrycode,
-                                    "email": "null@null.com",
-                                    "uid": "fuid_{}".format(user.userid),
-                                    "username": "fusername_{}".format(user.userid),
-                                    },
-                                    "msg": "操作成功",
-                                    "time": bumper.get_milli_time(time.time())
-                                    }  
-                            self.bumper_users.set(users)                        
-                        
-                        return web.json_response(body)
-            
-            body = {
-                    "code": bumper.ERR_USER_NOT_ACTIVATED,
-                    "data": None,
-                    "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(time.time())
-                    }                          
-                                                        
-            return web.json_response(body)
-
+                                        "code": bumper.RETURN_API_SUCCESS,
+                                        "data": {
+                                        "accessToken": tmpaccesstoken, #Random chars 32 length
+                                        "country": countrycode,
+                                        "email": "null@null.com",
+                                        "uid": "fuid_{}".format(user.userid),
+                                        "username": "fusername_{}".format(user.userid),
+                                        },
+                                        "msg": "操作成功",
+                                        "time": bumper.get_milli_time(time.time())
+                                        }  
+                                self.bumper_users.set(users)                        
+                            
+                            return web.json_response(body)
+                
+                body = {
+                        "code": bumper.ERR_USER_NOT_ACTIVATED,
+                        "data": None,
+                        "msg": "当前密码错误",
+                        "time": bumper.get_milli_time(time.time())
+                        }                          
+                                                            
+                return web.json_response(body)
+            else:                
+                return web.json_response(self._auth_any(user_devid, countrycode, request))                        
         
         except Exception as e:
             confserverlog.exception('{}'.format(e))              
 
+
+    def _auth_any(self, devid, country, request):
+        try:
+            user_devid = devid
+            countrycode = country
+            
+            tmpaccesstoken = ''                                                
+            users = self.bumper_users.get()
+            bots = self.bumper_bots.get()
+
+            if len(users) > 0:
+                tmpuser = users[0]
+                tmpuser.add_device(user_devid)
+            else:                                                    
+                tmpuser = bumper.BumperUser('tmpuser')
+                users.append(tmpuser)
+                tmpuser.add_device(user_devid)
+
+            for bot in bots:
+                tmpuser.add_bot(bot.did)
+
+            if 'checkLogin' in request.path:                       
+                tmpaccesstoken = request.query['accessToken']
+                tmpuser.add_token(tmpaccesstoken) 
+                body = {
+                    "code": bumper.RETURN_API_SUCCESS,
+                    "data": {
+                    "accessToken": tmpaccesstoken, #Random chars 32 length
+                    "country": countrycode,
+                    "email": "null@null.com",
+                    "uid": "fuid_{}".format(tmpuser.userid),
+                    "username": "fusername_{}".format(tmpuser.userid),
+                    },
+                    "msg": "操作成功",
+                    "time": bumper.get_milli_time(time.time())
+                    }  
+            else:           
+                if tmpaccesstoken == '':
+                    tmpaccesstoken = uuid.uuid4().hex
+                    tmpuser.add_token(tmpaccesstoken)    
+                            
+                body = {
+                        "code": bumper.RETURN_API_SUCCESS,
+                        "data": {
+                        "accessToken": tmpaccesstoken, #Random chars 32 length
+                        "country": countrycode,
+                        "email": "null@null.com",
+                        "uid": "fuid_{}".format(tmpuser.userid),
+                        "username": "fusername_{}".format(tmpuser.userid),
+                        },
+                        "msg": "操作成功",
+                        "time": bumper.get_milli_time(time.time())
+                        }  
+                self.bumper_users.set(users)                        
+                        
+            return body
+
+        except Exception as e:
+            confserverlog.exception('{}'.format(e))               
 
     async def handle_logout(self, request):                      
         try:            
@@ -225,30 +286,31 @@ class ConfServer():
             user_devid = request.match_info.get('devid', "")
             if not user_devid == "":
                 users = self.bumper_users.get()
-                for user in users:
-                    if user_devid in user.devices and request.query['accessToken'] in user.tokens:                                       
-                        countrycode = request.match_info.get('country', "us")   
-                        tmpauthcode = "{}_{}".format(countrycode,uuid.uuid4().hex)
-                        user.add_authcode(tmpauthcode)  
-            
-                        body = {
-                                "code": bumper.RETURN_API_SUCCESS,
-                                "data": {
-                                "authCode": tmpauthcode,
-                                "ecovacsUid": request.query['uid']
-                                },
-                                "msg": "操作成功",
-                                "time": bumper.get_milli_time(time.time())
-                                }         
-                        self.bumper_users.set(users)
-                        return web.json_response(body)      
+                if len(users) > 0:
+                    for user in users:
+                        if user_devid in user.devices and request.query['accessToken'] in user.tokens:                                       
+                            countrycode = request.match_info.get('country', "us")   
+                            tmpauthcode = "{}_{}".format(countrycode,uuid.uuid4().hex)
+                            user.add_authcode(tmpauthcode)  
+                
+                            body = {
+                                    "code": bumper.RETURN_API_SUCCESS,
+                                    "data": {
+                                    "authCode": tmpauthcode,
+                                    "ecovacsUid": request.query['uid']
+                                    },
+                                    "msg": "操作成功",
+                                    "time": bumper.get_milli_time(time.time())
+                                    }         
+                            self.bumper_users.set(users)
+                            return web.json_response(body)      
         
             body = {
                     "code": bumper.ERR_TOKEN_INVALID,
                     "data": None,
                     "msg": "当前密码错误",
                     "time": bumper.get_milli_time(time.time())
-                    }                          
+                    }                            
                                                         
             return web.json_response(body)
 
@@ -412,12 +474,18 @@ class ConfServer():
     async def handle_devmanager_botcommand(self, request):
         try:
             json_body = json.loads(await request.text())            
-            randomid = ''.join(random.sample(string.ascii_letters,6))
-            retcmd = await self.helperbot.send_command(json_body, randomid)
-            body = retcmd
-
-            confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(json_body,body))            
-            return web.json_response(body)   
+            randomid = ''.join(random.sample(string.ascii_letters,6))            
+            bots = self.bumper_bots.get()
+            for bot in bots:
+                if bot.did == json_body['toId'] and bot.mqtt_connection == True:
+                    retcmd = await self.helperbot.send_command(json_body, randomid)
+                    body = retcmd
+                    confserverlog.debug("\r\n POST: {} \r\n Response: {}".format(json_body,body))            
+                    return web.json_response(body)   
+                else:
+                    confserverlog.error("No bots with DID: {} connected to MQTT".format(json_body['toId']))
+                    body = { "id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail" }
+                    return web.json_response(body)   
 
         except Exception as e:
             confserverlog.exception('{}'.format(e))  

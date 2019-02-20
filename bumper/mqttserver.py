@@ -284,51 +284,36 @@ class BumperMQTTServer_Plugin:
                 didsplit = str(client_id).split("@")
                 #If this isn't a fake user (fuid) then add as a bot
                 if not (str(didsplit[0]).startswith("fuid") or str(didsplit[0]).startswith("helper")):
-                    tmpbotdetail = str(didsplit[1]).split("/")        
-                    newbot = bumper.VacBotDevice()
-                    newbot.did = didsplit[0]        
-                    newbot.name = username
-                    newbot.vac_bot_device_class = tmpbotdetail[0]
-                    newbot.resource = tmpbotdetail[1]
-                    existingbot = False
-                    for bot in bumper_bots:
-                        if bot.did == newbot.did:
-                            existingbot = True
-
-                    if existingbot == False:                            
-                        bumper_bots.append(newbot)
-                        mqttserverlog.info("new bot authenticated {}".format(newbot.name))
-                        self.bumper_config['bumper_bots'].set(bumper_bots)
-                    
+                    tmpbotdetail = str(didsplit[1]).split("/")      
+                    bumper.add_bot(username, didsplit[0], tmpbotdetail[0], tmpbotdetail[1])  
+                    mqttserverlog.debug("new bot authenticated SN: {} DID: {}".format(username, didsplit[0]))                    
                     authenticated = True
                 
                 else:
-                    if didsplit[0] == "helper1":
-                        authenticated = True
+                    tmpclientdetail = str(didsplit[1]).split("/")                        
+                    userid = didsplit[0]        
+                    realm = tmpclientdetail[0]        
+                    resource = tmpclientdetail[1]
                     
-                    elif bumper.check_authcode(didsplit[0], password):
-                        tmpclientdetail = str(didsplit[1]).split("/")    
-                        newclient = bumper.VacBotClient()
-                        newclient.userid = didsplit[0]        
-                        newclient.realm = tmpclientdetail[0]        
-                        newclient.resource = tmpclientdetail[1]
-                        existingclient = False
-                        for client in bumper_clients:
-                            if client.userid == newclient.userid:
-                                existingclient = True
-
-                        if existingclient == False:  
-                            bumper_clients.append(newclient)
-                            mqttserverlog.info("new client authenticated {}".format(newclient.userid))
-                            self.bumper_config['bumper_clients'].set(bumper_clients)                                                    
-                        
+                    if userid == "helper1":
                         authenticated = True
-                    
                     else:
-                        authenticated = False
+                        auth = False
+                        if bumper.check_authcode(didsplit[0], password):
+                            auth = True
+                        elif bumper.use_auth == False:
+                            auth = True
+
+                        if auth:   
+                            bumper.add_client(userid, realm, resource)     
+                            mqttserverlog.debug("client authenticated {}".format(userid))                                                                    
+                            authenticated = True
+                        
+                        else:
+                            authenticated = False
             
             except KeyError:
-                self.context.logger.warning("Session informations not available")
+                self.context.logger.warning("Session information not available")
                 authenticated = False
         return authenticated
 
@@ -343,13 +328,13 @@ class BumperMQTTServer_Plugin:
             for bot in bumper_bots:
                 if didsplit[0] == bot.did:
                     bot.mqtt_connection = True
-                    mqttserverlog.info("bot connected {}".format(bot.did))
+                    #mqttserverlog.info("bot connected {}".format(bot.did))
                     self.bumper_config['bumper_bots'].set(bumper_bots)
 
             for client in bumper_clients:
                 if didsplit[0] == client.userid and client.userid != 'helper1':
                     client.mqtt_connection = True
-                    mqttserverlog.info("client connected {}".format(client.userid))                    
+                    #mqttserverlog.info("client connected {}".format(client.userid))                    
                     self.bumper_config['bumper_clients'].set(bumper_clients)                               
 
         except Exception as e:
@@ -366,13 +351,13 @@ class BumperMQTTServer_Plugin:
             for bot in bumper_bots:
                 if didsplit[0] == bot.did:
                     bot.mqtt_connection = False
-                    mqttserverlog.info("bot disconnected {}".format(bot.did))
+                    #mqttserverlog.info("bot disconnected {}".format(bot.did))
                     self.bumper_config['bumper_bots'].set(bumper_bots)
 
             for client in bumper_clients:
                 if didsplit[0] == client.userid and client.userid != 'helper1':
                     client.mqtt_connection = False
-                    mqttserverlog.info("client disconnected {}".format(client.userid))                    
+                    #mqttserverlog.info("client disconnected {}".format(client.userid))                    
                     self.bumper_config['bumper_clients'].set(bumper_clients)
 
         except Exception as e:

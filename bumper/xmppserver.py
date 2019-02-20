@@ -185,14 +185,14 @@ class Client(threading.Thread):
             for bot in bumper_bots:
                 if self.uid == bot.did:
                     bot.xmpp_connection = False
-                    xmppserverlog.info("bot disconnected {}".format(bot.did))
+                    #xmppserverlog.info("bot disconnected {}".format(bot.did))
             
             self.bumper_bots.set(bumper_bots)
 
             for client in bumper_clients:
                 if self.uid == client.userid and client.userid != 'helper1':
                     client.xmpp_connection = False
-                    xmppserverlog.info("client disconnected {}".format(client.userid))                    
+                    #xmppserverlog.info("client disconnected {}".format(client.userid))                    
             
             self.bumper_clients.set(bumper_clients)
             #xmppserverlog.debug('client {} with resource {} disconnecting'.format(self.address, self.clientresource))
@@ -356,37 +356,46 @@ class Client(threading.Thread):
                         
                     elif 'password' in aitem.tag:
                         password = aitem.text.split("/")[2]
+                        authcode = password
 
                     elif 'resource' in aitem.tag:
                         self.clientresource = aitem.text
-                
-                if bumper.check_authcode(self.uid, password):  
-                    bumper_bots = self.bumper_bots.get()
-                    bumper_clients = self.bumper_clients.get()
-                    for bot in bumper_bots:
-                        if self.uid == bot.did:
-                            bot.xmpp_connection = True
-                            xmppserverlog.info("bot connected {}".format(bot.did))
-                    
-                    self.bumper_config['bumper_bots'].set(bumper_bots)
+                        resource = self.clientresource
 
-                    for client in bumper_clients:
-                        if self.uid == client.userid and client.userid != 'helper1':
-                            client.xmpp_connection = True
-                            xmppserverlog.info("client connected {}".format(client.userid))                    
+                if not self.uid.startswith("fuid"):
                     
-                    self.bumper_config['bumper_clients'].set(bumper_clients)                   
-
+                    #Need sample data to see details here
+                    bumper.add_bot('',self.uid, '', resource)                
+                    xmppserverlog.info("bot authenticated {}".format(self.uid))
+                    
                     #Client authenticated, move to next state                
                     self._set_state('INIT')    
                     
                     #Successful auth
-                    self.send('<iq type="result" id="{}"/>'.format(xml.get('id')))                        
+                    self.send('<iq type="result" id="{}"/>'.format(xml.get('id')))                                         
+                        
+                else:            
+                    auth = False
+                    if bumper.check_authcode(self.uid, authcode):
+                        auth = True
+                    elif bumper.use_auth == False:
+                        auth = True
 
-                else:
-                    #Failed auth
-                    self.send('<iq type="error" id="{}"><error code="401" type="auth"><not-authorized xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(xml.get('id')))
-                                                    
+                    if auth:  
+                        bumper.add_client(self.uid, 'bumper', self.clientresource)                             
+                        xmppserverlog.debug("client authenticated {}".format(self.uid))            
+                        
+                        #Client authenticated, move to next state                
+                        self._set_state('INIT')    
+                        
+                        #Successful auth
+                        self.send('<iq type="result" id="{}"/>'.format(xml.get('id')))   
+                                            
+                    else:
+                        #Failed auth
+                        self.send('<iq type="error" id="{}"><error code="401" type="auth"><not-authorized xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(xml.get('id')))
+                                                                                                    
+                                                        
         except ET.ParseError as e:
             if "no element found" in e.msg:
                 xmppserverlog.debug('xml parse error - {} - {} - this is common with ecovac protocol'.format(data.decode('utf-8'), e))                                                   
@@ -409,17 +418,36 @@ class Client(threading.Thread):
             self.clientresource = resource
             authcode = saslauth[2]
 
-            if bumper.check_authcode(self.uid, authcode):     
-
+            if not self.uid.startswith("fuid"):
+                #Need sample data to see details here
+                bumper.add_bot('',self.uid, '', resource)                
+                xmppserverlog.info("bot authenticated {}".format(self.uid))
                 #Send response
                 self.send('<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Success
 
                 #Client authenticated, move to next state                
-                self._set_state('INIT')    
+                self._set_state('INIT') 
+                        
+            else:            
+                auth = False
+                if bumper.check_authcode(self.uid, authcode):
+                    auth = True
+                elif bumper.use_auth == False:
+                    auth = True
+
+                if auth:  
+                    bumper.add_client(self.uid, 'bumper', self.clientresource)                             
+                    xmppserverlog.debug("client authenticated {}".format(self.uid))            
                     
-            else:
-                #Failed to authenticate
-                self.send('<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Fail
+                    #Client authenticated, move to next state                
+                    self._set_state('INIT')    
+
+                    #Send response
+                    self.send('<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Success
+                                           
+                else:
+                    #Failed to authenticate
+                    self.send('<response xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>') #Fail
                 
         except ET.ParseError as e:
             if "no element found" in e.msg:
@@ -433,7 +461,22 @@ class Client(threading.Thread):
             xmppserverlog.exception('{}'.format(e))                 
 
     def _handle_bind(self, xml):                                         
-        try:            
+        try:    
+            bumper_bots = self.bumper_bots.get()
+            bumper_clients = self.bumper_clients.get()
+            
+            for bot in bumper_bots:
+                if self.uid == bot.did:
+                    bot.xmpp_connection = True
+                    #xmppserverlog.info("bot connected {}".format(bot.did))
+                    self.bumper_bots.set(bumper_bots)
+
+            for client in bumper_clients:
+                if self.uid == client.userid:
+                    client.xmpp_connection = True
+                    #xmppserverlog.info("client connected {}".format(client.userid))                    
+                    self.bumper_clients.set(bumper_clients)   
+
             clientbindxml = xml.getchildren()
             clientresourcexml = clientbindxml[0].getchildren()
             if len(clientresourcexml) > 0:
@@ -546,7 +589,7 @@ class Client(threading.Thread):
           
 
     def run(self):        
-        xmppserverlog.info('client connected - {}'.format(self.address))
+        #xmppserverlog.info('client connected - {}'.format(self.address))
         self._set_state('CONNECT')
         
         while not self.state == self.DISCONNECT and not self.connection._closed:

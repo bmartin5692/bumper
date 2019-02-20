@@ -149,9 +149,13 @@ So far two protocols have been identified that various models of EcoVacs robots 
 ----
 ### Login/Authentication/RestAPI
 
-***Bumper*** provides a fully simulated central server that handles login/authentication for the app/clients.  At this time no authentication layer is implemented and you can use any e-mail/password when logging in.  Future versions should add additional options here for security.
+***Bumper*** provides a fully simulated central server that handles login/authentication for the app/clients.  
 
-This means however, that once a robot has been configured to access your WiFi it never needs to communicate with EcoVac's servers again.
+The EcoVacs app encrypts the username/password with the public key of EcoVacs when authenticating.  Since we don't have the private key to decrypt, there is no way to provide true security and authentication.
+
+Future versions may add additional options here for security.
+
+Bots have no authentication and once a robot has been configured to access your WiFi it never needs to communicate with EcoVac's servers again.
 
 ----
 ### XMPP

@@ -18,6 +18,8 @@ ca_cert = './certs/CA/cacert.pem'
 server_cert = './certs/cert.pem'
 server_key = './certs/key.pem'
 
+use_auth = False
+
 #Logs
 bumperlog = logging.getLogger("bumper")
 confserverlog = logging.getLogger("confserver")
@@ -105,12 +107,51 @@ class VacBotClient(object):
         return {"userid": self.userid,"realm": self.realm,"resource": self.resource}
 
 def check_authcode(uid, authcode):
-        users = bumper_users_var.get()
-        for user in users:
-            if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
-                return True
+    users = bumper_users_var.get()
+    for user in users:
+        if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
+            return True
 
-        return False 
+    return False 
+
+def add_bot(sn, did, devclass, resource):
+    
+    newbot = VacBotDevice()
+    newbot.did = did   
+    newbot.name = sn
+    newbot.vac_bot_device_class = devclass
+    newbot.resource = resource    
+
+    bots = bumper_bots_var.get()
+    existingbot = False
+    for bot in bots:
+        if bot.did == newbot.did:
+            existingbot = True
+
+    if existingbot == False:                            
+        bots.append(newbot)
+        bumperlog.info("new bot added SN: {} DID: {}".format(newbot.name, newbot.did))
+        bumper_bots_var.set(bots)
+
+def add_client(userid, realm, resource):
+    
+    newclient = VacBotClient()
+    newclient.userid = userid
+    newclient.realm = realm
+    newclient.resource = resource      
+
+    clients = bumper_clients_var.get()           
+                                        
+    existingclient = False
+    for client in clients:
+        if client.userid == newclient.userid:
+            existingclient = True
+
+    if existingclient == False:  
+        clients.append(newclient)
+        bumperlog.info("new client added {}".format(newclient.userid))
+        bumper_clients_var.set(clients)
+
 
 RETURN_API_SUCCESS = "0000"
 ERR_ACTIVATE_TOKEN_TIMEOUT = "1006"
