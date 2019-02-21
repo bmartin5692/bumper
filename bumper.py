@@ -72,11 +72,11 @@ def main():
             #         if uid != "":
             #             xmpp_server.remove_client_byuid(uid)  #Remove clients from xmpp server
             #             remove_clients.remove(uid)
-                
+    
             #     bumper.bumper_removeclients_var.set(remove_clients)
         
         except KeyboardInterrupt:    
-            bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")            
+            bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
             print("Bumper Exiting")
             exit(1)
     

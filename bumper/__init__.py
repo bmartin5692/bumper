@@ -70,7 +70,7 @@ class BumperUser(object):
 
     def revoke_authcode(self, authcode):
         if authcode in self.authcodes:
-            self.authcodes.remove(authcode)            
+            self.authcodes.remove(authcode)
 
     def add_bot(self, botdid):
         if not botdid in self.bots:
@@ -78,7 +78,7 @@ class BumperUser(object):
 
     def remove_bot(self, botdid):
         if botdid in self.bots:
-            self.bots.remove(botdid)            
+            self.bots.remove(botdid)
 
 class VacBotDevice(object):
     def __init__(self,did="", vac_bot_device_class="",resource="" , name="", nick="", company="eco-ng"):        
@@ -128,7 +128,7 @@ def add_bot(sn, did, devclass, resource):
         if bot.did == newbot.did:
             existingbot = True
 
-    if existingbot == False:                            
+    if existingbot == False:    
         bots.append(newbot)
         bumperlog.info("new bot added SN: {} DID: {}".format(newbot.name, newbot.did))
         bumper_bots_var.set(bots)
@@ -141,7 +141,7 @@ def add_client(userid, realm, resource):
     newclient.resource = resource      
 
     clients = bumper_clients_var.get()           
-                                        
+    
     existingclient = False
     for client in clients:
         if client.userid == newclient.userid:
