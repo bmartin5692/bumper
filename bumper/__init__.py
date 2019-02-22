@@ -10,39 +10,40 @@ import time
 import logging
 from base64 import b64decode, b64encode
 
-bumper_users_var = contextvars.ContextVar('bumper_users', default=[])
-bumper_clients_var = contextvars.ContextVar('bumper_clients', default=[])
-bumper_bots_var = contextvars.ContextVar('bumper_bots', default=[])
+bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
+bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
+bumper_bots_var = contextvars.ContextVar("bumper_bots", default=[])
 
-ca_cert = './certs/CA/cacert.pem'
-server_cert = './certs/cert.pem'
-server_key = './certs/key.pem'
+ca_cert = "./certs/CA/cacert.pem"
+server_cert = "./certs/cert.pem"
+server_key = "./certs/key.pem"
 
 use_auth = False
 
-#Logs
+# Logs
 bumperlog = logging.getLogger("bumper")
 confserverlog = logging.getLogger("confserver")
-#Override the logging level
-#confserverlog.setLevel(logging.INFO) 
+# Override the logging level
+# confserverlog.setLevel(logging.INFO)
 mqttserverlog = logging.getLogger("mqttserver")
-#Override the logging level
-#mqttserverlog.setLevel(logging.INFO)
+# Override the logging level
+# mqttserverlog.setLevel(logging.INFO)
 helperbotlog = logging.getLogger("helperbot")
-#Override the logging level
-#helperbotlog.setLevel(logging.INFO)
+# Override the logging level
+# helperbotlog.setLevel(logging.INFO)
 xmppserverlog = logging.getLogger("xmppserver")
-#Override the logging level
-#xmppserverlog.setLevel(logging.INFO)
+# Override the logging level
+# xmppserverlog.setLevel(logging.INFO)
+
 
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
 
 class BumperUser(object):
-    def __init__(self,userid=""):
+    def __init__(self, userid=""):
         self.userid = userid
-        self.devices = []        
+        self.devices = []
         self.tokens = []
         self.authcodes = []
         self.bots = []
@@ -54,7 +55,6 @@ class BumperUser(object):
     def remove_device(self, devid):
         if devid in self.devices:
             self.devices.remove(devid)
-
 
     def add_token(self, token):
         if not token in self.tokens:
@@ -80,8 +80,17 @@ class BumperUser(object):
         if botdid in self.bots:
             self.bots.remove(botdid)
 
+
 class VacBotDevice(object):
-    def __init__(self,did="", vac_bot_device_class="",resource="" , name="", nick="", company="eco-ng"):        
+    def __init__(
+        self,
+        did="",
+        vac_bot_device_class="",
+        resource="",
+        name="",
+        nick="",
+        company="eco-ng",
+    ):
         self.vac_bot_device_class = vac_bot_device_class
         self.company = company
         self.did = did
@@ -92,11 +101,18 @@ class VacBotDevice(object):
         self.xmpp_connection = False
 
     def asdict(self):
-        return {"class": self.vac_bot_device_class, "company": self.company,
-            "did": self.did, "name": self.name, "nick": self.nick, "resource": self.resource}
+        return {
+            "class": self.vac_bot_device_class,
+            "company": self.company,
+            "did": self.did,
+            "name": self.name,
+            "nick": self.nick,
+            "resource": self.resource,
+        }
+
 
 class VacBotClient(object):
-    def __init__(self,userid="",realm="",token=""):
+    def __init__(self, userid="", realm="", token=""):
         self.userid = userid
         self.realm = realm
         self.resource = token
@@ -104,23 +120,25 @@ class VacBotClient(object):
         self.xmpp_connection = False
 
     def asdict(self):
-        return {"userid": self.userid,"realm": self.realm,"resource": self.resource}
+        return {"userid": self.userid, "realm": self.realm, "resource": self.resource}
+
 
 def check_authcode(uid, authcode):
     users = bumper_users_var.get()
     for user in users:
-        if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes: 
+        if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes:
             return True
 
-    return False 
+    return False
+
 
 def add_bot(sn, did, devclass, resource):
-    
+
     newbot = VacBotDevice()
-    newbot.did = did   
+    newbot.did = did
     newbot.name = sn
     newbot.vac_bot_device_class = devclass
-    newbot.resource = resource    
+    newbot.resource = resource
 
     bots = bumper_bots_var.get()
     existingbot = False
@@ -128,26 +146,27 @@ def add_bot(sn, did, devclass, resource):
         if bot.did == newbot.did:
             existingbot = True
 
-    if existingbot == False:    
+    if existingbot == False:
         bots.append(newbot)
         bumperlog.info("new bot added SN: {} DID: {}".format(newbot.name, newbot.did))
         bumper_bots_var.set(bots)
 
+
 def add_client(userid, realm, resource):
-    
+
     newclient = VacBotClient()
     newclient.userid = userid
     newclient.realm = realm
-    newclient.resource = resource      
+    newclient.resource = resource
 
-    clients = bumper_clients_var.get()           
-    
+    clients = bumper_clients_var.get()
+
     existingclient = False
     for client in clients:
         if client.userid == newclient.userid:
             existingclient = True
 
-    if existingclient == False:  
+    if existingclient == False:
         clients.append(newclient)
         bumperlog.info("new client added {}".format(newclient.userid))
         bumper_clients_var.set(clients)
