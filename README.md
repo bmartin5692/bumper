@@ -3,15 +3,24 @@
 # Bumper 
 A standalone implementation of the central server used by Ecovacs Deebot cleaning robots to relay data between the robot and client.
 
+A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build.  The project reached its original goal and remained in a stable, but stale state with the last commit in Dec 2017.  Since the original release of bumper newer bots have been released that use different protocols, and a growing Ecovacs user base has sparked further interest in the project.
+
+In early 2019 after making massive changes to the codebase and with ideas for additional feature development, it was decided that @bmartin5692 would take over active development.  The fork was detached and all future development of bumper will take place here.
+
+The current master branch is unstable and based on the work for adding D900 series support to bumper, along with other code changes.  Additional testing is needed with bots that use the XMPP protocols to ensure compatibility, so at this time it can only be guaranteed for 900-series bots (900/901/907).
+
+If you want a working version of bumper for XMPP bots (M81 Pro, and others), the original code base has been branched off as [v0.1.0](https://github.com/bmartin5692/bumper/tree/v0.1.0
+) and will remain in the original state.  Bumper needs users of models that use XMPP to assist with development efforts in order to ensure compatability as bumper moves forward.
+
 *Please note: this software is experimental and not ready for production use. Use at your own risk.* 
 
 ## Compatibility
 As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models and varying protocols that it hasn't been tested against.  So far two different protocols have been seen, **XMPP** and **MQTT**.  Bumper should be compatible with most wifi-enabled robots that use the Ecovacs Android app, but has only been reported to work on the below:
 
-| Model | Protocol Used |
-|--|--|
-| Deebot M81 Pro | XMPP |
-| Deebot 900/901 | MQTT |
+| Model | Protocol Used | Bumper Version |
+|--|--|--|
+| Deebot 900/901 | MQTT | master |
+| Deebot M81 Pro | XMPP | v0.1.0 |
 
 For more information about the protocols and how it works, see the [How does it work?](#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.
 
@@ -187,4 +196,6 @@ The Rest API provided by `portal-{countrycode}.ecouser.net` receives the command
 ***Bumper*** provides a simulated RestAPI and "helper" bot, performing the same function as the central server above.
 
 ## Thanks
+A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build.
+
 Bumper wouldn't exist without [Sucks](https://github.com/wpietri/sucks), an open source client for Ecovacs robots. Big thanks to @wpietri and contributors!
