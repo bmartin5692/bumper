@@ -3,3 +3,4 @@ __pycache__
 Pipfile.lock
 /bumper.sublime-project
 /bumper.sublime-workspace
+.vscode/
