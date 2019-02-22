@@ -486,7 +486,7 @@ class Client(threading.Thread):
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}@{}/{}</jid></bind></iq>'.format(xml.get('id'), self.uid, XMPPServer.bot_id, self.clientresource)
             else:
                 xmppserverlog.debug("new client {}".format(self.address))
-                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(xml.get('id'), XMPPServer.bot_id)
+                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}@{}</jid></bind></iq>'.format(xml.get('id'), self.uid, XMPPServer.bot_id)
 
             self._set_state('BIND')
             self.send(res)
