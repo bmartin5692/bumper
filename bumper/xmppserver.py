@@ -193,6 +193,7 @@ class Client(threading.Thread):
         self.connection = connection
         self.address = client_address[0]
         self.clientresource = ""
+        self.devclass = ""
         self.uid = ""
         self.log_sent_message = False  # Set to true to log sends
         self.log_incoming_data = True  # Set to true to log sends
@@ -372,6 +373,10 @@ class Client(threading.Thread):
                 # Client first connecting, send our features
 
                 if data.decode("utf-8").find("jabber:client") > -1:
+                    sc = data.decode("utf-8").find("to=")
+                    ec = data.decode("utf-8").find(".ecorobot.net")
+                    if ec > -1:                    
+                        self.devclass = data.decode("utf-8")[sc+4:ec]
                     # ack jabbr:client
                     # no STARTTLS
                     self.send(
@@ -527,13 +532,19 @@ class Client(threading.Thread):
             username = saslauth[0]
             username = saslauth[0].split("\x00")[1]
             self.uid = username
-            resource = saslauth[1]
-            self.clientresource = resource
-            authcode = saslauth[2]
+            if len(saslauth) > 1:
+                resource = saslauth[1]
+                self.clientresource = resource
+            elif len(saslauth[0].split("\x00")) > 2:
+                resource = saslauth[0].split("\x00")[2]
+                self.clientresource = resource
+            
+            if len(saslauth) > 2:
+                authcode = saslauth[2]
 
             if not self.uid.startswith("fuid"):
                 # Need sample data to see details here
-                bumper.add_bot("", self.uid, "", resource)
+                bumper.add_bot(self.uid, self.uid, self.devclass, "atom","eco-legacy")
                 xmppserverlog.info("bot authenticated {}".format(self.uid))
                 # Send response
                 self.send(

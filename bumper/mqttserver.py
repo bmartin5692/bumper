@@ -333,7 +333,7 @@ class BumperMQTTServer_Plugin:
                 ):
                     tmpbotdetail = str(didsplit[1]).split("/")
                     bumper.add_bot(
-                        username, didsplit[0], tmpbotdetail[0], tmpbotdetail[1]
+                        username, didsplit[0], tmpbotdetail[0], tmpbotdetail[1], "eco-ng"
                     )
                     mqttserverlog.debug(
                         "new bot authenticated SN: {} DID: {}".format(

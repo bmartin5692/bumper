@@ -584,6 +584,8 @@ class ConfServer:
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
             )
+            
+            
             return web.json_response(body)
 
         except Exception as e:
@@ -606,18 +608,18 @@ class ConfServer:
             if todo == "FindBest":
                 service = postbody["service"]
                 if service == "EcoMsgNew":
-                    body = {
-                        "result": "ok",
-                        "ip": socket.gethostbyname(socket.gethostname()),
-                        "port": 5223,
-                    }
+                    confserverlog.debug(
+                        "\r\n POST: {} \r\n Response: {}".format(postbody, body)
+                    )
+                    msgserver = '{"ip":"{}","port":5223,"result":"ok"}'.format(socket.gethostbyname(socket.gethostname())) #bot seems to be very picky about having no spaces, only way was with text
+                    return web.json_response(text=msgserver)
                 elif service == "EcoUpdate":
                     body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
 
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
             )
-            return web.json_response(body)
+            return web.json_response(body)                
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
