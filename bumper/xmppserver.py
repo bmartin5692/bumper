@@ -194,6 +194,7 @@ class Client(threading.Thread):
         self.address = client_address[0]
         self.clientresource = ""
         self.devclass = ""
+        self.bumper_jid = ""
         self.uid = ""
         self.log_sent_message = False  # Set to true to log sends
         self.log_incoming_data = True  # Set to true to log sends
@@ -299,15 +300,15 @@ class Client(threading.Thread):
                         '<iq id="{}" to="{}@{}/{}" from="rl.ecorobot.net" type="result"/>'.format(
                             xml.get("id"),
                             self.uid,
-                            XMPPServer.bot_id,
+                            XMPPServer.server_id,
                             self.clientresource,
                         )
                     )
 
-                else:
-                    xmppserverlog.debug(
-                        "Unknown set type: {}".format(data.decode("utf-8"))
-                    )
+                #else:
+                #    xmppserverlog.debug(
+                #        "Unknown set type: {}".format(data.decode("utf-8"))
+                #    )
 
             if xml[0][0]:
                 ctl = xml[0][0]
@@ -320,48 +321,111 @@ class Client(threading.Thread):
 
             # forward
             for client in XMPPServer.clients:
-                if client.address != self.address and client.state == client.READY:
+                if client.bumper_jid != self.bumper_jid and client.state == client.READY:
+                #if client.address != self.address and client.state == client.READY:
+                    ctl_to = xml.get("to")
+                    
+                    #xml.attrib["from"] = self.bumper_jid#.replace("@{}".format(XMPPServer.server_id),"@ecouser.net")
+                    xml.attrib["from"] = "{}@ecouser.net".format(self.uid)
+                    rxmlstring = ET.tostring(xml).decode("utf-8")
+                    #clean up string to remove namespaces added by ET
+                    rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
+                    rxmlstring = rxmlstring.replace("ns0:", "")
+                    rxmlstring = rxmlstring.replace('iq xmlns="com:ctl"', "iq")
+                    rxmlstring = rxmlstring.replace('<query','<query xmlns="com:ctl"')
+                    
                     if client.type == self.BOT:
-                        data = data.decode("utf-8")
-                        id_index = data.find("id")
-                        if id_index > -1:
-                            data = (
-                                data[:id_index]
-                                + 'from="'
-                                + XMPPServer.client_id
-                                + '" '
-                                + data[id_index:]
-                            )
-                            data = data.encode()
-                    client.send(data.decode("utf-8"))
+                        if client.uid.lower() in ctl_to.lower():
+                            xmppserverlog.info("Sending ctl to bot: {}".format(rxmlstring))
+                            client.send(rxmlstring)
+                            #client.send(data.decode("utf-8"))
+                        
+                    #     data = data.decode("utf-8")
+                    #     id_index = data.find("id")
+                    #     if id_index > -1:
+                    #         data = (
+                    #             data[:id_index]
+                    #             + 'from="'
+                    #             + XMPPServer.client_id
+                    #             + '" '
+                    #             + data[id_index:]
+                    #         )
+                    #         data = data.encode()
+                    # client.send(data.decode("utf-8"))
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
 
     def _handle_ping(self, xml, data):
         try:
-            if xml.get("to").find("@") == -1:
+            if xml.get("to").find("@") == -1: #No to address
                 # Ping to server - respond
-                self.send(
-                    '<iq type="result" id="{}" from="{}" />'.format(
+                pingresp = '<iq type="result" id="{}" from="{}" />'.format(
                         xml.get("id"), xml.get("to")
                     )
-                )
+                #xmppserverlog.debug("Server Ping resp: {}".format(pingresp))
+                self.send(pingresp)                
 
             else:
+                pingto = xml.get("to")
+                pingfrom = self.bumper_jid
+                
+                xml.attrib["from"] = pingfrom
+                pingstring = ET.tostring(xml).decode("utf-8")
+                #clean up string to remove namespaces added by ET
+                pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
+                pingstring = pingstring.replace("ns0:", "")
+                pingstring = pingstring.replace('iq xmlns="com:ctl"', "iq")
+                pingstring = pingstring.replace('<query','<query xmlns="com:ctl"')
+
                 for client in XMPPServer.clients:
-                    if client.address != self.address and client.state == client.READY:
-                        client.send(data.decode("utf-8"))
+                    if client.bumper_jid != self.bumper_jid and client.state == client.READY:                    
+                        if pingto.lower() in client.bumper_jid.lower():                            
+                            pingsend = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
+                                xml.get("id"), pingfrom, pingto
+                            )
+                            xmppserverlog.debug("ping from {} to {}".format(pingfrom, pingto))
+                            client.send(pingstring)                       
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
 
-    def _handle_result(self, data):
+    def _handle_result(self, xml, data):
         # forward
         try:
-            for client in XMPPServer.clients:
-                if client.address != self.address and client.state == client.READY:
-                    client.send(data.decode("utf-8"))
+            ctl_to = xml.get("to")
+            xml.attrib["from"] = self.bumper_jid
+            rxmlstring = ET.tostring(xml).decode("utf-8")
+            #clean up string to remove namespaces added by ET
+            rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
+            rxmlstring = rxmlstring.replace("ns0:", "")
+            rxmlstring = rxmlstring.replace('iq xmlns="com:ctl"', "iq")
+            rxmlstring = rxmlstring.replace('<query','<query xmlns="com:ctl"')
+            
+            if ctl_to == "de.ecorobot.net": #Send to all clients
+                xmppserverlog.info("Sending to all clients because of de: {}".format(rxmlstring))
+                for client in XMPPServer.clients:
+                    client.send(rxmlstring)
+            else:
+                if xml.get("to").find("@") == -1: #No to address
+                    ctl_to = xml.get("to")
+                else:
+                    ctl_to = "{}@ecouser.net".format(ctl_to.split("@")[0])                
+                for client in XMPPServer.clients:
+                    if client.bumper_jid != self.bumper_jid and client.state == client.READY:
+                        if ctl_to:
+                            if client.uid.lower() in ctl_to.lower():
+                            #if ctl_to == client.bumper_jid:
+                                xmppserverlog.info("Sending from {} to client {}: {}".format(self.uid, client.uid, rxmlstring))
+                                client.send(rxmlstring)
+                                #xmppserverlog.info("Sending to client: {}".format(data.decode("utf-8")))
+                                #client.send(data.decode("utf-8"))
+                        else: #no send to
+                            #xmppserverlog.info("Sending to all clients: {}".format(rxmlstring))
+                            client.send(rxmlstring)
+
+                #if client.address != self.address and client.state == client.READY:
+                    #client.send(data.decode("utf-8"))
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -617,21 +681,31 @@ class Client(threading.Thread):
 
             clientbindxml = xml.getchildren()
             clientresourcexml = clientbindxml[0].getchildren()
-            if len(clientresourcexml) > 0:
+            if self.devclass: #its a bot
+                self.name = "XMPP_Client_{}_{}".format(self.uid,self.devclass)
+                self.bumper_jid = "{}@{}.ecorobot.net/atom".format(self.uid, self.devclass)                    
+                xmppserverlog.debug("new bot {}".format(self.uid))
+                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
+                    xml.get("id"), self.bumper_jid
+                )
+            elif len(clientresourcexml) > 0:
                 self.clientresource = clientresourcexml[0].text
                 self.name = "XMPP_Client_{}".format(self.clientresource)
+                self.bumper_jid = "{}@{}/{}".format(self.uid, XMPPServer.server_id, self.clientresource)
                 xmppserverlog.debug(
                     "new client {} using resource {}".format(
-                        self.address, self.clientresource
+                        self.uid, self.clientresource
                     )
                 )
-                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}@{}/{}</jid></bind></iq>'.format(
-                    xml.get("id"), self.uid, XMPPServer.bot_id, self.clientresource
+                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
+                    xml.get("id"), self.bumper_jid
                 )
-            else:
-                xmppserverlog.debug("new client {}".format(self.address))
-                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}@{}</jid></bind></iq>'.format(
-                    xml.get("id"), self.uid, XMPPServer.bot_id
+            else:                            
+                self.name = "XMPP_Client_{}_{}".format(self.uid,self.address)
+                self.bumper_jid = "{}@{}".format(self.uid, XMPPServer.server_id)
+                xmppserverlog.debug("new client {}".format(self.uid))
+                res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
+                    xml.get("id"), self.bumper_jid
                 )
 
             self._set_state("BIND")
@@ -658,10 +732,20 @@ class Client(threading.Thread):
                     "{} type set to BOT (based on presence tag)".format(self.address)
                 )
                 # send a command from an unknown user  - the response will contain the correct admin username
-
+                self.send(
+                    '<presence to="{}"> dummy </presence>'.format(
+                        self.bumper_jid
+                    )
+                )
+                # self.send(
+                #     '<iq type="set" id="14" to="{}@{}.{}/atom"><query xmlns="com:ctl"><ctl td="GetDeviceInfo"/></query></iq>'.format(
+                #         self.uid, self.devclass, XMPPServer.server_id
+                #     )
+                # )
+                
                 self.send(
                     '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="GetCleanState" /></query></iq>'.format(
-                        uuid.uuid4(), "unknown@ecouser.net", XMPPServer.bot_id
+                        uuid.uuid4(), "unknown@ecouser.net", XMPPServer.server_id
                     )
                 )
 
@@ -674,7 +758,7 @@ class Client(threading.Thread):
                 )
                 self.send(
                     '<presence to="{}@{}/{}"> dummy </presence>'.format(
-                        self.uid, XMPPServer.bot_id, self.clientresource
+                        self.uid, XMPPServer.server_id, self.clientresource
                     )
                 )
 
@@ -748,13 +832,25 @@ class Client(threading.Thread):
                     self._handle_bind(xml)
                 elif child == "session":
                     self._handle_session(xml)
-                elif child == "query":
-                    self._handle_ctl(xml, data)
                 elif child == "ping":
                     self._handle_ping(xml, data)
+                elif child == "query":                    
+                    if self.type == self.BOT:  
+                        self._handle_result(xml, data)
+                    else:
+                        self._handle_ctl(xml, data)
                 elif xml.get("type") == "result":
-                    self._handle_result(data)
-            elif xml.tag == "presence":
+                    if self.type == self.BOT:  
+                        self._handle_result(xml, data)       
+                    else:
+                        self._handle_result(xml, data)       
+                elif xml.get("type") == "set":                                 
+                    if self.type == self.BOT:  
+                        self._handle_result(xml, data)       
+                    else:
+                        self._handle_result(xml, data)                                       
+            
+            if xml.tag == "presence":
                 self._handle_presence(xml)
 
         except Exception as e:
