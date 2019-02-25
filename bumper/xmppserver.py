@@ -866,7 +866,8 @@ class Client(threading.Thread):
             time.sleep(0.2)
             if not self.connection._closed:
                 try:
-                    data = self.connection.recv(4096)
+                    #data = self.connection.recv(4096)
+                    data = self.connection.recv(8192)
 
                 except ConnectionResetError as e:
                     xmppserverlog.error("{}".format(e))
@@ -876,5 +877,14 @@ class Client(threading.Thread):
                     xmppserverlog.exception("{}".format(e))
 
             if data != b"":
-                self._parse_data(data)
-
+                splitdata = data.decode("utf-8")
+                splitdata = splitdata.split("<iq")
+                if len(splitdata) > 1:
+                    for s in splitdata:
+                        if not s.startswith("<iq") and s:                            
+                            self._parse_data("<iq {}".format(s).encode("utf-8"))
+                        else:
+                            self._parse_data(s.encode("utf-8"))
+                else:
+                    self._parse_data(data)
+                
