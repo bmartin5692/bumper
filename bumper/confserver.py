@@ -652,22 +652,32 @@ class ConfServer:
             json_body = json.loads(await request.text())
             randomid = "".join(random.sample(string.ascii_letters, 6))
             bots = self.bumper_bots.get()
-            for bot in bots:
-                if bot.did == json_body["toId"] and bot.mqtt_connection == True:
-                    retcmd = await self.helperbot.send_command(json_body, randomid)
-                    body = retcmd
-                    confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+            if "toId" in json_body: #Its a command
+                for bot in bots:
+                    if bot.company == 'eco-ng':
+                        if bot.did == json_body["toId"] and bot.mqtt_connection == True:
+                            retcmd = await self.helperbot.send_command(json_body, randomid)
+                            body = retcmd
+                            confserverlog.debug(
+                                "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+                            )
+                            return web.json_response(body)
+                
+                #No response, send error back    
+                confserverlog.error(
+                    "No bots with DID: {} connected to MQTT".format(
+                        json_body["toId"]
                     )
-                    return web.json_response(body)
-                else:
-                    confserverlog.error(
-                        "No bots with DID: {} connected to MQTT".format(
-                            json_body["toId"]
-                        )
-                    )
-                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
-                    return web.json_response(body)
+                )
+                body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+                return web.json_response(body)
+            else:
+                if "td" in json_body: #Seen when doing initial wifi config
+                    if json_body["td"] == "PollSCResult":
+                        body = {
+                            "ret": "ok"                        
+                        }
+                        return web.json_response(body)
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
