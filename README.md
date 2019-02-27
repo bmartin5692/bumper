@@ -20,6 +20,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | Model | Protocol Used | Bumper Version |
 |--|--|--|
 | Deebot 900/901 | MQTT | master |
+| Deebot Ozmo 930 | XMPP | master |
 | Deebot M81 Pro | XMPP | v0.1.0 |
 
 For more information about the protocols and how it works, see the [How does it work?](#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.

@@ -89,7 +89,7 @@ class VacBotDevice(object):
         resource="",
         name="",
         nick="",
-        company="eco-ng",
+        company="",
     ):
         self.vac_bot_device_class = vac_bot_device_class
         self.company = company
@@ -132,13 +132,14 @@ def check_authcode(uid, authcode):
     return False
 
 
-def add_bot(sn, did, devclass, resource):
+def add_bot(sn, did, devclass, resource, company):
 
     newbot = VacBotDevice()
     newbot.did = did
     newbot.name = sn
     newbot.vac_bot_device_class = devclass
     newbot.resource = resource
+    newbot.company = company
 
     bots = bumper_bots_var.get()
     existingbot = False

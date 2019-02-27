@@ -581,9 +581,28 @@ class ConfServer:
                         self.bumper_bots.set(bots)
                         body = {"result": "ok", "todo": "result"}
 
+
+            elif todo == "AddOneDevice":
+                bots = self.bumper_bots.get()
+                for bot in bots:
+                    if postbody["did"] == bot.did:
+                        bot.nick = postbody["nick"]
+                        self.bumper_bots.set(bots)
+                        body = {"result": "ok", "todo": "result"}
+
+            elif todo == "DeleteOneDevice":
+                bots = self.bumper_bots.get()
+                for bot in bots:
+                    if postbody["did"] == bot.did:
+                        #bots.remove(bot)
+                        #self.bumper_bots.set(bots)                        
+                        body = {"result": "ok", "todo": "result"}                                                      
+
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
             )
+            
+            
             return web.json_response(body)
 
         except Exception as e:
@@ -606,18 +625,24 @@ class ConfServer:
             if todo == "FindBest":
                 service = postbody["service"]
                 if service == "EcoMsgNew":
-                    body = {
-                        "result": "ok",
-                        "ip": socket.gethostbyname(socket.gethostname()),
-                        "port": 5223,
-                    }
+                    
+                    srvip = socket.gethostbyname(socket.gethostname()) 
+                    msgserver = {"ip":srvip,"port":5223,"result":"ok"}
+                    msgserver = json.dumps(msgserver)
+                    msgserver = msgserver.replace(" ","") #bot seems to be very picky about having no spaces, only way was with text
+                    
+                    confserverlog.debug(
+                        "\r\n POST: {} \r\n Response: {}".format(postbody, msgserver)
+                    )                    
+                    return web.json_response(text=msgserver)
+                
                 elif service == "EcoUpdate":
                     body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
 
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
             )
-            return web.json_response(body)
+            return web.json_response(body)                
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
@@ -627,22 +652,32 @@ class ConfServer:
             json_body = json.loads(await request.text())
             randomid = "".join(random.sample(string.ascii_letters, 6))
             bots = self.bumper_bots.get()
-            for bot in bots:
-                if bot.did == json_body["toId"] and bot.mqtt_connection == True:
-                    retcmd = await self.helperbot.send_command(json_body, randomid)
-                    body = retcmd
-                    confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+            if "toId" in json_body: #Its a command
+                for bot in bots:
+                    if bot.company == 'eco-ng':
+                        if bot.did == json_body["toId"] and bot.mqtt_connection == True:
+                            retcmd = await self.helperbot.send_command(json_body, randomid)
+                            body = retcmd
+                            confserverlog.debug(
+                                "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+                            )
+                            return web.json_response(body)
+                
+                #No response, send error back    
+                confserverlog.error(
+                    "No bots with DID: {} connected to MQTT".format(
+                        json_body["toId"]
                     )
-                    return web.json_response(body)
-                else:
-                    confserverlog.error(
-                        "No bots with DID: {} connected to MQTT".format(
-                            json_body["toId"]
-                        )
-                    )
-                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
-                    return web.json_response(body)
+                )
+                body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+                return web.json_response(body)
+            else:
+                if "td" in json_body: #Seen when doing initial wifi config
+                    if json_body["td"] == "PollSCResult":
+                        body = {
+                            "ret": "ok"                        
+                        }
+                        return web.json_response(body)
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
