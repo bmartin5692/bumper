@@ -567,36 +567,20 @@ class ConfServer:
                         }
 
             elif todo == "GetDeviceList":
-                active_bots = self.bumper_bots.get()
-                bot_list = []
-                for bot in active_bots:
-                    bot_list.append(bot.asdict())
-                body = {"devices": bot_list, "result": "ok", "todo": "result"}
+                body = {"devices": bumper.db_get().table('bots').all(), "result": "ok", "todo": "result"}
 
             elif todo == "SetDeviceNick":
-                bots = self.bumper_bots.get()
-                for bot in bots:
-                    if postbody["did"] == bot.did:
-                        bot.nick = postbody["nick"]
-                        self.bumper_bots.set(bots)
-                        body = {"result": "ok", "todo": "result"}
+                bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                body = {"result": "ok", "todo": "result"}
 
 
             elif todo == "AddOneDevice":
-                bots = self.bumper_bots.get()
-                for bot in bots:
-                    if postbody["did"] == bot.did:
-                        bot.nick = postbody["nick"]
-                        self.bumper_bots.set(bots)
-                        body = {"result": "ok", "todo": "result"}
+                bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                body = {"result": "ok", "todo": "result"}
 
             elif todo == "DeleteOneDevice":
-                bots = self.bumper_bots.get()
-                for bot in bots:
-                    if postbody["did"] == bot.did:
-                        #bots.remove(bot)
-                        #self.bumper_bots.set(bots)                        
-                        body = {"result": "ok", "todo": "result"}                                                      
+                bumper.bot_remove(postbody["did"])                     
+                body = {"result": "ok", "todo": "result"}                                                      
 
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
@@ -607,6 +591,7 @@ class ConfServer:
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
+    
 
     async def handle_lookup(self, request):
         try:
@@ -651,26 +636,25 @@ class ConfServer:
         try:
             json_body = json.loads(await request.text())
             randomid = "".join(random.sample(string.ascii_letters, 6))
-            bots = self.bumper_bots.get()
+            
             if "toId" in json_body: #Its a command
-                for bot in bots:
-                    if bot.company == 'eco-ng':
-                        if bot.did == json_body["toId"] and bot.mqtt_connection == True:
-                            retcmd = await self.helperbot.send_command(json_body, randomid)
-                            body = retcmd
-                            confserverlog.debug(
-                                "\r\n POST: {} \r\n Response: {}".format(json_body, body)
-                            )
-                            return web.json_response(body)
-                
-                #No response, send error back    
-                confserverlog.error(
-                    "No bots with DID: {} connected to MQTT".format(
-                        json_body["toId"]
+                bot = bumper.bot_get(json_body["toId"])
+                if bot['company'] == 'eco-ng' and bot['mqtt_connection'] == True:
+                    retcmd = await self.helperbot.send_command(json_body, randomid)
+                    body = retcmd
+                    confserverlog.debug(
+                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
                     )
-                )
-                body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
-                return web.json_response(body)
+                    return web.json_response(body)       
+                else:                                         
+                    #No response, send error back    
+                    confserverlog.error(
+                        "No bots with DID: {} connected to MQTT".format(
+                            json_body["toId"]
+                        )
+                    )
+                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+                    return web.json_response(body)
             else:
                 if "td" in json_body: #Seen when doing initial wifi config
                     if json_body["td"] == "PollSCResult":

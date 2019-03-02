@@ -7,8 +7,11 @@ from .xmppserver import XMPPServer
 import asyncio
 import contextvars
 import time
+import platform
+import os
 import logging
 from base64 import b64decode, b64encode
+from tinydb import TinyDB, Query
 
 bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
 bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
@@ -39,6 +42,22 @@ xmppserverlog = logging.getLogger("xmppserver")
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
+def db_file():
+    if platform.system() == 'Windows':
+        return os.path.join(os.getenv('APPDATA'), 'bumper.db')
+    else:
+        return os.path.expanduser('~/.config/bumper.db')    
+
+def db_get():
+    #Will create the database if it doesn't exist
+    db = TinyDB(db_file())
+
+    #Will create the tables if they don't exist
+    users_table = db.table('users')
+    clients_table = db.table('clients')
+    bots_table = db.table('bots')
+
+    return db
 
 class BumperUser(object):
     def __init__(self, userid=""):
@@ -108,6 +127,8 @@ class VacBotDevice(object):
             "name": self.name,
             "nick": self.nick,
             "resource": self.resource,
+            "mqtt_connection": self.mqtt_connection,
+            "xmpp_connection": self.xmpp_connection
         }
 
 
@@ -120,7 +141,13 @@ class VacBotClient(object):
         self.xmpp_connection = False
 
     def asdict(self):
-        return {"userid": self.userid, "realm": self.realm, "resource": self.resource}
+        return {
+            "userid": self.userid,
+            "realm": self.realm,
+            "resource": self.resource,
+            "mqtt_connection": self.mqtt_connection,
+            "xmpp_connection": self.xmpp_connection
+            }
 
 
 def check_authcode(uid, authcode):
@@ -132,46 +159,79 @@ def check_authcode(uid, authcode):
     return False
 
 
-def add_bot(sn, did, devclass, resource, company):
-
+def bot_add(sn, did, devclass, resource, company):
     newbot = VacBotDevice()
     newbot.did = did
     newbot.name = sn
     newbot.vac_bot_device_class = devclass
     newbot.resource = resource
     newbot.company = company
+    
+    bot = bot_get(did)
+    if not bot:
+        bumperlog.info("Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did))
+        bot_full_upsert(newbot.asdict())
 
-    bots = bumper_bots_var.get()
-    existingbot = False
-    for bot in bots:
-        if bot.did == newbot.did:
-            existingbot = True
+def bot_remove(did):
+    bots = db_get().table('bots')
+    bot = bot_get(did)
+    bots.remove(doc_ids=[bot.doc_id])
+    
+def bot_get(did):
+    bots = db_get().table('bots')
+    Bot = Query()
+    return bots.get(Bot.did == did)
 
-    if existingbot == False:
-        bots.append(newbot)
-        bumperlog.info("new bot added SN: {} DID: {}".format(newbot.name, newbot.did))
-        bumper_bots_var.set(bots)
+def bot_full_upsert(vacbot):
+    bots = db_get().table('bots')
+    Bot = Query()        
+    bots.upsert(vacbot, Bot.did == vacbot['did'])
 
+def bot_set_nick(did, nick):
+    bots = db_get().table('bots')
+    Bot = Query()        
+    bots.upsert({'nick': nick}, Bot.did == did)
 
-def add_client(userid, realm, resource):
+def bot_set_mqtt(did, mqtt):
+    bots = db_get().table('bots')
+    Bot = Query()        
+    bots.upsert({'mqtt_connection': mqtt}, Bot.did == did)   
 
+def bot_set_xmpp(did, xmpp):
+    bots = db_get().table('bots')
+    Bot = Query()        
+    bots.upsert({'xmpp_connection': xmpp}, Bot.did == did)        
+
+def client_add(userid, realm, resource):
     newclient = VacBotClient()
     newclient.userid = userid
     newclient.realm = realm
     newclient.resource = resource
 
-    clients = bumper_clients_var.get()
+    client = client_get(resource)
+    if not client:
+        bumperlog.info("Adding new client with resource {}".format(newclient.resource))
+        client_full_upsert(newclient.asdict())
 
-    existingclient = False
-    for client in clients:
-        if client.userid == newclient.userid:
-            existingclient = True
+def client_get(resource):
+    clients = db_get().table('clients')
+    Client = Query()
+    return clients.get(Client.resource == resource)
 
-    if existingclient == False:
-        clients.append(newclient)
-        bumperlog.info("new client added {}".format(newclient.userid))
-        bumper_clients_var.set(clients)
+def client_full_upsert(client):
+    clients = db_get().table('clients')
+    Client = Query()        
+    clients.upsert(client, Client.resource == client['resource'])    
 
+def client_set_mqtt(resource, mqtt):
+    clients = db_get().table('clients')
+    Client = Query()        
+    clients.upsert({'mqtt_connection': mqtt}, Client.resource == resource)   
+
+def client_set_xmpp(resource, xmpp):
+    clients = db_get().table('clients')
+    Client = Query()        
+    clients.upsert({'xmpp_connection': xmpp}, Client.resource == resource)      
 
 RETURN_API_SUCCESS = "0000"
 ERR_ACTIVATE_TOKEN_TIMEOUT = "1006"
