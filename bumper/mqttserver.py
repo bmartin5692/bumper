@@ -404,7 +404,7 @@ class BumperMQTTServer_Plugin:
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
-                bumper.client_set_mqtt(client['userid'], False)
+                bumper.client_set_mqtt(client['resource'], False)
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))

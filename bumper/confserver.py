@@ -37,21 +37,13 @@ logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
 
 
 class ConfServer:
-    bumper_clients = contextvars.ContextVar
-    bumper_bots = contextvars.ContextVar
 
     def __init__(
         self,
         address,
         usessl=False,
-        bumper_users=contextvars.ContextVar,
-        bumper_bots=contextvars.ContextVar,
-        bumper_clients=contextvars.ContextVar,
         helperbot=None,
     ):
-        self.bumper_users = bumper_users
-        self.bumper_bots = bumper_bots
-        self.bumper_clients = bumper_clients
         self.helperbot = helperbot
         self.usessl = usessl
         self.address = address
@@ -193,17 +185,17 @@ class ConfServer:
                 if (
                     not user_devid == ""
                 ):  # Performing basic "auth" using devid, super insecure
-                    users = self.bumper_users.get()
+                    users = bumper.db_get().table('users').all()
                     for user in users:
-                        if user_devid in user.devices:
+                        if user_devid in user['devices']:
                             tmpaccesstoken = ""
                             if "checkLogin" in request.path:
                                 if request.query[
                                     "accessToken"
-                                ] in user.tokens and request.query[
+                                ] in user['tokens'] and request.query[
                                     "uid"
                                 ] == "fuid_{}".format(
-                                    user.userid
+                                    user['userid']
                                 ):
                                     tmpaccesstoken = request.query["accessToken"]
                                     body = {
@@ -212,9 +204,9 @@ class ConfServer:
                                             "accessToken": tmpaccesstoken,  # Random chars 32 length
                                             "country": countrycode,
                                             "email": "null@null.com",
-                                            "uid": "fuid_{}".format(user.userid),
+                                            "uid": "fuid_{}".format(user['userid']),
                                             "username": "fusername_{}".format(
-                                                user.userid
+                                                user['userid']
                                             ),
                                         },
                                         "msg": "操作成功",
@@ -230,7 +222,7 @@ class ConfServer:
                             else:
                                 if tmpaccesstoken == "":
                                     tmpaccesstoken = uuid.uuid4().hex
-                                    user.add_token(tmpaccesstoken)
+                                    bumper.user_add_token(user['userid'],tmpaccesstoken)                                    
 
                                 body = {
                                     "code": bumper.RETURN_API_SUCCESS,
@@ -238,13 +230,12 @@ class ConfServer:
                                         "accessToken": tmpaccesstoken,  # Random chars 32 length
                                         "country": countrycode,
                                         "email": "null@null.com",
-                                        "uid": "fuid_{}".format(user.userid),
-                                        "username": "fusername_{}".format(user.userid),
+                                        "uid": "fuid_{}".format(user['userid']),
+                                        "username": "fusername_{}".format(user['userid']),
                                     },
                                     "msg": "操作成功",
                                     "time": bumper.get_milli_time(time.time()),
                                 }
-                                self.bumper_users.set(users)
 
                             return web.json_response(body)
 
@@ -270,31 +261,31 @@ class ConfServer:
             countrycode = country
 
             tmpaccesstoken = ""
-            users = self.bumper_users.get()
-            bots = self.bumper_bots.get()
-
+            users = bumper.db_get().table('users').all()
+            bots = bumper.db_get().table('bots').all()            
+            
             if len(users) > 0:
                 tmpuser = users[0]
-                tmpuser.add_device(user_devid)
+                bumper.user_add_device(tmpuser['userid'], user_devid)
             else:
-                tmpuser = bumper.BumperUser("tmpuser")
-                users.append(tmpuser)
-                tmpuser.add_device(user_devid)
+                bumper.user_add("tmpuser")
+                tmpuser = bumper.user_get("tmpuser")
+                bumper.user_add_device(tmpuser['userid'], user_devid)
 
             for bot in bots:
-                tmpuser.add_bot(bot.did)
+                bumper.user_add_bot(tmpuser['userid'], bot['did'])
 
             if "checkLogin" in request.path:
                 tmpaccesstoken = request.query["accessToken"]
-                tmpuser.add_token(tmpaccesstoken)
+                bumper.user_add_token(tmpuser['userid'], tmpaccesstoken)
                 body = {
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": {
                         "accessToken": tmpaccesstoken,  # Random chars 32 length
                         "country": countrycode,
                         "email": "null@null.com",
-                        "uid": "fuid_{}".format(tmpuser.userid),
-                        "username": "fusername_{}".format(tmpuser.userid),
+                        "uid": "fuid_{}".format(tmpuser['userid']),
+                        "username": "fusername_{}".format(tmpuser['userid']),
                     },
                     "msg": "操作成功",
                     "time": bumper.get_milli_time(time.time()),
@@ -302,7 +293,7 @@ class ConfServer:
             else:
                 if tmpaccesstoken == "":
                     tmpaccesstoken = uuid.uuid4().hex
-                    tmpuser.add_token(tmpaccesstoken)
+                    bumper.user_add_token(tmpuser['userid'], tmpaccesstoken)
 
                 body = {
                     "code": bumper.RETURN_API_SUCCESS,
@@ -310,13 +301,12 @@ class ConfServer:
                         "accessToken": tmpaccesstoken,  # Random chars 32 length
                         "country": countrycode,
                         "email": "null@null.com",
-                        "uid": "fuid_{}".format(tmpuser.userid),
-                        "username": "fusername_{}".format(tmpuser.userid),
+                        "uid": "fuid_{}".format(tmpuser['userid']),
+                        "username": "fusername_{}".format(tmpuser['userid']),
                     },
                     "msg": "操作成功",
                     "time": bumper.get_milli_time(time.time()),
                 }
-                self.bumper_users.set(users)
 
             return body
 
@@ -327,15 +317,15 @@ class ConfServer:
         try:
             user_devid = request.match_info.get("devid", "")
             if not user_devid == "":
-                users = self.bumper_users.get()
+                
+                users = bumper.db_get().table('users').all()
                 for user in users:
-                    if user_devid in user.devices:
+                    if user_devid in user['devices']:
                         if (
-                            request.query["uid"] == "fuid_{}".format(user.userid)
-                            and request.query["accessToken"] in user.tokens
+                            request.query["uid"] == "fuid_{}".format(user['userid'])
+                            and request.query["accessToken"] in user['tokens']
                         ):
-                            user.revoke_token(request.query["accessToken"])
-                self.bumper_users.set(users)
+                            bumper.user_revoke_token(user['userid'],request.query["accessToken"])                            
 
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
@@ -354,16 +344,16 @@ class ConfServer:
 
             user_devid = request.match_info.get("devid", "")
             if not user_devid == "":
-                users = self.bumper_users.get()
+                users = bumper.db_get().table('users').all()
                 if len(users) > 0:
                     for user in users:
                         if (
-                            user_devid in user.devices
-                            and request.query["accessToken"] in user.tokens
+                            user_devid in user['devices']
+                            and request.query["accessToken"] in user['tokens']
                         ):
                             countrycode = request.match_info.get("country", "us")
                             tmpauthcode = "{}_{}".format(countrycode, uuid.uuid4().hex)
-                            user.add_authcode(tmpauthcode)
+                            bumper.user_add_authcode(user['userid'], tmpauthcode)                            
 
                             body = {
                                 "code": bumper.RETURN_API_SUCCESS,
@@ -374,7 +364,6 @@ class ConfServer:
                                 "msg": "操作成功",
                                 "time": bumper.get_milli_time(time.time()),
                             }
-                            self.bumper_users.set(users)
                             return web.json_response(body)
 
             body = {
@@ -552,11 +541,11 @@ class ConfServer:
                     body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
             elif todo == "loginByItToken":
 
-                users = self.bumper_users.get()
+                users = bumper.db_get().table('users').all()
                 for user in users:
                     if (
-                        postbody["userId"] == "fuid_{}".format(user.userid)
-                        and postbody["token"] in user.authcodes
+                        postbody["userId"] == "fuid_{}".format(user['userid'])
+                        and postbody["token"] in user['authcodes']
                     ):
                         body = {
                             "resource": postbody["resource"],
@@ -585,8 +574,7 @@ class ConfServer:
             confserverlog.debug(
                 "\r\n POST: {} \r\n Response: {}".format(postbody, body)
             )
-            
-            
+                        
             return web.json_response(body)
 
         except Exception as e:

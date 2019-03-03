@@ -67,37 +67,114 @@ class BumperUser(object):
         self.authcodes = []
         self.bots = []
 
-    def add_device(self, devid):
-        if not devid in self.devices:
-            self.devices.append(devid)
+    def asdict(self):
+        return {
+            "userid": self.userid,
+            "devices": self.devices,
+            "tokens": self.tokens,
+            "authcodes": self.authcodes,
+            "bots": self.bots,            
+        }        
 
-    def remove_device(self, devid):
-        if devid in self.devices:
-            self.devices.remove(devid)
+def user_add(userid):
+    newuser = BumperUser()
+    newuser.userid = userid    
+    
+    user = user_get(userid)
+    if not user:
+        bumperlog.info("Adding new user with userid: {}".format(newuser.userid))
+        user_full_upsert(newuser.asdict())
 
-    def add_token(self, token):
-        if not token in self.tokens:
-            self.tokens.append(token)
+def user_get(userid):
+    users = db_get().table('users')
+    User = Query()
+    return users.get(User.userid == userid)    
 
-    def revoke_token(self, token):
-        if token in self.tokens:
-            self.tokens.remove(token)
+def user_full_upsert(user):
+    users = db_get().table('users')
+    User = Query()        
+    users.upsert(user, User.did == user['userid'])
 
-    def add_authcode(self, authcode):
-        if not authcode in self.authcodes:
-            self.authcodes.append(authcode)
+def user_add_device(userid, devid):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userdevices = list(user['devices'])
+    if not devid in userdevices:
+        userdevices.append(devid)
+    
+    users.upsert({'devices': userdevices}, User.userid == userid)
 
-    def revoke_authcode(self, authcode):
-        if authcode in self.authcodes:
-            self.authcodes.remove(authcode)
+def user_remove_device(userid, devid):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userdevices = list(user['devices'])
+    if devid in userdevices:
+        userdevices.remove(devid)
+    
+    users.upsert({'devices': userdevices}, User.userid == userid)       
 
-    def add_bot(self, botdid):
-        if not botdid in self.bots:
-            self.bots.append(botdid)
+def user_add_bot(userid, did):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userbots = list(user['bots'])
+    if not did in userbots:
+        userbots.append(did)
+    
+    users.upsert({'bots': userbots}, User.userid == userid) 
 
-    def remove_bot(self, botdid):
-        if botdid in self.bots:
-            self.bots.remove(botdid)
+def user_remove_bot(userid, did):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userbots = list(user['bots'])
+    if did in userbots:
+        userbots.remove(did)
+    
+    users.upsert({'bots': userbots}, User.userid == userid)  
+   
+
+def user_add_token(userid, token):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    usertokens = list(user['tokens'])
+    if not token in usertokens:
+        usertokens.append(token)
+    
+    users.upsert({'tokens': usertokens}, User.userid == userid)  
+
+def user_revoke_token(userid, token):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    usertokens = list(user['tokens'])
+    if token in usertokens:
+        usertokens.remove(token)
+    
+    users.upsert({'tokens': usertokens}, User.userid == userid)          
+
+def user_add_authcode(userid, authcode):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userauthcodes = list(user['authcodes'])
+    if not authcode in userauthcodes:
+        userauthcodes.append(authcode)
+    
+    users.upsert({'authcodes': userauthcodes}, User.userid == userid)        
+
+def user_revoke_authcode(userid, authcode):
+    users = db_get().table('users')
+    User = Query()        
+    user = users.get(User.userid == userid)
+    userauthcodes = list(user['authcodes'])
+    if authcode in userauthcodes:
+        userauthcodes.remove(authcode)
+    
+    users.upsert({'authcodes': userauthcodes}, User.userid == userid)    
 
 
 class VacBotDevice(object):

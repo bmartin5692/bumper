@@ -54,17 +54,11 @@ def main():
     conf_server = bumper.ConfServer(
         conf_address_443,
         usessl=True,
-        bumper_users=bumper.bumper_users_var,
-        bumper_bots=bumper.bumper_bots_var,
-        bumper_clients=bumper.bumper_clients_var,
         helperbot=mqtt_helperbot,
     )
     conf_server_2 = bumper.ConfServer(
         conf_address_8007,
         usessl=False,
-        bumper_users=bumper.bumper_users_var,
-        bumper_bots=bumper.bumper_bots_var,
-        bumper_clients=bumper.bumper_clients_var,
         helperbot=mqtt_helperbot,
     )
 
