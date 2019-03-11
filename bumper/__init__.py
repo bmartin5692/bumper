@@ -7,6 +7,7 @@ from .xmppserver import XMPPServer
 import asyncio
 import contextvars
 import time
+from datetime import datetime, timedelta
 import platform
 import os
 import logging
@@ -22,6 +23,7 @@ server_cert = "./certs/cert.pem"
 server_key = "./certs/key.pem"
 
 use_auth = False
+token_validity_seconds = 3600 #1 hour
 
 # Logs
 bumperlog = logging.getLogger("bumper")
@@ -63,16 +65,12 @@ class BumperUser(object):
     def __init__(self, userid=""):
         self.userid = userid
         self.devices = []
-        self.tokens = []
-        self.authcodes = []
         self.bots = []
 
     def asdict(self):
         return {
             "userid": self.userid,
             "devices": self.devices,
-            "tokens": self.tokens,
-            "authcodes": self.authcodes,
             "bots": self.bots,            
         }        
 
@@ -88,7 +86,12 @@ def user_add(userid):
 def user_get(userid):
     users = db_get().table('users')
     User = Query()
-    return users.get(User.userid == userid)    
+    return users.get(User.userid == userid)
+    
+def user_by_deviceid(deviceid):
+    users = db_get().table('users')
+    User = Query()
+    return users.get(User.devices.any([deviceid]))
 
 def user_full_upsert(user):
     users = db_get().table('users')
@@ -135,47 +138,52 @@ def user_remove_bot(userid, did):
     
     users.upsert({'bots': userbots}, User.userid == userid)  
    
+def user_get_tokens(userid):
+    tokens = db_get().table('tokens')    
+    return tokens.search((Query().userid == userid))    
+
+def user_get_token(userid, token):
+    tokens = db_get().table('tokens')    
+    return tokens.get((Query().userid == userid) & (Query().token == token))        
 
 def user_add_token(userid, token):
-    users = db_get().table('users')
-    User = Query()        
-    user = users.get(User.userid == userid)
-    usertokens = list(user['tokens'])
-    if not token in usertokens:
-        usertokens.append(token)
-    
-    users.upsert({'tokens': usertokens}, User.userid == userid)  
+    tokens = db_get().table('tokens')    
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if not tmptoken:
+        tokens.insert({'userid':userid, 'token':token, 'expiration':"{}".format(datetime.now() + timedelta(seconds=token_validity_seconds))})        
+
+def user_revoke_all_tokens(userid):
+    tokens = db_get().table('tokens')
+    tsearch = tokens.search(Query().userid == userid)
+    for i in tsearch:
+        tokens.remove(doc_ids=[i.doc_id])
+
+def user_revoke_expired_tokens(userid):
+    tokens = db_get().table('tokens')
+    tsearch = tokens.search(Query().userid == userid)
+    for i in tsearch:
+        bumperlog.debug("Checking expiration of token {}: Is Current Time: {} >= Expiration: {}".format(i['token'],datetime.fromisoformat(i['expiration']), datetime.now()))
+        if datetime.now() >= datetime.fromisoformat(i['expiration']):
+            bumperlog.debug("Removing token {} due to expiration".format(i['token']))
+            tokens.remove(doc_ids=[i.doc_id])        
 
 def user_revoke_token(userid, token):
-    users = db_get().table('users')
-    User = Query()        
-    user = users.get(User.userid == userid)
-    usertokens = list(user['tokens'])
-    if token in usertokens:
-        usertokens.remove(token)
-    
-    users.upsert({'tokens': usertokens}, User.userid == userid)          
+    tokens = db_get().table('tokens')    
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:
+        tokens.remove(doc_ids=[tmptoken.doc_id])           
 
-def user_add_authcode(userid, authcode):
-    users = db_get().table('users')
-    User = Query()        
-    user = users.get(User.userid == userid)
-    userauthcodes = list(user['authcodes'])
-    if not authcode in userauthcodes:
-        userauthcodes.append(authcode)
-    
-    users.upsert({'authcodes': userauthcodes}, User.userid == userid)        
+def user_add_authcode(userid, token, authcode):
+    tokens = db_get().table('tokens')    
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:        
+        tokens.upsert({'authcode': authcode}, ((Query().userid == userid) & (Query().token == token)))
 
-def user_revoke_authcode(userid, authcode):
-    users = db_get().table('users')
-    User = Query()        
-    user = users.get(User.userid == userid)
-    userauthcodes = list(user['authcodes'])
-    if authcode in userauthcodes:
-        userauthcodes.remove(authcode)
-    
-    users.upsert({'authcodes': userauthcodes}, User.userid == userid)    
-
+def user_revoke_authcode(userid, token, authcode):
+    tokens = db_get().table('tokens')    
+    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+    if tmptoken:
+        tokens.upsert({'authcode': ''}, ((Query().userid == userid) & (Query().token == token)))
 
 class VacBotDevice(object):
     def __init__(
@@ -228,12 +236,28 @@ class VacBotClient(object):
 
 
 def check_authcode(uid, authcode):
-    users = bumper_users_var.get()
-    for user in users:
-        if uid == "fuid_{}".format(user.userid) and authcode in user.authcodes:
-            return True
+    bumperlog.debug("Checking for authcode: {}".format(authcode))
+    tokens = db_get().table('tokens')    
+    tmpauth = tokens.get(
+        (Query().authcode == authcode) & #Match authcode
+        ((Query().userid == uid.replace("fuid_","")) | (Query().userid == "fuid_{}".format(uid))) #Userid with or without fuid_
+    )       
+    if tmpauth:
+        return True
+    
+    return False    
 
-    return False
+def check_token(uid, token):
+    bumperlog.debug("Checking for token: {}".format(token))
+    tokens = db_get().table('tokens')    
+    tmpauth = tokens.get(
+        (Query().token == token) & #Match token
+        ((Query().userid == uid.replace("fuid_","")) | (Query().userid == "fuid_{}".format(uid))) #Userid with or without fuid_
+    )       
+    if tmpauth:
+        return True
+    
+    return False        
 
 
 def bot_add(sn, did, devclass, resource, company):
