@@ -89,17 +89,11 @@ def main():
 
     while True:
         try:
-            time.sleep(0.25)
-
-            # WIP: Remove clients that have disconnected
-            # remove_clients = bumper.bumper_removeclients_var.get()
-            # if len(remove_clients) > 0:
-            #     for uid in remove_clients:
-            #         if uid != "":
-            #             xmpp_server.remove_client_byuid(uid)  #Remove clients from xmpp server
-            #             remove_clients.remove(uid)
-
-            #     bumper.bumper_removeclients_var.set(remove_clients)
+            time.sleep(30)
+            bumper.revoke_expired_tokens()
+            disconnected_clients = bumper.get_disconnected_xmpp_clients()
+            for client in disconnected_clients:
+                xmpp_server.remove_client_byuid(client['userid'])            
 
         except KeyboardInterrupt:
             bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")

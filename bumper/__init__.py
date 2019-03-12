@@ -162,7 +162,6 @@ def user_revoke_expired_tokens(userid):
     tokens = db_get().table('tokens')
     tsearch = tokens.search(Query().userid == userid)
     for i in tsearch:
-        bumperlog.debug("Checking expiration of token {}: Is Current Time: {} >= Expiration: {}".format(i['token'],datetime.fromisoformat(i['expiration']), datetime.now()))
         if datetime.now() >= datetime.fromisoformat(i['expiration']):
             bumperlog.debug("Removing token {} due to expiration".format(i['token']))
             tokens.remove(doc_ids=[i.doc_id])        
@@ -234,6 +233,11 @@ class VacBotClient(object):
             "xmpp_connection": self.xmpp_connection
             }
 
+def get_disconnected_xmpp_clients():
+    clients = db_get().table('clients')
+    Client = Query()
+    return clients.search(Client.xmpp_connection == False)    
+    
 
 def check_authcode(uid, authcode):
     bumperlog.debug("Checking for authcode: {}".format(authcode))
@@ -257,7 +261,14 @@ def check_token(uid, token):
     if tmpauth:
         return True
     
-    return False        
+    return False       
+
+def revoke_expired_tokens():
+    tokens = db_get().table('tokens').all()    
+    for i in tokens:        
+        if datetime.now() >= datetime.fromisoformat(i['expiration']):
+            bumperlog.debug("Removing token {} due to expiration".format(i['token']))
+            db_get().table('tokens').remove(doc_ids=[i.doc_id])     
 
 
 def bot_add(sn, did, devclass, resource, company):

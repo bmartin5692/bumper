@@ -803,8 +803,7 @@ class Client(threading.Thread):
                         if self.log_incoming_data:
                                 xmppserverlog.debug(
                                     "Unparsed Item - {}".format(str(ET.tostring(item, encoding="utf-8").decode("utf-8")).replace("ns0:",""))
-                        )                                                     
-                        print("e")                                               
+                        )                                                                                                
                                
         except ET.ParseError as e:
             if (
