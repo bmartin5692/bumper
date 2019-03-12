@@ -13,6 +13,7 @@ import os
 import logging
 from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
+from tinydb.storages import MemoryStorage
 
 bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
 bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
@@ -24,6 +25,7 @@ server_key = "./certs/key.pem"
 
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
+db = None
 
 # Logs
 bumperlog = logging.getLogger("bumper")
@@ -41,11 +43,19 @@ xmppserverlog = logging.getLogger("xmppserver")
 # xmppserverlog.setLevel(logging.INFO)
 
 
+def __init__(self, db=None):
+    if db:
+        self.db = db
+
+
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
 
 def db_file():
+    if db:
+        return db
+
     if platform.system() == "Windows":
         return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
