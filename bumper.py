@@ -52,14 +52,10 @@ def main():
         bumper_clients=bumper.bumper_clients_var,
     )
     conf_server = bumper.ConfServer(
-        conf_address_443,
-        usessl=True,
-        helperbot=mqtt_helperbot,
+        conf_address_443, usessl=True, helperbot=mqtt_helperbot
     )
     conf_server_2 = bumper.ConfServer(
-        conf_address_8007,
-        usessl=False,
-        helperbot=mqtt_helperbot,
+        conf_address_8007, usessl=False, helperbot=mqtt_helperbot
     )
 
     # add user
@@ -93,7 +89,7 @@ def main():
             bumper.revoke_expired_tokens()
             disconnected_clients = bumper.get_disconnected_xmpp_clients()
             for client in disconnected_clients:
-                xmpp_server.remove_client_byuid(client['userid'])            
+                xmpp_server.remove_client_byuid(client["userid"])
 
         except KeyboardInterrupt:
             bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
