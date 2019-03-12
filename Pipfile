@@ -11,3 +11,7 @@ tinydb = "*"
 [dev-packages]
 black = "*"
 nose = "*"
+coverage = "*"
+
+[pipenv]
+allow_prereleases = true
