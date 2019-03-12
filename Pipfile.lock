@@ -139,6 +139,7 @@
                 "sha256:e4d6b5d6218a06f3141189d75c93876dd525a6d15f1b00ef4f274726c93719f1",
                 "sha256:f3c386fa12415bde8a0162745c4badf98fe171c6dfd67e54831f05ec88feeebb"
             ],
+            "index": "pypi",
             "version": "==5.1b5"
         },
         "six": {
