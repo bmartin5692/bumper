@@ -217,7 +217,7 @@ class Client(threading.Thread):
 
         except BrokenPipeError as e:
             xmppserverlog.error("{}".format(e))
-            self._set_state('DISCONNECT')
+            self._set_state("DISCONNECT")
 
         except ConnectionResetError as e:
             xmppserverlog.error("{}".format(e))
@@ -228,15 +228,15 @@ class Client(threading.Thread):
 
     def _disconnect(self):
         try:
-            
+
             bot = bumper.bot_get(self.uid)
             if bot:
-                bumper.bot_set_xmpp(bot['did'], False)
+                bumper.bot_set_xmpp(bot["did"], False)
 
             client = bumper.client_get(self.clientresource)
             if client:
-                bumper.client_set_xmpp(client['resource'], False)
-                        
+                bumper.client_set_xmpp(client["resource"], False)
+
             self.connection.close()
 
         except Exception as e:
@@ -285,8 +285,7 @@ class Client(threading.Thread):
 
             if xml.get("type") == "set":
                 if (
-                    "com:sf" in data
-                    and xml.get("to") == "rl.ecorobot.net"
+                    "com:sf" in data and xml.get("to") == "rl.ecorobot.net"
                 ):  # Android bind? Not sure what this does yet.
                     self.send(
                         '<iq id="{}" to="{}@{}/{}" from="rl.ecorobot.net" type="result"/>'.format(
@@ -308,55 +307,64 @@ class Client(threading.Thread):
 
             # forward
             for client in XMPPServer.clients:
-                if client.bumper_jid != self.bumper_jid and client.state == client.READY:                
-                    ctl_to = xml.get("to")                    
+                if (
+                    client.bumper_jid != self.bumper_jid
+                    and client.state == client.READY
+                ):
+                    ctl_to = xml.get("to")
                     xml.attrib["from"] = "{}".format(self.bumper_jid)
                     rxmlstring = ET.tostring(xml).decode("utf-8")
-                    #clean up string to remove namespaces added by ET
+                    # clean up string to remove namespaces added by ET
                     rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                     rxmlstring = rxmlstring.replace("ns0:", "")
                     rxmlstring = rxmlstring.replace('iq xmlns="com:ctl"', "iq")
-                    rxmlstring = rxmlstring.replace('<query','<query xmlns="com:ctl"')
-                    
+                    rxmlstring = rxmlstring.replace("<query", '<query xmlns="com:ctl"')
+
                     if client.type == self.BOT:
                         if client.uid.lower() in ctl_to.lower():
-                            xmppserverlog.info("Sending ctl to bot: {}".format(rxmlstring))
+                            xmppserverlog.info(
+                                "Sending ctl to bot: {}".format(rxmlstring)
+                            )
                             client.send(rxmlstring)
-
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
 
     def _handle_ping(self, xml, data):
         try:
-            if xml.get("to").find("@") == -1: #No to address
+            if xml.get("to").find("@") == -1:  # No to address
                 # Ping to server - respond
                 pingresp = '<iq type="result" id="{}" from="{}" />'.format(
-                        xml.get("id"), xml.get("to")
-                    )
-                #xmppserverlog.debug("Server Ping resp: {}".format(pingresp))
-                self.send(pingresp)                
+                    xml.get("id"), xml.get("to")
+                )
+                # xmppserverlog.debug("Server Ping resp: {}".format(pingresp))
+                self.send(pingresp)
 
             else:
                 pingto = xml.get("to")
                 pingfrom = self.bumper_jid
-                
+
                 xml.attrib["from"] = pingfrom
                 pingstring = ET.tostring(xml).decode("utf-8")
-                #clean up string to remove namespaces added by ET
+                # clean up string to remove namespaces added by ET
                 pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
                 pingstring = pingstring.replace("ns0:", "")
                 pingstring = pingstring.replace('iq xmlns="com:ctl"', "iq")
-                pingstring = pingstring.replace('<query','<query xmlns="com:ctl"')
+                pingstring = pingstring.replace("<query", '<query xmlns="com:ctl"')
 
                 for client in XMPPServer.clients:
-                    if client.bumper_jid != self.bumper_jid and client.state == client.READY:                    
-                        if pingto.lower() in client.bumper_jid.lower():                            
+                    if (
+                        client.bumper_jid != self.bumper_jid
+                        and client.state == client.READY
+                    ):
+                        if pingto.lower() in client.bumper_jid.lower():
                             pingsend = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
                                 xml.get("id"), pingfrom, pingto
                             )
-                            xmppserverlog.debug("ping from {} to {}".format(pingfrom, pingto))
-                            client.send(pingstring)                       
+                            xmppserverlog.debug(
+                                "ping from {} to {}".format(pingfrom, pingto)
+                            )
+                            client.send(pingstring)
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -365,62 +373,82 @@ class Client(threading.Thread):
         try:
             ctl_to = xml.get("to")
             xml.attrib["from"] = self.bumper_jid
-            if "errno='103' error='permission denied," in data: #No permissions, usually if bot was last on Ecovac network                
-                if self.type == self.BOT:                                                          
+            if (
+                "errno='103' error='permission denied," in data
+            ):  # No permissions, usually if bot was last on Ecovac network
+                if self.type == self.BOT:
                     xquery = xml.getchildren()
                     ctl = xquery[0].getchildren()
                     ctlerr = ctl[0].attrib["error"]
-                    adminuser = ctlerr.replace("permission denied, please contact ","")
-                    adminuser = adminuser.replace(" ","")
-                    if not (adminuser.startswith("fuid_") or bumper.use_auth): #if not fuid_ then its ecovacs OR ignore bumper auth
-                        #TODO: Implement auth later, should this user have access to bot?
-                        
-                        #Add user jid to bot
+                    adminuser = ctlerr.replace("permission denied, please contact ", "")
+                    adminuser = adminuser.replace(" ", "")
+                    if not (
+                        adminuser.startswith("fuid_") or bumper.use_auth
+                    ):  # if not fuid_ then its ecovacs OR ignore bumper auth
+                        # TODO: Implement auth later, should this user have access to bot?
+
+                        # Add user jid to bot
                         newuser = ctl_to.split("/")[0]
                         adduser = '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="AddUser" id="0000" jid="{}" /></query></iq>'.format(
-                                uuid.uuid4(), adminuser, self.bumper_jid, newuser)
+                            uuid.uuid4(), adminuser, self.bumper_jid, newuser
+                        )
                         xmppserverlog.debug("Add User: {}".format(adduser))
                         self.send(adduser)
-                        
-                        #Add user ACs - Manage users, settings, and clean (full access)
+
+                        # Add user ACs - Manage users, settings, and clean (full access)
                         adduseracs = '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="SetAC" id="1111" jid="{}"><acs><ac name="userman" allow="1"/><ac name="setting" allow="1"/><ac name="clean" allow="1"/></acs></ctl></query></iq>'.format(
-                                uuid.uuid4(), adminuser, self.bumper_jid, newuser)
+                            uuid.uuid4(), adminuser, self.bumper_jid, newuser
+                        )
                         xmppserverlog.debug("Add User ACs: {}".format(adduseracs))
                         self.send(adduseracs)
 
-                        #GetUserInfo - Just to confirm it set correctly                                                            
-                        self.send(          
+                        # GetUserInfo - Just to confirm it set correctly
+                        self.send(
                             '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="GetUserInfo" id="4444" /><UserInfos/></query></iq>'.format(
-                                uuid.uuid4(), adminuser, self.bumper_jid)
+                                uuid.uuid4(), adminuser, self.bumper_jid
+                            )
                         )
-                                                        
-            else:   
+
+            else:
                 rxmlstring = ET.tostring(xml).decode("utf-8")
-                #clean up string to remove namespaces added by ET
+                # clean up string to remove namespaces added by ET
                 rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
                 rxmlstring = rxmlstring.replace("ns0:", "")
                 rxmlstring = rxmlstring.replace('iq xmlns="com:ctl"', "iq")
-                rxmlstring = rxmlstring.replace('<query','<query xmlns="com:ctl"')
+                rxmlstring = rxmlstring.replace("<query", '<query xmlns="com:ctl"')
                 if self.type == self.BOT:
-                    if ctl_to == "de.ecorobot.net": #Send to all clients
-                        xmppserverlog.debug("Sending to all clients because of de: {}".format(rxmlstring))
+                    if ctl_to == "de.ecorobot.net":  # Send to all clients
+                        xmppserverlog.debug(
+                            "Sending to all clients because of de: {}".format(
+                                rxmlstring
+                            )
+                        )
                         for client in XMPPServer.clients:
-                            client.send(rxmlstring)                   
-                
-                if xml.get("to").find("@") == -1: #No to address
+                            client.send(rxmlstring)
+
+                if xml.get("to").find("@") == -1:  # No to address
                     ctl_to = xml.get("to")
                 else:
-                    ctl_to = "{}@ecouser.net".format(ctl_to.split("@")[0])                
-                
-                for client in XMPPServer.clients:
-                    if client.bumper_jid != self.bumper_jid and client.state == client.READY:
-                        if not "@" in ctl_to: #No user@, send to all clients?
-                            #TODO: Revisit later, this may be wrong
-                            client.send(rxmlstring) 
+                    ctl_to = "{}@ecouser.net".format(ctl_to.split("@")[0])
 
-                        elif client.uid.lower() in ctl_to.lower(): #If client matches TO=
-                            xmppserverlog.debug("Sending from {} to client {}: {}".format(self.uid, client.uid, rxmlstring))
-                            client.send(rxmlstring)                        
+                for client in XMPPServer.clients:
+                    if (
+                        client.bumper_jid != self.bumper_jid
+                        and client.state == client.READY
+                    ):
+                        if not "@" in ctl_to:  # No user@, send to all clients?
+                            # TODO: Revisit later, this may be wrong
+                            client.send(rxmlstring)
+
+                        elif (
+                            client.uid.lower() in ctl_to.lower()
+                        ):  # If client matches TO=
+                            xmppserverlog.debug(
+                                "Sending from {} to client {}: {}".format(
+                                    self.uid, client.uid, rxmlstring
+                                )
+                            )
+                            client.send(rxmlstring)
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -434,8 +462,8 @@ class Client(threading.Thread):
                     if data.decode("utf-8").find("jabber:client") > -1:
                         sc = data.decode("utf-8").find("to=")
                         ec = data.decode("utf-8").find(".ecorobot.net")
-                        if ec > -1:                    
-                            self.devclass = data.decode("utf-8")[sc+4:ec]
+                        if ec > -1:
+                            self.devclass = data.decode("utf-8")[sc + 4 : ec]
                         # ack jabbr:client
                         # no STARTTLS
                         self.send(
@@ -454,12 +482,14 @@ class Client(threading.Thread):
 
                     else:
                         self.send("</stream>")
-                
+
                 else:
-                    if "jabber:iq:auth" in xml.tag: # Handle iq-auth                
+                    if "jabber:iq:auth" in xml.tag:  # Handle iq-auth
                         self._handle_iq_auth(xml)
-                    elif "urn:ietf:params:xml:ns:xmpp-sasl" in xml.tag: #Handle SASL Auth
-                        self._handle_sasl_auth(xml)          
+                    elif (
+                        "urn:ietf:params:xml:ns:xmpp-sasl" in xml.tag
+                    ):  # Handle SASL Auth
+                        self._handle_sasl_auth(xml)
                     else:
                         xmppserverlog.error("Couldn't handle: {}".format(xml))
 
@@ -479,19 +509,17 @@ class Client(threading.Thread):
                             '<stream:features><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"/><session xmlns="urn:ietf:params:xml:ns:xmpp-session"/></stream:features>'
                         )
 
-                else:  # Handle init bind        
+                else:  # Handle init bind
                     if len(xml):
-                        child = self._tag_strip_uri(xml[0].tag)   
+                        child = self._tag_strip_uri(xml[0].tag)
                     else:
                         child = None
 
                     if xml.tag == "iq":
                         if child == "bind":
-                            self._handle_bind(xml)                                                
+                            self._handle_bind(xml)
                     else:
                         xmppserverlog.error("Couldn't handle: {}".format(xml))
-                    
-                            
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -575,9 +603,7 @@ class Client(threading.Thread):
         except ET.ParseError as e:
             if "no element found" in e.msg:
                 xmppserverlog.debug(
-                    "xml parse error - {} - {}".format(
-                        data.decode("utf-8"), e
-                    )
+                    "xml parse error - {} - {}".format(data.decode("utf-8"), e)
                 )
             elif "not well-formed (invalid token)" in e.msg:
                 xmppserverlog.debug(
@@ -592,9 +618,9 @@ class Client(threading.Thread):
             xmppserverlog.exception("{}".format(e))
 
     def _handle_sasl_auth(self, xml):
-        try:            
-            
-            saslauth = base64.b64decode(xml.text).decode("utf-8").split("/") 
+        try:
+
+            saslauth = base64.b64decode(xml.text).decode("utf-8").split("/")
             username = saslauth[0]
             username = saslauth[0].split("\x00")[1]
             self.uid = username
@@ -604,13 +630,13 @@ class Client(threading.Thread):
             elif len(saslauth[0].split("\x00")) > 2:
                 resource = saslauth[0].split("\x00")[2]
                 self.clientresource = resource
-            
+
             if len(saslauth) > 2:
                 authcode = saslauth[2]
 
             if not self.uid.startswith("fuid"):
                 # Need sample data to see details here
-                bumper.bot_add(self.uid, self.uid, self.devclass, "atom","eco-legacy")
+                bumper.bot_add(self.uid, self.uid, self.devclass, "atom", "eco-legacy")
                 self.type = self.BOT
                 xmppserverlog.info("bot authenticated {}".format(self.uid))
                 # Send response
@@ -654,20 +680,22 @@ class Client(threading.Thread):
         try:
             bumper_bots = self.bumper_bots.get()
             bumper_clients = self.bumper_clients.get()
-            
+
             bot = bumper.bot_get(self.uid)
             if bot:
-                bumper.bot_set_xmpp(bot['did'], True)
+                bumper.bot_set_xmpp(bot["did"], True)
 
             client = bumper.client_get(self.clientresource)
             if client:
-                bumper.client_set_xmpp(client['resource'], True)
+                bumper.client_set_xmpp(client["resource"], True)
 
             clientbindxml = xml.getchildren()
             clientresourcexml = clientbindxml[0].getchildren()
-            if self.devclass: #its a bot
-                self.name = "XMPP_Client_{}_{}".format(self.uid,self.devclass)
-                self.bumper_jid = "{}@{}.ecorobot.net/atom".format(self.uid, self.devclass)                    
+            if self.devclass:  # its a bot
+                self.name = "XMPP_Client_{}_{}".format(self.uid, self.devclass)
+                self.bumper_jid = "{}@{}.ecorobot.net/atom".format(
+                    self.uid, self.devclass
+                )
                 xmppserverlog.debug("new bot {}".format(self.uid))
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
                     xml.get("id"), self.bumper_jid
@@ -675,7 +703,9 @@ class Client(threading.Thread):
             elif len(clientresourcexml) > 0:
                 self.clientresource = clientresourcexml[0].text
                 self.name = "XMPP_Client_{}".format(self.clientresource)
-                self.bumper_jid = "{}@{}/{}".format(self.uid, XMPPServer.server_id, self.clientresource)
+                self.bumper_jid = "{}@{}/{}".format(
+                    self.uid, XMPPServer.server_id, self.clientresource
+                )
                 xmppserverlog.debug(
                     "new client {} using resource {}".format(
                         self.uid, self.clientresource
@@ -684,8 +714,8 @@ class Client(threading.Thread):
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
                     xml.get("id"), self.bumper_jid
                 )
-            else:                            
-                self.name = "XMPP_Client_{}_{}".format(self.uid,self.address)
+            else:
+                self.name = "XMPP_Client_{}_{}".format(self.uid, self.address)
                 self.bumper_jid = "{}@{}".format(self.uid, XMPPServer.server_id)
                 xmppserverlog.debug("new client {}".format(self.uid))
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
@@ -709,102 +739,119 @@ class Client(threading.Thread):
 
     def _handle_presence(self, xml):
         try:
-           
+
             if len(xml) and xml[0].tag == "status":
                 xmppserverlog.debug(
-                "bot presence {} ".format(ET.tostring(xml, encoding="utf-8"))
+                    "bot presence {} ".format(ET.tostring(xml, encoding="utf-8"))
                 )
-                #Most likely a bot, possibly hello world in text
-                
-                #Send dummy return
+                # Most likely a bot, possibly hello world in text
+
+                # Send dummy return
                 self.send(
-                    '<presence to="{}"> dummy </presence>'.format(
-                        self.bumper_jid
-                    )
+                    '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
                 )
 
-                #If it is a BOT, send extras
+                # If it is a BOT, send extras
                 if self.type == self.BOT:
-                    #get device info                    
+                    # get device info
                     self.send(
                         '<iq type="set" id="14" to="{}" from="{}"><query xmlns="com:ctl"><ctl td="GetDeviceInfo"/></query></iq>'.format(
                             self.bumper_jid, XMPPServer.server_id
                         )
-                    )                                                           
+                    )
 
-            else:  
+            else:
                 xmppserverlog.debug(
-                        "client presence - {} ".format(ET.tostring(xml, encoding="utf-8"))
-                )                              
-                
+                    "client presence - {} ".format(ET.tostring(xml, encoding="utf-8"))
+                )
+
                 if xml.get("type") == "available":
                     xmppserverlog.debug(
-                        "client presence available - {} ".format(ET.tostring(xml, encoding="utf-8"))
-                    )
-                   #Send dummy return
-                    self.send(
-                        '<presence to="{}"> dummy </presence>'.format(
-                            self.bumper_jid
+                        "client presence available - {} ".format(
+                            ET.tostring(xml, encoding="utf-8")
                         )
+                    )
+                    # Send dummy return
+                    self.send(
+                        '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
                     )
                 elif xml.get("type") == "unavailable":
                     xmppserverlog.debug(
-                        "client presence unavailable (DISCONNECT) - {} ".format(ET.tostring(xml, encoding="utf-8"))
-                    )
-                    
-                    self._set_state("DISCONNECT")
-                else:
-                    #Sometimes the android app sends these
-                    xmppserverlog.debug(
-                        "client presence (UNKNOWN) - {} ".format(ET.tostring(xml, encoding="utf-8"))
-                    )
-                    #Send dummy return
-                    self.send(
-                        '<presence to="{}"> dummy </presence>'.format(
-                            self.bumper_jid
+                        "client presence unavailable (DISCONNECT) - {} ".format(
+                            ET.tostring(xml, encoding="utf-8")
                         )
                     )
-                
+
+                    self._set_state("DISCONNECT")
+                else:
+                    # Sometimes the android app sends these
+                    xmppserverlog.debug(
+                        "client presence (UNKNOWN) - {} ".format(
+                            ET.tostring(xml, encoding="utf-8")
+                        )
+                    )
+                    # Send dummy return
+                    self.send(
+                        '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
+                    )
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
 
-    def _parse_data(self, data):        
+    def _parse_data(self, data):
 
-    
-        if data.decode("utf-8").startswith("<?xml"): #Strip <?xml and add artificial root 
-            newdata = re.sub(r"(<\?xml[^>]+\?>)", r"<root>",data.decode("utf-8")) + "</root>"            
-            
+        if data.decode("utf-8").startswith(
+            "<?xml"
+        ):  # Strip <?xml and add artificial root
+            newdata = (
+                re.sub(r"(<\?xml[^>]+\?>)", r"<root>", data.decode("utf-8")) + "</root>"
+            )
+
         else:
-            newdata = "<root>{}</root>".format(data.decode("utf-8")) #Add artificial root                                                                                                                          
-        
-        try:            
+            newdata = "<root>{}</root>".format(
+                data.decode("utf-8")
+            )  # Add artificial root
+
+        try:
             root = ET.fromstring(newdata)
             for item in root.iter():
                 if item.tag != "root":
                     if item.tag == "iq":
                         if self.log_incoming_data:
                             xmppserverlog.debug(
-                                "from {} - {}".format(self.address, str(ET.tostring(item, encoding="utf-8").decode("utf-8")).replace("ns0:",""))
-                            ) 
+                                "from {} - {}".format(
+                                    self.address,
+                                    str(
+                                        ET.tostring(item, encoding="utf-8").decode(
+                                            "utf-8"
+                                        )
+                                    ).replace("ns0:", ""),
+                                )
+                            )
                         self._handle_iq(item, newdata)
                         item.clear()
 
                     elif "auth" in item.tag:
-                        if "urn:ietf:params:xml:ns:xmpp-sasl" in item.tag: #SASL Auth                            
+                        if "urn:ietf:params:xml:ns:xmpp-sasl" in item.tag:  # SASL Auth
                             self._handle_sasl_auth(item)
                             item.clear()
 
                     elif "presence" in item.tag:
-                        self._handle_presence(item)   
+                        self._handle_presence(item)
                         item.clear()
 
-                    else:                    
+                    else:
                         if self.log_incoming_data:
-                                xmppserverlog.debug(
-                                    "Unparsed Item - {}".format(str(ET.tostring(item, encoding="utf-8").decode("utf-8")).replace("ns0:",""))
-                        )                                                                                                
-                               
+                            xmppserverlog.debug(
+                                "Unparsed Item - {}".format(
+                                    str(
+                                        ET.tostring(item, encoding="utf-8").decode(
+                                            "utf-8"
+                                        )
+                                    ).replace("ns0:", "")
+                                )
+                            )
+
         except ET.ParseError as e:
             if (
                 "no element found" in e.msg
@@ -822,14 +869,12 @@ class Client(threading.Thread):
             elif "not well-formed (invalid token)" in e.msg:
                 # If a lone </stream:stream> - client is signalling end of session/disconnect
                 if not "</stream:stream>" in newdata:
-                    xmppserverlog.error(
-                        "xml parse error - {} - {}".format(newdata, e)
-                    )
+                    xmppserverlog.error("xml parse error - {} - {}".format(newdata, e))
                 else:
                     self.send("</stream:stream>")  # Close stream
-    
+
             else:
-                if "<stream:stream" in newdata: #Handle start stream and connect
+                if "<stream:stream" in newdata:  # Handle start stream and connect
                     if self.state == self.CONNECT or self.state == self.INIT:
                         xmppserverlog.debug(
                             "Handling connect data - {}".format(newdata)
@@ -838,12 +883,11 @@ class Client(threading.Thread):
                 else:
                     if not "</stream:stream>" in newdata:
                         xmppserverlog.error(
-                        "xml parse error - {} - {}".format(newdata, e)
-                    )
-                    else:                        
+                            "xml parse error - {} - {}".format(newdata, e)
+                        )
+                    else:
                         self.send("</stream:stream>")  # Close stream
                         self._set_state("DISCONNECT")
-                   
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -862,21 +906,21 @@ class Client(threading.Thread):
                     self._handle_session(xml)
                 elif child == "ping":
                     self._handle_ping(xml, data)
-                elif child == "query":                    
-                    if self.type == self.BOT:  
+                elif child == "query":
+                    if self.type == self.BOT:
                         self._handle_result(xml, data)
                     else:
                         self._handle_ctl(xml, data)
                 elif xml.get("type") == "result":
-                    if self.type == self.BOT:  
-                        self._handle_result(xml, data)       
+                    if self.type == self.BOT:
+                        self._handle_result(xml, data)
                     else:
-                        self._handle_result(xml, data)       
-                elif xml.get("type") == "set":                                 
-                    if self.type == self.BOT:  
-                        self._handle_result(xml, data)       
+                        self._handle_result(xml, data)
+                elif xml.get("type") == "set":
+                    if self.type == self.BOT:
+                        self._handle_result(xml, data)
                     else:
-                        self._handle_result(xml, data)                                                       
+                        self._handle_result(xml, data)
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -889,8 +933,8 @@ class Client(threading.Thread):
             time.sleep(0.1)
             if not self.connection._closed:
                 try:
-                    data = self.connection.recv(4096)            
-                    if data != b"":                
+                    data = self.connection.recv(4096)
+                    if data != b"":
                         self._parse_data(data)
                 except ConnectionResetError as e:
                     xmppserverlog.error("{}".format(e))
@@ -899,5 +943,3 @@ class Client(threading.Thread):
                 except Exception as e:
                     xmppserverlog.exception("{}".format(e))
 
-            
-                

@@ -333,7 +333,11 @@ class BumperMQTTServer_Plugin:
                 ):
                     tmpbotdetail = str(didsplit[1]).split("/")
                     bumper.bot_add(
-                        username, didsplit[0], tmpbotdetail[0], tmpbotdetail[1], "eco-ng"
+                        username,
+                        didsplit[0],
+                        tmpbotdetail[0],
+                        tmpbotdetail[1],
+                        "eco-ng",
                     )
                     mqttserverlog.debug(
                         "new bot authenticated SN: {} DID: {}".format(
@@ -379,14 +383,14 @@ class BumperMQTTServer_Plugin:
 
             bot = bumper.bot_get(didsplit[0])
             if bot:
-                bumper.bot_set_mqtt(bot['did'], True)
+                bumper.bot_set_mqtt(bot["did"], True)
                 return
 
             clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
-                bumper.client_set_mqtt(client['resource'], True)
+                bumper.client_set_mqtt(client["resource"], True)
                 return
 
         except Exception as e:
@@ -398,13 +402,13 @@ class BumperMQTTServer_Plugin:
 
             bot = bumper.bot_get(didsplit[0])
             if bot:
-                bumper.bot_set_mqtt(bot['did'], False)
+                bumper.bot_set_mqtt(bot["did"], False)
 
             clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
-                bumper.client_set_mqtt(client['resource'], False)
+                bumper.client_set_mqtt(client["resource"], False)
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
