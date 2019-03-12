@@ -228,22 +228,15 @@ class Client(threading.Thread):
 
     def _disconnect(self):
         try:
-            bumper_bots = self.bumper_bots.get()
-            bumper_clients = self.bumper_clients.get()
-            for bot in bumper_bots:
-                if self.uid == bot.did:
-                    bot.xmpp_connection = False
-                    # xmppserverlog.info("bot disconnected {}".format(bot.did))
+            
+            bot = bumper.bot_get(self.uid)
+            if bot:
+                bumper.bot_set_xmpp(bot['did'], False)
 
-            self.bumper_bots.set(bumper_bots)
-
-            for client in bumper_clients:
-                if self.uid == client.userid and client.userid != "helper1":
-                    client.xmpp_connection = False
-                    # xmppserverlog.info("client disconnected {}".format(client.userid))
-
-            self.bumper_clients.set(bumper_clients)
-            # xmppserverlog.debug('client {} with resource {} disconnecting'.format(self.address, self.clientresource))
+            client = bumper.client_get(self.clientresource)
+            if client:
+                bumper.client_set_xmpp(client['resource'], False)
+                        
             self.connection.close()
 
         except Exception as e:
@@ -545,7 +538,7 @@ class Client(threading.Thread):
                 if not self.uid.startswith("fuid"):
 
                     # Need sample data to see details here
-                    bumper.add_bot("", self.uid, "", resource)
+                    bumper.bot_add("", self.uid, "", resource)
                     xmppserverlog.info("bot authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
@@ -562,7 +555,7 @@ class Client(threading.Thread):
                         auth = True
 
                     if auth:
-                        bumper.add_client(self.uid, "bumper", self.clientresource)
+                        bumper.client_add(self.uid, "bumper", self.clientresource)
                         xmppserverlog.debug("client authenticated {}".format(self.uid))
 
                         # Client authenticated, move to next state
@@ -617,7 +610,7 @@ class Client(threading.Thread):
 
             if not self.uid.startswith("fuid"):
                 # Need sample data to see details here
-                bumper.add_bot(self.uid, self.uid, self.devclass, "atom","eco-legacy")
+                bumper.bot_add(self.uid, self.uid, self.devclass, "atom","eco-legacy")
                 self.type = self.BOT
                 xmppserverlog.info("bot authenticated {}".format(self.uid))
                 # Send response
@@ -637,7 +630,7 @@ class Client(threading.Thread):
 
                 if auth:
                     self.type = self.CONTROLLER
-                    bumper.add_client(self.uid, "bumper", self.clientresource)
+                    bumper.client_add(self.uid, "bumper", self.clientresource)
                     xmppserverlog.debug("client authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
@@ -661,18 +654,14 @@ class Client(threading.Thread):
         try:
             bumper_bots = self.bumper_bots.get()
             bumper_clients = self.bumper_clients.get()
+            
+            bot = bumper.bot_get(self.uid)
+            if bot:
+                bumper.bot_set_xmpp(bot['did'], True)
 
-            for bot in bumper_bots:
-                if self.uid == bot.did:
-                    bot.xmpp_connection = True
-                    # xmppserverlog.info("bot connected {}".format(bot.did))
-                    self.bumper_bots.set(bumper_bots)
-
-            for client in bumper_clients:
-                if self.uid == client.userid:
-                    client.xmpp_connection = True
-                    # xmppserverlog.info("client connected {}".format(client.userid))
-                    self.bumper_clients.set(bumper_clients)
+            client = bumper.client_get(self.clientresource)
+            if client:
+                bumper.client_set_xmpp(client['resource'], True)
 
             clientbindxml = xml.getchildren()
             clientresourcexml = clientbindxml[0].getchildren()
@@ -814,8 +803,7 @@ class Client(threading.Thread):
                         if self.log_incoming_data:
                                 xmppserverlog.debug(
                                     "Unparsed Item - {}".format(str(ET.tostring(item, encoding="utf-8").decode("utf-8")).replace("ns0:",""))
-                        )                                                     
-                        print("e")                                               
+                        )                                                                                                
                                
         except ET.ParseError as e:
             if (

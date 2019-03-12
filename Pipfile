@@ -6,6 +6,6 @@ name = "pypi"
 [packages]
 hbmqtt = "*"
 aiohttp = "*"
-black = "*"
+tinydb = "*"
 
 [dev-packages]

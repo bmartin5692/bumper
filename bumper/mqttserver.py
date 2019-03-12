@@ -332,7 +332,7 @@ class BumperMQTTServer_Plugin:
                     or str(didsplit[0]).startswith("helper")
                 ):
                     tmpbotdetail = str(didsplit[1]).split("/")
-                    bumper.add_bot(
+                    bumper.bot_add(
                         username, didsplit[0], tmpbotdetail[0], tmpbotdetail[1], "eco-ng"
                     )
                     mqttserverlog.debug(
@@ -358,7 +358,7 @@ class BumperMQTTServer_Plugin:
                             auth = True
 
                         if auth:
-                            bumper.add_client(userid, realm, resource)
+                            bumper.client_add(userid, realm, resource)
                             mqttserverlog.debug(
                                 "client authenticated {}".format(userid)
                             )
@@ -375,44 +375,36 @@ class BumperMQTTServer_Plugin:
 
     async def on_broker_client_connected(self, client_id):
         try:
-            bumper_users = self.bumper_config["bumper_users"].get()
-            bumper_bots = self.bumper_config["bumper_bots"].get()
-            bumper_clients = self.bumper_config["bumper_clients"].get()
             didsplit = str(client_id).split("@")
 
-            for bot in bumper_bots:
-                if didsplit[0] == bot.did:
-                    bot.mqtt_connection = True
-                    mqttserverlog.debug("bot connected {}".format(bot.did))
-                    self.bumper_config["bumper_bots"].set(bumper_bots)
+            bot = bumper.bot_get(didsplit[0])
+            if bot:
+                bumper.bot_set_mqtt(bot['did'], True)
+                return
 
-            for client in bumper_clients:
-                if didsplit[0] == client.userid and client.userid != "helper1":
-                    client.mqtt_connection = True
-                    # mqttserverlog.info("client connected {}".format(client.userid))
-                    self.bumper_config["bumper_clients"].set(bumper_clients)
+            clientuserid = didsplit[0]
+            clientresource = didsplit[1].split("/")[1]
+            client = bumper.client_get(clientresource)
+            if client:
+                bumper.client_set_mqtt(client['resource'], True)
+                return
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
     async def on_broker_client_disconnected(self, client_id):
         try:
-            bumper_users = self.bumper_config["bumper_users"].get()
-            bumper_bots = self.bumper_config["bumper_bots"].get()
-            bumper_clients = self.bumper_config["bumper_clients"].get()
             didsplit = str(client_id).split("@")
 
-            for bot in bumper_bots:
-                if didsplit[0] == bot.did:
-                    bot.mqtt_connection = False
-                    mqttserverlog.debug("bot disconnected {}".format(bot.did))
-                    self.bumper_config["bumper_bots"].set(bumper_bots)
+            bot = bumper.bot_get(didsplit[0])
+            if bot:
+                bumper.bot_set_mqtt(bot['did'], False)
 
-            for client in bumper_clients:
-                if didsplit[0] == client.userid and client.userid != "helper1":
-                    client.mqtt_connection = False
-                    # mqttserverlog.info("client disconnected {}".format(client.userid))
-                    self.bumper_config["bumper_clients"].set(bumper_clients)
+            clientuserid = didsplit[0]
+            clientresource = didsplit[1].split("/")[1]
+            client = bumper.client_get(clientresource)
+            if client:
+                bumper.client_set_mqtt(client['resource'], False)
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
