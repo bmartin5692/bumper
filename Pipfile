@@ -9,3 +9,5 @@ aiohttp = "*"
 tinydb = "*"
 
 [dev-packages]
+black = "*"
+nose = "*"
