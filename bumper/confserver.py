@@ -42,6 +42,7 @@ class ConfServer:
         self.usessl = usessl
         self.address = address
         self.confthread = None
+        self.app = None
 
     def run(self, run_async=False):
         try:
@@ -72,62 +73,61 @@ class ConfServer:
             loop = asyncio.new_event_loop()
 
         try:
+            self.confserver_app()
             loop.run_until_complete(self.start_server())
             loop.run_forever()
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
+    def confserver_app(self):
+        self.app = web.Application()
+
+        self.app.add_routes(
+            [
+                web.get("", self.handle_base),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
+                    self.handle_login,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
+                    self.handle_login,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
+                    self.handle_logout,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
+                    self.handle_getAuthCode,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
+                    self.handle_checkAgreement,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
+                    self.handle_checkVersion,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
+                    self.handle_homePageAlert,
+                ),
+                web.post("/api/users/user.do", self.handle_usersapi),
+                web.get("/api/users/user.do", self.handle_usersapi),
+                web.post(
+                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
+                ),
+                web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
+                web.post("/lookup.do", self.handle_lookup),
+            ]
+        )
+        # Direct register from app:
+        # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
+
     async def start_server(self):
         try:
-            app = web.Application()
-
-            app.add_routes(
-                [
-                    web.get("", self.handle_base),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
-                        self.handle_login,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
-                        self.handle_login,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
-                        self.handle_logout,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
-                        self.handle_getAuthCode,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
-                        self.handle_checkAgreement,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
-                        self.handle_checkVersion,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
-                        self.handle_homePageAlert,
-                    ),
-                    web.post("/api/users/user.do", self.handle_usersapi),
-                    web.get("/api/users/user.do", self.handle_usersapi),
-                    web.post(
-                        "/api/pim/product/getProductIotMap",
-                        self.handle_getProductIotMap,
-                    ),
-                    web.post(
-                        "/api/iot/devmanager.do", self.handle_devmanager_botcommand
-                    ),
-                    web.post("/lookup.do", self.handle_lookup),
-                ]
-            )
-            # Direct register from app:
-            # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
-
-            runner = web.AppRunner(app)
+            runner = web.AppRunner(self.app)
             await runner.setup()
 
             if self.usessl:
@@ -200,7 +200,9 @@ class ConfServer:
                                 "username": "fusername_{}".format(user["userid"]),
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                            "time": bumper.get_milli_time(
+                                datetime.utcnow().timestamp()
+                            ),
                         }
                         return web.json_response(body)
 
@@ -208,7 +210,9 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                    "time": bumper.get_milli_time(
+                        datetime.utcnow().timestamp()
+                    ),
                 }
 
                 return web.json_response(body)
@@ -233,7 +237,7 @@ class ConfServer:
                     "username": "fusername_{}".format(user["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -242,7 +246,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -276,7 +280,7 @@ class ConfServer:
 
             if "checkLogin" in request.path:  # If request was to check a token do so
                 checkToken = self.check_token(
-                    countrycode, user, request.query["accessToken"]
+                    countrycode, tmpuser, request.query["accessToken"]
                 )
                 isGood = json.loads(checkToken.text)
                 if isGood["code"] == "0000":
@@ -295,7 +299,7 @@ class ConfServer:
                     "username": "fusername_{}".format(tmpuser["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return body
@@ -319,7 +323,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": None,
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -355,7 +359,9 @@ class ConfServer:
                                 "ecovacsUid": request.query["uid"],
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                            "time": bumper.get_milli_time(
+                                datetime.utcnow().timestamp()
+                            ),
                         }
                         return web.json_response(body)
 
@@ -363,7 +369,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -385,7 +391,7 @@ class ConfServer:
                     "v": None,
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -399,7 +405,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": [],
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -421,10 +427,12 @@ class ConfServer:
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                    "serverTime": bumper.get_milli_time(
+                        datetime.utcnow().timestamp()
+                    ),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)

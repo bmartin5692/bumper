@@ -66,9 +66,9 @@ def db_get():
     db = TinyDB(db_file())
 
     # Will create the tables if they don't exist
-    users_table = db.table("users")
-    clients_table = db.table("clients")
-    bots_table = db.table("bots")
+    users_table = db.table("users", cache_size=0)
+    clients_table = db.table("clients", cache_size=0)
+    bots_table = db.table("bots", cache_size=0)
 
     return db
 
@@ -95,7 +95,7 @@ def user_add(userid):
 
 def user_get(userid):
     users = db_get().table("users")
-    User = Query()
+    User = Query()    
     return users.get(User.userid == userid)
 
 
@@ -169,6 +169,7 @@ def user_add_token(userid, token):
     tokens = db_get().table("tokens")
     tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
     if not tmptoken:
+        bumperlog.debug("Adding token {} for userid {}".format(token, userid))
         tokens.insert(
             {
                 "userid": userid,
