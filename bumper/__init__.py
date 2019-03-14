@@ -43,11 +43,6 @@ xmppserverlog = logging.getLogger("xmppserver")
 # xmppserverlog.setLevel(logging.INFO)
 
 
-def __init__(self, db=None):
-    if db:
-        self.db = db
-
-
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
@@ -55,11 +50,15 @@ def get_milli_time(timetoconvert):
 def db_file():
     if db:
         return db
+    
+    return os_db_path()
 
+
+def os_db_path():
     if platform.system() == "Windows":
         return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
-        return os.path.expanduser("~/.config/bumper.db")
+        return os.path.expanduser("~/.config/bumper.db")    
 
 
 def db_get():

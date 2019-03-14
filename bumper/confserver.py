@@ -200,7 +200,7 @@ class ConfServer:
                                 "username": "fusername_{}".format(user["userid"]),
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(time.time()),
+                            "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
                         }
                         return web.json_response(body)
 
@@ -208,7 +208,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(time.time()),
+                    "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -233,7 +233,7 @@ class ConfServer:
                     "username": "fusername_{}".format(user["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -242,7 +242,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -295,7 +295,7 @@ class ConfServer:
                     "username": "fusername_{}".format(tmpuser["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return body
@@ -319,7 +319,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": None,
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -355,7 +355,7 @@ class ConfServer:
                                 "ecovacsUid": request.query["uid"],
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(time.time()),
+                            "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
                         }
                         return web.json_response(body)
 
@@ -363,7 +363,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -385,7 +385,7 @@ class ConfServer:
                     "v": None,
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -399,7 +399,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": [],
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -421,10 +421,10 @@ class ConfServer:
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.get_milli_time(time.time()),
+                    "serverTime": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)

@@ -13,6 +13,7 @@ pyyaml = ">=4.2b1"
 black = "*"
 nose = "*"
 coverage = "*"
+mock = "*"
 
 [pipenv]
 allow_prereleases = true
