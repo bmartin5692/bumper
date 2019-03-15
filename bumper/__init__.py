@@ -50,7 +50,7 @@ def get_milli_time(timetoconvert):
 def db_file():
     if db:
         return db
-    
+
     return os_db_path()
 
 
@@ -58,7 +58,7 @@ def os_db_path():
     if platform.system() == "Windows":
         return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
-        return os.path.expanduser("~/.config/bumper.db")    
+        return os.path.expanduser("~/.config/bumper.db")
 
 
 def db_get():
@@ -95,7 +95,7 @@ def user_add(userid):
 
 def user_get(userid):
     users = db_get().table("users")
-    User = Query()    
+    User = Query()
     return users.get(User.userid == userid)
 
 

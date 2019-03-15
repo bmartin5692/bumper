@@ -210,9 +210,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(
-                        datetime.utcnow().timestamp()
-                    ),
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -427,9 +425,7 @@ class ConfServer:
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.get_milli_time(
-                        datetime.utcnow().timestamp()
-                    ),
+                    "serverTime": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 },
                 "msg": "操作成功",
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -519,65 +515,70 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_usersapi(self, request):
-        try:
+        if not request.method == "GET":  # Skip GET for now
+            try:
 
-            body = {}
-            postbody = {}
-            if request.content_type == "application/x-www-form-urlencoded":
-                postbody = await request.post()
+                body = {}
+                postbody = {}
+                if request.content_type == "application/x-www-form-urlencoded":
+                    postbody = await request.post()
 
-            else:
-                postbody = json.loads(await request.text())
+                else:
+                    postbody = json.loads(await request.text())
 
-            todo = postbody["todo"]
-            if todo == "FindBest":
-                service = postbody["service"]
-                if service == "EcoMsgNew":
+                todo = postbody["todo"]
+                if todo == "FindBest":
+                    service = postbody["service"]
+                    if service == "EcoMsgNew":
+                        body = {
+                            "result": "ok",
+                            "ip": socket.gethostbyname(socket.gethostname()),
+                            "port": 5223,
+                        }
+                    elif service == "EcoUpdate":
+                        body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
+
+                elif todo == "loginByItToken":
+                    if bumper.check_authcode(postbody["userId"], postbody["token"]):
+                        body = {
+                            "resource": postbody["resource"],
+                            "result": "ok",
+                            "todo": "result",
+                            "token": postbody["token"],
+                            "userId": postbody["userId"],
+                        }
+
+                elif todo == "GetDeviceList":
                     body = {
-                        "result": "ok",
-                        "ip": socket.gethostbyname(socket.gethostname()),
-                        "port": 5223,
-                    }
-                elif service == "EcoUpdate":
-                    body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
-
-            elif todo == "loginByItToken":
-                if bumper.check_authcode(postbody["userId"], postbody["token"]):
-                    body = {
-                        "resource": postbody["resource"],
+                        "devices": bumper.db_get().table("bots").all(),
                         "result": "ok",
                         "todo": "result",
-                        "token": postbody["token"],
-                        "userId": postbody["userId"],
                     }
 
-            elif todo == "GetDeviceList":
-                body = {
-                    "devices": bumper.db_get().table("bots").all(),
-                    "result": "ok",
-                    "todo": "result",
-                }
+                elif todo == "SetDeviceNick":
+                    bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "SetDeviceNick":
-                bumper.bot_set_nick(postbody["did"], postbody["nick"])
-                body = {"result": "ok", "todo": "result"}
+                elif todo == "AddOneDevice":
+                    bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "AddOneDevice":
-                bumper.bot_set_nick(postbody["did"], postbody["nick"])
-                body = {"result": "ok", "todo": "result"}
+                elif todo == "DeleteOneDevice":
+                    bumper.bot_remove(postbody["did"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "DeleteOneDevice":
-                bumper.bot_remove(postbody["did"])
-                body = {"result": "ok", "todo": "result"}
+                confserverlog.debug(
+                    "\r\n POST: {} \r\n Response: {}".format(postbody, body)
+                )
 
-            confserverlog.debug(
-                "\r\n POST: {} \r\n Response: {}".format(postbody, body)
-            )
+                return web.json_response(body)
 
-            return web.json_response(body)
+            except Exception as e:
+                confserverlog.exception("{}".format(e))
 
-        except Exception as e:
-            confserverlog.exception("{}".format(e))
+        # Return fail for GET
+        body = {"result": "fail", "todo": "result"}
+        return web.json_response(body)
 
     async def handle_lookup(self, request):
         try:
