@@ -339,6 +339,7 @@ class BumperMQTTServer_Plugin:
                         tmpbotdetail[1],
                         "eco-ng",
                     )
+                    
                     mqttserverlog.debug(
                         "new bot authenticated SN: {} DID: {}".format(
                             username, didsplit[0]
@@ -372,7 +373,7 @@ class BumperMQTTServer_Plugin:
                             authenticated = False
 
             except Exception as e:
-                mqttserverlog.exception("{}".format(e))
+                mqttserverlog.exception("Session: {} - {}".format((kwargs.get("session", None)),e))
                 authenticated = False
 
         return authenticated
