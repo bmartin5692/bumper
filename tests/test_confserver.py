@@ -8,10 +8,17 @@ import tinydb
 from aiohttp.test_utils import TestClient, TestServer, loop_context
 from aiohttp import request
 
-confserver = bumper.ConfServer("127.0.0.1:11111", False, None)
+confserver = bumper.ConfServer("127.0.0.1:11111", False, mock.MagicMock)
 confserver.confserver_app()
 app = confserver.app
 
+def async_return(result):
+    f = asyncio.Future()
+    f.set_result(result)
+    return f    
+
+def test_disconnect():
+    confserver.disconnect()
 
 def test_base():
     if os.path.exists("tests/tmp.db"):
@@ -499,3 +506,61 @@ def test_postLookup():
         client.close()
     )  # Close test server after all tests are done
 
+def test_devmgr():
+    if os.path.exists("tests/tmp.db"):
+        os.remove("tests/tmp.db")  # Remove existing db
+    bumper.db = "tests/tmp.db"  # Set db location for testing
+    loop = asyncio.get_event_loop()
+    client = TestClient(TestServer(app), loop=loop)
+    loop.run_until_complete(client.start_server())
+    root = "http://{}".format(confserver.address)
+
+    async def test_devmanager(postbody=None, command=False):
+        resp = await client.post("/api/iot/devmanager.do", json=postbody)
+
+        assert resp.status == 200
+        text = await resp.text()
+        jsonresp = json.loads(text)
+        if jsonresp:
+            if not command:
+                assert jsonresp["ret"] == "ok"
+            else:
+                if "ret" in jsonresp:
+                    if jsonresp["ret"] == "ok":
+                        assert jsonresp["resp"]
+                    else:
+                        assert jsonresp["errno"]                
+        else:
+            assert jsonresp
+
+    # Test PollSCResult
+    postbody = {"td": "PollSCResult"}
+    # Test
+    loop.run_until_complete(test_devmanager(postbody, command=False))
+
+    # Test BotCommand
+    bumper.bot_add("sn_1234", "did_1234", "dev_1234", "res_1234", "eco-ng")
+    bumper.bot_set_mqtt("did_1234", True)
+    postbody = {"toId": "did_1234"}
+    
+    # Test return get status
+    command_getstatus_resp = { "id": "resp_1234", "resp": "<ctl ret='ok' status='idle'/>", "ret": "ok" }
+    confserver.helperbot.send_command = mock.MagicMock(return_value=async_return(command_getstatus_resp))    
+    # Test    
+    loop.run_until_complete(test_devmanager(postbody, command=True))
+
+    # Test return fail timeout
+    command_timeout_resp = {"id": "resp_1234", "errno": "timeout", "ret": "fail"}
+    confserver.helperbot.send_command = mock.MagicMock(return_value=async_return(command_timeout_resp))    
+    # Test    
+    loop.run_until_complete(test_devmanager(postbody, command=True))
+
+    # Set bot not on mqtt
+    bumper.bot_set_mqtt("did_1234", False)
+    confserver.helperbot.send_command = mock.MagicMock(return_value=async_return(command_getstatus_resp))    
+    # Test    
+    loop.run_until_complete(test_devmanager(postbody, command=True))
+
+    loop.run_until_complete(
+        client.close()
+    )  # Close test server after all tests are done
