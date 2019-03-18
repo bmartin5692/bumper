@@ -66,9 +66,10 @@ def db_get():
     db = TinyDB(db_file())
 
     # Will create the tables if they don't exist
-    users_table = db.table("users", cache_size=0)
-    clients_table = db.table("clients", cache_size=0)
-    bots_table = db.table("bots", cache_size=0)
+    db.table("users", cache_size=0)
+    db.table("clients", cache_size=0)
+    db.table("bots", cache_size=0)
+    db.table("tokens", cache_size=0)
 
     return db
 

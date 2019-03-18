@@ -36,9 +36,7 @@ class MQTTHelperBot:
 
     def __init__(
         self,
-        address,
-        bumper_bots=contextvars.ContextVar,
-        bumper_clients=contextvars.ContextVar,
+        address
     ):
         self.address = address
         self.client_id = "helper1@bumper/helper1"
@@ -56,7 +54,7 @@ class MQTTHelperBot:
             self.helperthread.start()
 
         else:
-            self.run_helperbot()
+            self.run_helperbot(asyncio.get_event_loop())
 
     def run_helperbot(self, loop):
         logging.info("Starting MQTT HelperBot")
@@ -176,10 +174,7 @@ class MQTTHelperBot:
 
 
 class MQTTServer:
-    default_config = {}
-    bumper_users = []
-    bumper_clients = []
-    bumper_bots = []
+    default_config = {}    
 
     async def broker_coro(self):
         try:
@@ -198,27 +193,13 @@ class MQTTServer:
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
             exit(1)
-
-    async def active_bot_listing(self):
-        try:
-            while True:
-                await asyncio.sleep(5)
-                mqttserverlog.debug("connected bots - %s" % self.bumper_bots.get())
-
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
+   
 
     def __init__(
         self,
-        address,
-        bumper_users=contextvars.ContextVar,
-        bumper_bots=contextvars.ContextVar,
-        bumper_clients=contextvars.ContextVar,
+        address
     ):
-        try:
-            self.bumper_users = bumper_users
-            self.bumper_bots = bumper_bots
-            self.bumper_clients = bumper_clients
+        try:           
             self.mqttserverthread = None
             self.address = address
 
@@ -249,12 +230,7 @@ class MQTTServer:
                     ),
                     "plugins": ["bumper"],  # No plugins == no auth
                 },
-                "topic-check": {"enabled": False},
-                "bumper": {
-                    "bumper_users": self.bumper_users,
-                    "bumper_bots": self.bumper_bots,
-                    "bumper_clients": self.bumper_clients,
-                },
+                "topic-check": {"enabled": False},               
             }
 
         except Exception as e:
@@ -271,7 +247,7 @@ class MQTTServer:
             self.mqttserverthread.start()
 
         else:
-            self.run_server()
+            self.run_server(asyncio.get_event_loop())
 
     def run_server(self, loop):
 
@@ -291,7 +267,6 @@ class BumperMQTTServer_Plugin:
     def __init__(self, context):
         self.context = context
         try:
-            self.bumper_config = self.context.config["bumper"]
             self.auth_config = self.context.config["auth"]
 
         except KeyError:
@@ -317,9 +292,6 @@ class BumperMQTTServer_Plugin:
             self.context.logger.debug("Authentication success: config allows anonymous")
         else:
             try:
-                bumper_users = self.bumper_config["bumper_users"].get()
-                bumper_bots = self.bumper_config["bumper_bots"].get()
-                bumper_clients = self.bumper_config["bumper_clients"].get()
                 session = kwargs.get("session", None)
                 username = session.username
                 password = session.password
@@ -387,7 +359,7 @@ class BumperMQTTServer_Plugin:
                 bumper.bot_set_mqtt(bot["did"], True)
                 return
 
-            clientuserid = didsplit[0]
+            #clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
@@ -405,7 +377,7 @@ class BumperMQTTServer_Plugin:
             if bot:
                 bumper.bot_set_mqtt(bot["did"], False)
 
-            clientuserid = didsplit[0]
+            #clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
