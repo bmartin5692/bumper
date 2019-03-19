@@ -43,11 +43,6 @@ xmppserverlog = logging.getLogger("xmppserver")
 # xmppserverlog.setLevel(logging.INFO)
 
 
-def __init__(self, db=None):
-    if db:
-        self.db = db
-
-
 def get_milli_time(timetoconvert):
     return int(round(timetoconvert * 1000))
 
@@ -56,6 +51,10 @@ def db_file():
     if db:
         return db
 
+    return os_db_path()
+
+
+def os_db_path():
     if platform.system() == "Windows":
         return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
@@ -67,9 +66,9 @@ def db_get():
     db = TinyDB(db_file())
 
     # Will create the tables if they don't exist
-    users_table = db.table("users")
-    clients_table = db.table("clients")
-    bots_table = db.table("bots")
+    users_table = db.table("users", cache_size=0)
+    clients_table = db.table("clients", cache_size=0)
+    bots_table = db.table("bots", cache_size=0)
 
     return db
 
@@ -170,6 +169,7 @@ def user_add_token(userid, token):
     tokens = db_get().table("tokens")
     tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
     if not tmptoken:
+        bumperlog.debug("Adding token {} for userid {}".format(token, userid))
         tokens.insert(
             {
                 "userid": userid,

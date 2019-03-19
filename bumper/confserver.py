@@ -42,6 +42,7 @@ class ConfServer:
         self.usessl = usessl
         self.address = address
         self.confthread = None
+        self.app = None
 
     def run(self, run_async=False):
         try:
@@ -72,62 +73,61 @@ class ConfServer:
             loop = asyncio.new_event_loop()
 
         try:
+            self.confserver_app()
             loop.run_until_complete(self.start_server())
             loop.run_forever()
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
+    def confserver_app(self):
+        self.app = web.Application()
+
+        self.app.add_routes(
+            [
+                web.get("", self.handle_base),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
+                    self.handle_login,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
+                    self.handle_login,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
+                    self.handle_logout,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
+                    self.handle_getAuthCode,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
+                    self.handle_checkAgreement,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
+                    self.handle_checkVersion,
+                ),
+                web.get(
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
+                    self.handle_homePageAlert,
+                ),
+                web.post("/api/users/user.do", self.handle_usersapi),
+                web.get("/api/users/user.do", self.handle_usersapi),
+                web.post(
+                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
+                ),
+                web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
+                web.post("/lookup.do", self.handle_lookup),
+            ]
+        )
+        # Direct register from app:
+        # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
+
     async def start_server(self):
         try:
-            app = web.Application()
-
-            app.add_routes(
-                [
-                    web.get("", self.handle_base),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
-                        self.handle_login,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
-                        self.handle_login,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
-                        self.handle_logout,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
-                        self.handle_getAuthCode,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
-                        self.handle_checkAgreement,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
-                        self.handle_checkVersion,
-                    ),
-                    web.get(
-                        "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
-                        self.handle_homePageAlert,
-                    ),
-                    web.post("/api/users/user.do", self.handle_usersapi),
-                    web.get("/api/users/user.do", self.handle_usersapi),
-                    web.post(
-                        "/api/pim/product/getProductIotMap",
-                        self.handle_getProductIotMap,
-                    ),
-                    web.post(
-                        "/api/iot/devmanager.do", self.handle_devmanager_botcommand
-                    ),
-                    web.post("/lookup.do", self.handle_lookup),
-                ]
-            )
-            # Direct register from app:
-            # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
-
-            runner = web.AppRunner(app)
+            runner = web.AppRunner(self.app)
             await runner.setup()
 
             if self.usessl:
@@ -200,7 +200,9 @@ class ConfServer:
                                 "username": "fusername_{}".format(user["userid"]),
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(time.time()),
+                            "time": bumper.get_milli_time(
+                                datetime.utcnow().timestamp()
+                            ),
                         }
                         return web.json_response(body)
 
@@ -208,7 +210,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(time.time()),
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -233,7 +235,7 @@ class ConfServer:
                     "username": "fusername_{}".format(user["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -242,7 +244,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -276,7 +278,7 @@ class ConfServer:
 
             if "checkLogin" in request.path:  # If request was to check a token do so
                 checkToken = self.check_token(
-                    countrycode, user, request.query["accessToken"]
+                    countrycode, tmpuser, request.query["accessToken"]
                 )
                 isGood = json.loads(checkToken.text)
                 if isGood["code"] == "0000":
@@ -295,7 +297,7 @@ class ConfServer:
                     "username": "fusername_{}".format(tmpuser["userid"]),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return body
@@ -319,7 +321,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": None,
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -355,7 +357,9 @@ class ConfServer:
                                 "ecovacsUid": request.query["uid"],
                             },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(time.time()),
+                            "time": bumper.get_milli_time(
+                                datetime.utcnow().timestamp()
+                            ),
                         }
                         return web.json_response(body)
 
@@ -363,7 +367,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -385,7 +389,7 @@ class ConfServer:
                     "v": None,
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -399,7 +403,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": [],
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -421,10 +425,10 @@ class ConfServer:
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.get_milli_time(time.time()),
+                    "serverTime": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(time.time()),
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -511,65 +515,70 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_usersapi(self, request):
-        try:
+        if not request.method == "GET":  # Skip GET for now
+            try:
 
-            body = {}
-            postbody = {}
-            if request.content_type == "application/x-www-form-urlencoded":
-                postbody = await request.post()
+                body = {}
+                postbody = {}
+                if request.content_type == "application/x-www-form-urlencoded":
+                    postbody = await request.post()
 
-            else:
-                postbody = json.loads(await request.text())
+                else:
+                    postbody = json.loads(await request.text())
 
-            todo = postbody["todo"]
-            if todo == "FindBest":
-                service = postbody["service"]
-                if service == "EcoMsgNew":
+                todo = postbody["todo"]
+                if todo == "FindBest":
+                    service = postbody["service"]
+                    if service == "EcoMsgNew":
+                        body = {
+                            "result": "ok",
+                            "ip": socket.gethostbyname(socket.gethostname()),
+                            "port": 5223,
+                        }
+                    elif service == "EcoUpdate":
+                        body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
+
+                elif todo == "loginByItToken":
+                    if bumper.check_authcode(postbody["userId"], postbody["token"]):
+                        body = {
+                            "resource": postbody["resource"],
+                            "result": "ok",
+                            "todo": "result",
+                            "token": postbody["token"],
+                            "userId": postbody["userId"],
+                        }
+
+                elif todo == "GetDeviceList":
                     body = {
-                        "result": "ok",
-                        "ip": socket.gethostbyname(socket.gethostname()),
-                        "port": 5223,
-                    }
-                elif service == "EcoUpdate":
-                    body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
-
-            elif todo == "loginByItToken":
-                if bumper.check_authcode(postbody["userId"], postbody["token"]):
-                    body = {
-                        "resource": postbody["resource"],
+                        "devices": bumper.db_get().table("bots").all(),
                         "result": "ok",
                         "todo": "result",
-                        "token": postbody["token"],
-                        "userId": postbody["userId"],
                     }
 
-            elif todo == "GetDeviceList":
-                body = {
-                    "devices": bumper.db_get().table("bots").all(),
-                    "result": "ok",
-                    "todo": "result",
-                }
+                elif todo == "SetDeviceNick":
+                    bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "SetDeviceNick":
-                bumper.bot_set_nick(postbody["did"], postbody["nick"])
-                body = {"result": "ok", "todo": "result"}
+                elif todo == "AddOneDevice":
+                    bumper.bot_set_nick(postbody["did"], postbody["nick"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "AddOneDevice":
-                bumper.bot_set_nick(postbody["did"], postbody["nick"])
-                body = {"result": "ok", "todo": "result"}
+                elif todo == "DeleteOneDevice":
+                    bumper.bot_remove(postbody["did"])
+                    body = {"result": "ok", "todo": "result"}
 
-            elif todo == "DeleteOneDevice":
-                bumper.bot_remove(postbody["did"])
-                body = {"result": "ok", "todo": "result"}
+                confserverlog.debug(
+                    "\r\n POST: {} \r\n Response: {}".format(postbody, body)
+                )
 
-            confserverlog.debug(
-                "\r\n POST: {} \r\n Response: {}".format(postbody, body)
-            )
+                return web.json_response(body)
 
-            return web.json_response(body)
+            except Exception as e:
+                confserverlog.exception("{}".format(e))
 
-        except Exception as e:
-            confserverlog.exception("{}".format(e))
+        # Return fail for GET
+        body = {"result": "fail", "todo": "result"}
+        return web.json_response(body)
 
     async def handle_lookup(self, request):
         try:
