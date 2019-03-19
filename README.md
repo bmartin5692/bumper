@@ -67,7 +67,7 @@ If this isn't an option, you'll need to configure your router DNS to point a num
 | `mq-ww.ecouser.net` | Used for MQTT |
 
 ### Starting Bumper
-- Start Bumper with `pipenv run python bumper.py`
+- Start Bumper with `pipenv run python start_bumper.py`
 
 - Reboot your robot
 	- **Note:** Some models may require removing and re-inserting the battery pack.

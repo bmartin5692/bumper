@@ -186,19 +186,19 @@ class Client(threading.Thread):
                 self.connection.send(command.encode())
 
         except BrokenPipeError as e:
-            xmppserverlog.error("{}".format(e))
+            xmppserverlog.debug("{}".format(e))
             self._set_state("DISCONNECT")
 
         except ConnectionResetError as e:
-            xmppserverlog.error("{}".format(e))
+            xmppserverlog.debug("{}".format(e))
             self._set_state("DISCONNECT")
 
         except ConnectionAbortedError as e:
-            xmppserverlog.error("{}".format(e))
+            xmppserverlog.debug("{}".format(e))
             self._set_state("DISCONNECT")
 
         except OSError as e:
-            xmppserverlog.error("{}".format(e))
+            xmppserverlog.debug("{}".format(e))
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -912,9 +912,9 @@ class Client(threading.Thread):
                     if data != b"":
                         self._parse_data(data)
                 except ConnectionResetError as e:
-                    xmppserverlog.error("{}".format(e))
+                    xmppserverlog.debug("{}".format(e))
                 except OSError as e:
-                    xmppserverlog.error("{}".format(e))
+                    xmppserverlog.debug("{}".format(e))
                 except Exception as e:
                     xmppserverlog.exception("{}".format(e))
 
