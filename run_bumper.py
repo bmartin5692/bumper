@@ -26,31 +26,20 @@ def main():
     if platform.system() == "Darwin":  # If a Mac, use 0.0.0.0 for listening
         listen_host = "0.0.0.0"
     else:
-        listen_host = socket.gethostbyname(socket.gethostname())
-        # listen_host = "localhost" #Try this if the above doesn't work
+        # listen_host = socket.gethostbyname(socket.gethostname())
+        listen_host = "10.0.1.220"  # Try this if the above doesn't work
 
+    
     conf_address_443 = (listen_host, 443)
     conf_address_8007 = (listen_host, 8007)
     xmpp_address = (listen_host, 5223)
     mqtt_address = (listen_host, 8883)
 
     xmpp_server = bumper.XMPPServer(
-        xmpp_address,
-        bumper_users=bumper.bumper_users_var,
-        bumper_bots=bumper.bumper_bots_var,
-        bumper_clients=bumper.bumper_clients_var,
+        xmpp_address
     )
-    mqtt_server = bumper.MQTTServer(
-        mqtt_address,
-        bumper_users=bumper.bumper_users_var,
-        bumper_bots=bumper.bumper_bots_var,
-        bumper_clients=bumper.bumper_clients_var,
-    )
-    mqtt_helperbot = bumper.MQTTHelperBot(
-        mqtt_address,
-        bumper_bots=bumper.bumper_bots_var,
-        bumper_clients=bumper.bumper_clients_var,
-    )
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+    mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
     conf_server = bumper.ConfServer(
         conf_address_443, usessl=True, helperbot=mqtt_helperbot
     )
@@ -94,7 +83,7 @@ def main():
         except KeyboardInterrupt:
             bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
             print("Bumper Exiting")
-            exit(1)
+            exit(0)
 
 
 if __name__ == "__main__":

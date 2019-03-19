@@ -16,18 +16,9 @@ class XMPPServer:
     clients = []
     exit_flag = False
 
-    def __init__(
-        self,
-        address,
-        bumper_users=contextvars.ContextVar,
-        bumper_bots=contextvars.ContextVar,
-        bumper_clients=contextvars.ContextVar,
-    ):
+    def __init__(self, address):
         # Initialize bot server
         self.address = address
-        self.bumper_users = bumper_users
-        self.bumper_bots = bumper_bots
-        self.bumper_clients = bumper_clients
 
     def run(self, run_async=False):
         if run_async:
@@ -82,14 +73,7 @@ class XMPPServer:
                     "starting new client with ip {}".format(client_address[0])
                 )
                 thread_id = uuid.uuid4()
-                client = Client(
-                    thread_id,
-                    connection,
-                    client_address,
-                    self.bumper_users,
-                    self.bumper_bots,
-                    self.bumper_clients,
-                )
+                client = Client(thread_id, connection, client_address)
                 client.setDaemon(True)
                 client.start()
                 self.clients.append(client)
@@ -175,15 +159,7 @@ class Client(threading.Thread):
     BOT = 1
     CONTROLLER = 2
 
-    def __init__(
-        self,
-        thread_id,
-        connection,
-        client_address,
-        bumper_users=contextvars.ContextVar,
-        bumper_bots=contextvars.ContextVar,
-        bumper_clients=contextvars.ContextVar,
-    ):
+    def __init__(self, thread_id, connection, client_address):
         threading.Thread.__init__(self)
         self.id = thread_id
         self.name = "XMPP_Client_{}".format(client_address[0])
@@ -197,9 +173,6 @@ class Client(threading.Thread):
         self.uid = ""
         self.log_sent_message = False  # Set to true to log sends
         self.log_incoming_data = True  # Set to true to log sends
-        self.bumper_users = bumper_users
-        self.bumper_bots = bumper_bots
-        self.bumper_clients = bumper_clients
 
         xmppserverlog.debug(
             "new client thread init for client with ip {}".format(self.address)
@@ -212,16 +185,20 @@ class Client(threading.Thread):
                     xmppserverlog.debug("send {} - {}".format(self.address, command))
                 self.connection.send(command.encode())
 
-        except OSError as e:
-            xmppserverlog.error("{}".format(e))
-
         except BrokenPipeError as e:
             xmppserverlog.error("{}".format(e))
             self._set_state("DISCONNECT")
 
         except ConnectionResetError as e:
             xmppserverlog.error("{}".format(e))
-            # self._set_state('DISCONNECT')
+            self._set_state("DISCONNECT")
+
+        except ConnectionAbortedError as e:
+            xmppserverlog.error("{}".format(e))
+            self._set_state("DISCONNECT")
+
+        except OSError as e:
+            xmppserverlog.error("{}".format(e))
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -245,7 +222,7 @@ class Client(threading.Thread):
     def _tag_strip_uri(self, tag):
         try:
             if tag[0] == "{":
-                uri, ignore, tag = tag[1:].partition("}")
+                _, _, tag = tag[1:].partition("}")
             return tag
 
         except Exception as e:
@@ -358,7 +335,7 @@ class Client(threading.Thread):
                         and client.state == client.READY
                     ):
                         if pingto.lower() in client.bumper_jid.lower():
-                            pingsend = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
+                            pingstring = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
                                 xml.get("id"), pingfrom, pingto
                             )
                             xmppserverlog.debug(
@@ -548,7 +525,7 @@ class Client(threading.Thread):
                 and self.type == self.UNKNOWN
             ):
                 xmlauth = xml[0].getchildren()
-                uid = ""
+                # uid = ""
                 password = ""
                 resource = ""
                 for aitem in xmlauth:
@@ -566,7 +543,7 @@ class Client(threading.Thread):
                 if not self.uid.startswith("fuid"):
 
                     # Need sample data to see details here
-                    bumper.bot_add("", self.uid, "", resource)
+                    bumper.bot_add("", self.uid, "", resource, "eco-legacy")
                     xmppserverlog.info("bot authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
@@ -678,8 +655,6 @@ class Client(threading.Thread):
 
     def _handle_bind(self, xml):
         try:
-            bumper_bots = self.bumper_bots.get()
-            bumper_clients = self.bumper_clients.get()
 
             bot = bumper.bot_get(self.uid)
             if bot:

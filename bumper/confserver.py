@@ -42,11 +42,13 @@ class ConfServer:
         self.usessl = usessl
         self.address = address
         self.confthread = None
+        self.run_async = False
         self.app = None
 
     def run(self, run_async=False):
         try:
             if run_async:
+                self.run_async = True
                 confserverlog.debug("Starting ConfServer Thread: 1")
                 self.confthread = Thread(
                     name="ConfServer_{}_Thread".format(self.address[1]),
@@ -624,6 +626,7 @@ class ConfServer:
     async def handle_devmanager_botcommand(self, request):
         try:
             json_body = json.loads(await request.text())
+            confserverlog.debug("BotCommand: {}".format(json_body))
             randomid = "".join(random.sample(string.ascii_letters, 6))
 
             if "toId" in json_body:  # Its a command
@@ -659,8 +662,8 @@ class ConfServer:
             if self.run_async:
                 self.confthread.join()
             else:
-                self.confthread.disconnect()
-
+                self.app.shutdown()
+                
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
