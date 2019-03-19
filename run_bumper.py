@@ -26,8 +26,8 @@ def main():
     if platform.system() == "Darwin":  # If a Mac, use 0.0.0.0 for listening
         listen_host = "0.0.0.0"
     else:
-        # listen_host = socket.gethostbyname(socket.gethostname())
-        listen_host = "10.0.1.220"  # Try this if the above doesn't work
+        listen_host = socket.gethostbyname(socket.gethostname())
+        #listen_host = "localhost"  # Try this if the above doesn't work
 
     
     conf_address_443 = (listen_host, 443)
