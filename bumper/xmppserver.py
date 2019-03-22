@@ -391,10 +391,11 @@ class XMPPAsyncClient:
             xmppserverlog.exception("{}".format(e))
 
     async def send_ping(self, time):
-        pingstring = "<iq from='{}' to='{}' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>".format(XMPPServer.server_id, self.bumper_jid)
-        await self.send(pingstring)
-        await asyncio.sleep(time)
-        pingtask = asyncio.Task(self.send_ping(time))
+        if not self.state == 5: #disconnected
+            pingstring = "<iq from='{}' to='{}' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>".format(XMPPServer.server_id, self.bumper_jid)
+            await self.send(pingstring)
+            await asyncio.sleep(time)
+            asyncio.Task(self.send_ping(time))
         
     async def _handle_result(self, xml, data):
         try:
