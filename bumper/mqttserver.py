@@ -73,6 +73,10 @@ class MQTTHelperBot:
     async def start_helper_bot(self):
 
         try:
+            self.Client = MQTTClient(
+                client_id=self.client_id, config={"check_hostname": False}
+            )
+
             await self.Client.connect(
                 "mqtts://{}:{}/".format(self.address[0], self.address[1]),
                 cafile=bumper.ca_cert,
@@ -83,6 +87,8 @@ class MQTTHelperBot:
                     ("iot/p2p/+", QOS_0),
                 ]
             )
+
+            asyncio.ensure_future(self.get_msg())
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))

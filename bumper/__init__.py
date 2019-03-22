@@ -13,6 +13,7 @@ import os
 import logging
 from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
+import json
 from tinydb.storages import MemoryStorage
 
 bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
@@ -62,16 +63,24 @@ def os_db_path():
 
 
 def db_get():
-    # Will create the database if it doesn't exist
-    db = TinyDB(db_file())
+    try:
+        # Will create the database if it doesn't exist
+        db = TinyDB(db_file())
 
-    # Will create the tables if they don't exist
-    db.table("users", cache_size=0)
-    db.table("clients", cache_size=0)
-    db.table("bots", cache_size=0)
-    db.table("tokens", cache_size=0)
+        # Will create the tables if they don't exist
+        db.table("users", cache_size=0)
+        db.table("clients", cache_size=0)
+        db.table("bots", cache_size=0)
+        db.table("tokens", cache_size=0)
 
-    return db
+        return db
+    
+    
+    except json.decoder.JSONDecodeError as jerr:
+        bumperlog.error("JsonErr: {} - Doc: {}".format(jerr.msg, jerr.doc))
+
+    except Exception as ex:
+        bumperlog.error(ex)
 
 
 class BumperUser(object):
