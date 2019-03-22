@@ -77,10 +77,13 @@ def main():
     # Start MQTT Helperbot
     asyncio.ensure_future(mqtt_helperbot.start_helper_bot())
     
+    # Start XMPP Server
+    asyncio.ensure_future(xmpp_server.async_server())
+
     loop.run_forever()
 
     # start xmpp server on port 5223 (sync)
-    xmpp_server.run(run_async=True)  # Start in new thread
+    #xmpp_server.run(run_async=True)  # Start in new thread
 
     # start mqtt server on port 8883 (async)
     #mqtt_server.run(run_async=True)  # Start in new thread
