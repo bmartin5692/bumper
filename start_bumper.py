@@ -5,6 +5,7 @@ import bumper
 import sys, socket
 import time
 import platform
+import asyncio
 
 
 def main():
@@ -59,22 +60,44 @@ def main():
     # users.append(user1)
     # bumper.bumper_users_var.set(users)
 
+    try:
+        loop = asyncio.get_event_loop()
+    except:
+        loop = asyncio.new_event_loop()
+
+    # Start web servers
+    conf_server.confserver_app()
+    conf_server_2.confserver_app()
+    asyncio.ensure_future(conf_server.start_server(),loop=loop)
+    asyncio.ensure_future(conf_server_2.start_server(),loop=loop)
+
+    # Start MQTT Server
+    asyncio.ensure_future(mqtt_server.broker_coro())
+
+    # Start MQTT Helperbot
+    asyncio.ensure_future(mqtt_helperbot.start_helper_bot())
+    
+    # Start XMPP Server
+    asyncio.ensure_future(xmpp_server.async_server())
+
+    loop.run_forever()
+
     # start xmpp server on port 5223 (sync)
-    xmpp_server.run(run_async=True)  # Start in new thread
+    #xmpp_server.run(run_async=True)  # Start in new thread
 
     # start mqtt server on port 8883 (async)
-    mqtt_server.run(run_async=True)  # Start in new thread
+    #mqtt_server.run(run_async=True)  # Start in new thread
 
-    time.sleep(1.5)  # Wait for broker startup
+    #time.sleep(1.5)  # Wait for broker startup
 
     # start mqtt_helperbot (async)
-    mqtt_helperbot.run(run_async=True)  # Start in new thread
+    #mqtt_helperbot.run(run_async=True)  # Start in new thread
 
     # start conf server on port 443 (async) - Used for most https calls
-    conf_server.run(run_async=True)  # Start in new thread
+    #conf_server.run(run_async=True)  # Start in new thread
 
     # start conf server on port 8007 (async) - Used for a load balancer request
-    conf_server_2.run(run_async=True)  # Start in new thread
+    #conf_server_2.run(run_async=True)  # Start in new thread
 
     while True:
         try:
