@@ -501,7 +501,9 @@ class XMPPAsyncClient:
                         )
                         # with STARTTLS
                         # await self.send('<stream:stream xmlns:stream="http://etherx.jabber.org/streams" xmlns:tls="http://www.ietf.org/rfc/rfc2595.txt" xmlns="jabber:client" version="1.0" id="1" from="{}">'.format(XMPPServer.server_id))
-                        time.sleep(0.25)
+                        
+                        await asyncio.sleep(0.25)
+                        #time.sleep(0.25)
                         # send authentication support for iq-auth (fallback) and SASL
                         await self.send(
                             '<stream:features><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
@@ -531,7 +533,8 @@ class XMPPAsyncClient:
                                 XMPPServer.server_id
                             )
                         )
-                        time.sleep(0.25)
+                        await asyncio.sleep(0.25)
+                        #time.sleep(0.25)
                         # session
                         await self.send(
                             '<stream:features><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"/><session xmlns="urn:ietf:params:xml:ns:xmpp-session"/></stream:features>'
