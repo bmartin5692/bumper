@@ -9,8 +9,9 @@ import contextvars
 import time
 from datetime import datetime, timedelta
 import platform
-import os
+import os, sys
 import logging
+from logging.handlers import RotatingFileHandler
 from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
 import json
@@ -29,17 +30,42 @@ token_validity_seconds = 3600  # 1 hour
 db = None
 
 # Logs
+os.makedirs("logs", exist_ok=True) #Ensure logs directory exists or create
+# Set format for all logs
+logformat = logging.Formatter("[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
+
 bumperlog = logging.getLogger("bumper")
+bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
+bumper_rotate.setFormatter(logformat)
+bumperlog.addHandler(bumper_rotate)
+# Override the logging level
+# bumperlog.setLevel(logging.INFO)
+
 confserverlog = logging.getLogger("confserver")
+conf_rotate = RotatingFileHandler("logs/confserver.log", maxBytes=5000000, backupCount=5)
+conf_rotate.setFormatter(logformat)
+confserverlog.addHandler(conf_rotate)
 # Override the logging level
 # confserverlog.setLevel(logging.INFO)
+
 mqttserverlog = logging.getLogger("mqttserver")
+mqtt_rotate = RotatingFileHandler("logs/mqttserver.log", maxBytes=5000000, backupCount=5)
+mqtt_rotate.setFormatter(logformat)
+mqttserverlog.addHandler(mqtt_rotate)
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
+
 helperbotlog = logging.getLogger("helperbot")
+helperbot_rotate = RotatingFileHandler("logs/helperbot.log", maxBytes=5000000, backupCount=5)
+helperbot_rotate.setFormatter(logformat)
+helperbotlog.addHandler(helperbot_rotate)
 # Override the logging level
 # helperbotlog.setLevel(logging.INFO)
+
 xmppserverlog = logging.getLogger("xmppserver")
+xmpp_rotate = RotatingFileHandler("logs/xmppserver.log", maxBytes=5000000, backupCount=5)
+xmpp_rotate.setFormatter(logformat)
+xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
 

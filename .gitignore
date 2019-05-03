@@ -6,3 +6,4 @@ __pycache__
 nosetests.xml
 tests/report
 tests/tmp.db
+logs/
