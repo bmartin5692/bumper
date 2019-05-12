@@ -77,15 +77,12 @@ def db_file():
 
 
 def os_db_path():
-    db_path = ""
-    if platform.system() == "Windows":
-        
-        db_path = os.path.join(os.getenv("APPDATA"))
+    if platform.system() == "Windows":        
+        os.makedirs(os.getenv("APPDATA"), exist_ok=True) #Ensure db_path directory exists or create
+        return os.path.join(os.getenv("APPDATA"), "bumper.db") 
     else:
-        db_path = os.path.expanduser("~/.config")
-
-    os.makedirs(db_path, exist_ok=True) #Ensure db_path directory exists or create
-    return os.path.join(db_path, "bumper.db")
+        os.makedirs(os.path.expanduser("~/.config"), exist_ok=True) #Ensure db_path directory exists or create
+        return os.path.expanduser("~/.config/bumper.db")
 
 def db_get():
     try:
