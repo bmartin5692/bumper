@@ -5,7 +5,6 @@ from .mqttserver import MQTTServer
 from .mqttserver import MQTTHelperBot
 from .xmppserver import XMPPServer
 import asyncio
-import contextvars
 import time
 from datetime import datetime, timedelta
 import platform
@@ -16,10 +15,6 @@ from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
 import json
 from tinydb.storages import MemoryStorage
-
-bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
-bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
-bumper_bots_var = contextvars.ContextVar("bumper_bots", default=[])
 
 ca_cert = "./certs/CA/cacert.pem"
 server_cert = "./certs/cert.pem"
@@ -82,15 +77,12 @@ def db_file():
 
 
 def os_db_path():
-    db_path = ""
-    if platform.system() == "Windows":
-        
-        db_path = os.path.join(os.getenv("APPDATA"))
+    if platform.system() == "Windows":        
+        os.makedirs(os.getenv("APPDATA"), exist_ok=True) #Ensure db_path directory exists or create
+        return os.path.join(os.getenv("APPDATA"), "bumper.db") 
     else:
-        db_path = os.path.expanduser("~/.config")
-
-    os.makedirs(db_path, exist_ok=True) #Ensure db_path directory exists or create
-    return os.path.join(db_path, "bumper.db")
+        os.makedirs(os.path.expanduser("~/.config"), exist_ok=True) #Ensure db_path directory exists or create
+        return os.path.expanduser("~/.config/bumper.db")
 
 def db_get():
     try:

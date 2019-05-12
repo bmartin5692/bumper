@@ -51,14 +51,6 @@ def main():
         conf_address_8007, usessl=False, helperbot=mqtt_helperbot
     )
 
-    # add user
-    # users = bumper.bumper_users_var.get()
-    # user1 = bumper.BumperUser('user1')
-    # user1.add_device('devid')
-    # user1.add_bot('bot_did')
-    # users.append(user1)
-    # bumper.bumper_users_var.set(users)
-
     try:
         loop = asyncio.get_event_loop()
     except:
