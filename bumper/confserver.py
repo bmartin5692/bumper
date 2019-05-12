@@ -8,7 +8,6 @@ import bumper
 import time
 from datetime import datetime, timedelta
 import asyncio
-import contextvars
 from aiohttp import web
 import uuid
 

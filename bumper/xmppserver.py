@@ -4,7 +4,6 @@ from threading import Thread
 import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
 import base64
 import ssl
-import contextvars
 import bumper
 import asyncio
 

@@ -5,7 +5,6 @@ from .mqttserver import MQTTServer
 from .mqttserver import MQTTHelperBot
 from .xmppserver import XMPPServer
 import asyncio
-import contextvars
 import time
 from datetime import datetime, timedelta
 import platform
@@ -16,10 +15,6 @@ from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
 import json
 from tinydb.storages import MemoryStorage
-
-bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
-bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
-bumper_bots_var = contextvars.ContextVar("bumper_bots", default=[])
 
 ca_cert = "./certs/CA/cacert.pem"
 server_cert = "./certs/cert.pem"

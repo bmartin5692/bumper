@@ -8,7 +8,7 @@ from hbmqtt.broker import Broker
 from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
-import contextvars
+#import contextvars
 import time
 from threading import Thread
 import ssl
@@ -40,7 +40,7 @@ class MQTTHelperBot:
     ):
         self.address = address
         self.client_id = "helper1@bumper/helper1"
-        self.command_responses = contextvars.ContextVar("command_responses", default=[])
+        self.command_responses = [] # = contextvars.ContextVar("command_responses", default=[])
         self.helperthread = None
 
     def run(self, run_async=False):
@@ -99,7 +99,7 @@ class MQTTHelperBot:
                 message = await self.Client.deliver_message()
 
                 # helperbotlog.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-                cresp = self.command_responses.get()
+                cresp = self.command_responses #.get()
 
                 if str(message.topic).split("/")[6] == "helper1":
                     cresp.append(
@@ -119,7 +119,7 @@ class MQTTHelperBot:
                         # helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
                         cresp.remove(msg)
 
-                self.command_responses.set(cresp)
+                self.command_responses = cresp #.set(cresp)
                 # helperbotlog.debug("MQTT Command Response List Count: %s" %len(cresp))
 
         except Exception as e:
