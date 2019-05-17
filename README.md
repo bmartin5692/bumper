@@ -3,14 +3,12 @@
 # Bumper 
 A standalone implementation of the central server used by Ecovacs Deebot cleaning robots to relay data between the robot and client.
 
-A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build.  The project reached its original goal and remained in a stable, but stale state with the last commit in Dec 2017.  Since the original release of bumper newer bots have been released that use different protocols, and a growing Ecovacs user base has sparked further interest in the project.
-
-In early 2019 after making massive changes to the codebase and with ideas for additional feature development, it was decided that @bmartin5692 would take over active development.  The fork was detached and all future development of bumper will take place here.
-
 The current master branch is unstable and based on the work for adding D900 series support to bumper, along with other code changes.  Additional testing is needed with bots that use the XMPP protocols to ensure compatibility, so at this time it can only be guaranteed for 900-series bots (900/901/907).
 
-If you want a working version of bumper for XMPP bots (M81 Pro, and others), the original code base has been branched off as [v0.1.0](https://github.com/bmartin5692/bumper/tree/v0.1.0
-) and will remain in the original state.  Bumper needs users of models that use XMPP to assist with development efforts in order to ensure compatability as bumper moves forward.
+Bumper needs users of models that use XMPP (M81 Pro, N79S, Ozmo) to assist with development efforts and testing in order to ensure compatability as bumper moves forward.
+
+The original bumper code base has been branched off as [v0.1.0](https://github.com/bmartin5692/bumper/tree/v0.1.0
+) and will remain in the original state, this will work for XMPP bots (M81 Pro, and others).
 
 *Please note: this software is experimental and not ready for production use. Use at your own risk.* 
 
@@ -40,7 +38,8 @@ But seriously, there are a several reasons for eliminating the central server:
 - Python 3 and pipenv
 - A network router that has functionality for overriding DNS queries
 - A client that can connect to Bumper and talk to the robot over the Ecovacs protocol.
-  - The Android or iOS apps can be used if configured properly. See [Using with the official Android/iOS App](#using-with-the-official-androidios-app) below.
+  - The "Ecovacs" Android or iOS apps can be used if configured properly. See [Using with the official Android/iOS App](#using-with-the-official-androidios-app) below.
+    - **Note:** Bumper is not compatible with the "Ecovacs Home" app at this time.
   - [Sucks](https://github.com/wpietri/sucks) can also be used, which can act as a client and control the robots via command-line.
 
 ## Usage
@@ -83,7 +82,9 @@ Instructions (verified to work with Sucks 0.8.3)
 - See the [example script](examples/sucks.py) for how to connect  
 
 ## Using with the official Android/iOS App 
-Bumper *can* be used with the official app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.  
+Bumper *can* be used with the official "Ecovacs" app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.
+  - **Note:** Bumper is not compatible with the "Ecovacs Home" app at this time.
+
 ### DNS
 - Configure your DNS server as described above in the [DNS](#dns) section. 
 ### Import the Bumper CA Cert
@@ -197,6 +198,9 @@ The Rest API provided by `portal-{countrycode}.ecouser.net` receives the command
 ***Bumper*** provides a simulated RestAPI and "helper" bot, performing the same function as the central server above.
 
 ## Thanks
-A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build.
+
+A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build.  The project reached its original goal and remained in a stable, but stale state with the last commit in Dec 2017.  Since the original release of bumper newer bots have been released that use different protocols, and a growing Ecovacs user base has sparked further interest in the project.
+
+In early 2019 after making massive changes to the codebase and with ideas for additional feature development, it was decided that @bmartin5692 would take over active development.  The fork was detached and all future development of bumper will take place here.
 
 Bumper wouldn't exist without [Sucks](https://github.com/wpietri/sucks), an open source client for Ecovacs robots. Big thanks to @wpietri and contributors!
