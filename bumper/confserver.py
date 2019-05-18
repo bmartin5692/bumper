@@ -31,7 +31,7 @@ class aiohttp_filter(logging.Filter):
 
 confserverlog = logging.getLogger("confserver")
 
-logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
+#logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
 
 

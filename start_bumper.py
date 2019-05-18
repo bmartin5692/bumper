@@ -5,6 +5,8 @@ import bumper
 import sys, socket
 import time
 import platform
+import os
+os.environ['PYTHONASYNCIODEBUG'] = '1'
 import asyncio
 
 
@@ -57,6 +59,7 @@ def main():
         loop = asyncio.new_event_loop()
 
     # Start web servers
+    loop.set_debug(True)
     conf_server.confserver_app()
     conf_server_2.confserver_app()
     asyncio.ensure_future(conf_server.start_server(),loop=loop)
@@ -72,6 +75,7 @@ def main():
     asyncio.ensure_future(xmpp_server.async_server())
 
     loop.run_forever()
+
 
     # start xmpp server on port 5223 (sync)
     #xmpp_server.run(run_async=True)  # Start in new thread
