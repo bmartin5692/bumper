@@ -41,8 +41,8 @@ class XMPPServer:
 
         def client_done(task):
             del self.aclients[task]
-            client_writer.close()
-            xmppserverlog.info("End Connection")
+            xmppserverlog.info("End Connection for {}".format(client_writer.get_extra_info("peername")))
+            client_writer.close()           
 
         clientaddr = client_writer.get_extra_info("peername")
         xmppserverlog.info("New Connection from {}".format(clientaddr))
@@ -197,24 +197,29 @@ class XMPPAsyncClient:
         self.devclass = ""
         self.bumper_jid = ""
         self.uid = ""
-        self.log_sent_message = False  # Set to true to log sends
+        self.log_sent_message = True  # Set to true to log sends
         self.log_incoming_data = True  # Set to true to log sends
 
         xmppserverlog.debug("new client with ip {}".format(self.address))
 
     async def handle_async_client(self):
-        # xmppserverlog.info('client connected - {}'.format(self.address))
+        # xmppserverlog.info('client connected - {}'.format(self.address))        
+        #await self._set_state("READY")
         await self._set_state("CONNECT")
-        pingtask = asyncio.Task(self.send_ping(30))        
-        while not self.state == self.DISCONNECT:
-            data = await self.client_reader.read(4096)
-            # data = await asyncio.wait_for(client_reader.readline(), timeout=10.0)
-            if data is None:
-                xmppserverlog.warning("Received no data")
-                # exit loop and disconnect
-                return
+        #asyncio.Task(self.send_ping(30))        
+        while True:
+            await asyncio.sleep(0.1)
+            if not self.state == self.DISCONNECT:
+                data = await self.client_reader.read(4096)
+                # data = await asyncio.wait_for(client_reader.readline(), timeout=10.0)
+                if data is None:
+                    xmppserverlog.warning("Received no data")
+                    # exit loop and disconnect
+                    return
 
-            await self._parse_data(data)
+                await self._parse_data(data)
+            else:
+                break
 
         # exit loop and disconnect
         return
@@ -302,6 +307,24 @@ class XMPPAsyncClient:
                     )
                 )
                 return
+            
+            if "disco#items" in data:
+                # Return  not-implemented for disco#items
+                await self.send(
+                    '<iq type="error" id="{}"><error type="cancel" code="501"><feature-not-implemented xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(
+                        xml.get("id")                  
+                    ))
+                return
+
+            if "disco#info" in data:
+               # Return not-implemented for disco#info
+               await self.send(
+                   '<iq type="error" id="{}"><error type="cancel" code="501"><feature-not-implemented xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(
+                        xml.get("id")
+                   )
+               )
+               return
+            
 
             if xml.get("type") == "set":
                 if (
@@ -316,7 +339,7 @@ class XMPPAsyncClient:
                         )
                     )
 
-            if xml[0][0]:
+            if len(xml[0]) > 0:
                 ctl = xml[0][0]
                 if ctl.get("admin") and self.type == self.BOT:
                     xmppserverlog.debug(
@@ -580,6 +603,7 @@ class XMPPAsyncClient:
                 xmlauth = xml[0].getchildren()
                 # uid = ""
                 password = ""
+                authcode = ""
                 resource = ""
                 for aitem in xmlauth:
                     if "username" in aitem.tag:
@@ -655,6 +679,7 @@ class XMPPAsyncClient:
             saslauth = base64.b64decode(xml.text).decode("utf-8").split("/")
             username = saslauth[0]
             username = saslauth[0].split("\x00")[1]
+            authcode = ""
             self.uid = username
             if len(saslauth) > 1:
                 resource = saslauth[1]
@@ -761,8 +786,10 @@ class XMPPAsyncClient:
     async def _handle_session(self, xml):
         try:
             res = '<iq type="result" id="{}" />'.format(xml.get("id"))
-            await self._set_state("READY")
+            await self._set_state("READY")           
             await self.send(res)
+            asyncio.Task(self.send_ping(30))  
+           
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -780,6 +807,8 @@ class XMPPAsyncClient:
                 await self.send(
                     '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
                 )
+                
+                
 
                 # If it is a BOT, send extras
                 if self.type == self.BOT:
@@ -790,11 +819,13 @@ class XMPPAsyncClient:
                         )
                     )
 
+
+
             else:
                 xmppserverlog.debug(
                     "client presence - {} ".format(ET.tostring(xml, encoding="utf-8"))
                 )
-
+                
                 if xml.get("type") == "available":
                     xmppserverlog.debug(
                         "client presence available - {} ".format(
