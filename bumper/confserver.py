@@ -35,6 +35,21 @@ confserverlog = logging.getLogger("confserver")
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
 
+class EcoVacs_Login:
+    accessToken = ""
+    country = ""
+    email = ""
+    uid = ""
+    username = ""
+
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__,
+        sort_keys=False)#, indent=4)
+    
+class EcoVacsHome_Login(EcoVacs_Login):
+    loginName = ""
+    mobile = ""
+    ucUid = ""        
 
 class ConfServer:
     def __init__(self, address, usessl=False, helperbot=None):
@@ -95,6 +110,10 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
                     self.handle_login,
                 ),
+                web.get( #EcoVacs Home GetUserAccountInfo
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserAccountInfo",
+                    self.handle_getUserAccountInfo,
+                ),                
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
                     self.handle_logout,
@@ -103,24 +122,71 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
                     self.handle_getAuthCode,
                 ),
+                web.get( #EcoVacs Home GetAuthCode
+                    "/{apiversion}/{apptype}/auth/getAuthCode",
+                    self.handle_getAuthCode
+                ),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
+                    self.handle_checkAgreement,
+                ),
+                web.get( #EcoVacs Home CheckAgreement
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreementBatch",
                     self.handle_checkAgreement,
                 ),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
                     self.handle_checkVersion,
                 ),
+                web.get( #EcoVacs Home CheckAPPVersion
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkAPPVersion",
+                    self.handle_checkAPPVersion,
+                ),
+                web.get( #EcoVacs Home Upload Device Info
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/uploadDeviceInfo",
+                    self.handle_uploadDeviceInfo,
+                ),       
+                web.get( #EcoVacs Home GetAdByPositionType
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/ad/getAdByPositionType",
+                    self.handle_getAdByPositionType,
+                ),         
+                web.get( #EcoVacs Home Get Boot Screen
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/ad/getBootScreen",
+                    self.handle_getBootScreen,
+                ),    
+                web.get( #EcoVacs Home message hasUnreadMsg
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/message/hasUnreadMsg",
+                    self.handle_hasUnreadMessage,
+                ),       
+                web.get( #EcoVacs Home neng message hasUnreadMsg
+                    "/api/neng/message/hasUnreadMsg",
+                    self.handle_neng_hasUnreadMessage,
+                ),     
+                web.get( #EcoVacs Home message getMsgList
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/message/getMsgList",
+                    self.handle_getMsgList,
+                ),           
+                web.get( #EcoVacs Home common getSystemReminder
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/getSystemReminder",
+                    self.handle_getSystemReminder,
+                ),      
+                web.get( #EcoVacs Home shop getCnWapShopConfig
+                    "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/shop/getCnWapShopConfig",
+                    self.handle_getCnWapShopConfig,
+                ),         
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
                     self.handle_homePageAlert,
                 ),
                 web.post("/api/users/user.do", self.handle_usersapi),
                 web.get("/api/users/user.do", self.handle_usersapi),
+                web.post("/api/appsvr/app.do", self.handle_appsvr_api), #EcoVacs Home
+                web.get("/api/appsvr/app.do", self.handle_appsvr_api), #EcoVacs Home
                 web.post(
                     "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
                 ),
                 web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
+                web.post("/api/dim/devmanager.do", self.handle_devmanager_botcommand), #EcoVacs Home
                 web.post("/lookup.do", self.handle_lookup),
             ]
         )
@@ -174,6 +240,7 @@ class ConfServer:
         try:
             user_devid = request.match_info.get("devid", "")
             countrycode = request.match_info.get("country", "us")
+            apptype = request.match_info.get("apptype", "")
             confserverlog.info(
                 "client with devid {} attempting login".format(user_devid)
             )
@@ -182,30 +249,45 @@ class ConfServer:
                     not user_devid == ""
                 ):  # Performing basic "auth" using devid, super insecure
                     user = bumper.user_by_deviceid(user_devid)
-                    if "checkLogin" in request.path:
+                    if "checkLogin" in request.path:                        
                         self.check_token(
-                            countrycode, user, request.query["accessToken"]
+                            apptype, countrycode, user, request.query["accessToken"]
                         )
-                    else:
+                    else:                        
+                        if "global_" in apptype: #EcoVacs Home
+                            login_details = EcoVacsHome_Login()
+                            login_details.ucUid = "fuid_{}".format(user["userid"])
+                            login_details.loginName = "fusername_{}".format(user["userid"])
+                            login_details.mobile = None
+
+                        else:
+                            login_details = EcoVacs_Login()
+
                         # Deactivate old tokens and authcodes
                         bumper.user_revoke_expired_tokens(user["userid"])
 
+                        login_details.accessToken = self.generate_token(user)
+                        login_details.uid = "fuid_{}".format(user["userid"])
+                        login_details.username = "fusername_{}".format(user["userid"])
+                        login_details.country = countrycode
+                        login_details.email = "null@null.com"
+
                         body = {
                             "code": bumper.RETURN_API_SUCCESS,
-                            "data": {
-                                "accessToken": self.generate_token(
-                                    user
-                                ),  # generate a new token
-                                "country": countrycode,
-                                "email": "null@null.com",
-                                "uid": "fuid_{}".format(user["userid"]),
-                                "username": "fusername_{}".format(user["userid"]),
-                            },
+                            "data": json.loads(login_details.toJSON()),
+                            #{
+                            #    "accessToken": self.generate_token(tmpuser),  # Generate a token
+                            #    "country": countrycode,
+                            #    "email": "null@null.com",
+                            #    "uid": "fuid_{}".format(tmpuser["userid"]),
+                            #    "username": "fusername_{}".format(tmpuser["userid"]),
+                            #},
                             "msg": "操作成功",
                             "time": bumper.get_milli_time(
                                 datetime.utcnow().timestamp()
                             ),
                         }
+                        
                         return web.json_response(body)
 
                 body = {
@@ -219,23 +301,81 @@ class ConfServer:
 
             else:
                 return web.json_response(
-                    self._auth_any(user_devid, countrycode, request)
+                    self._auth_any(user_devid, apptype, countrycode, request)
                 )
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
-    def check_token(self, countrycode, user, token):
-        if bumper.check_token(user["userid"], token):
+    def handle_getUserAccountInfo(self, request):
+        try:
+            user_devid = request.match_info.get("devid", "")
+            countrycode = request.match_info.get("country", "us")
+            apptype = request.match_info.get("apptype", "")
+            user = bumper.user_by_deviceid(user_devid)
+            
+            if "global_" in apptype: #EcoVacs Home
+                login_details = EcoVacsHome_Login()
+                login_details.ucUid = "fuid_{}".format(user["userid"])
+                login_details.loginName = "fusername_{}".format(user["userid"])
+                login_details.mobile = None
+            else:
+                login_details = EcoVacs_Login()
+
+            login_details.uid = "fuid_{}".format(user["userid"])
+            login_details.username = "fusername_{}".format(user["userid"])
+            login_details.country = countrycode
+            login_details.email = "null@null.com"    
+ 
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": {
-                    "accessToken": token,
-                    "country": countrycode,
-                    "email": "null@null.com",
-                    "uid": "fuid_{}".format(user["userid"]),
-                    "username": "fusername_{}".format(user["userid"]),
-                },
+                "data": 
+                        {                                                
+                        "email": login_details.email,
+                        "hasMobile": "N",
+                        "hasPassword": "Y",
+                        "uid": login_details.uid,
+                        "username": login_details.username,
+                        "obfuscatedMobile": None,
+                        "mobile": None,
+                        "loginName": login_details.loginName
+                        },
+                "msg": "操作成功",
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+              
+
+    def check_token(self, apptype, countrycode, user, token):
+        if bumper.check_token(user["userid"], token):
+            
+            if "global_" in apptype: #EcoVacs Home
+                login_details = EcoVacsHome_Login()
+                login_details.ucUid = "fuid_{}".format(user["userid"])
+                login_details.loginName = "fusername_{}".format(user["userid"])
+                login_details.mobile = None
+            else:
+                login_details = EcoVacs_Login()
+
+            login_details.accessToken = token
+            login_details.uid = "fuid_{}".format(user["userid"])
+            login_details.username = "fusername_{}".format(user["userid"])
+            login_details.country = countrycode
+            login_details.email = "null@null.com"    
+ 
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": json.loads(login_details.toJSON()),
+                #{
+                #    "accessToken": self.generate_token(tmpuser),  # Generate a token
+                #    "country": countrycode,
+                #    "email": "null@null.com",
+                #    "uid": "fuid_{}".format(tmpuser["userid"]),
+                #    "username": "fusername_{}".format(tmpuser["userid"]),
+                #},
                 "msg": "操作成功",
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
@@ -260,7 +400,7 @@ class ConfServer:
         bumper.user_add_authcode(user["userid"], token, tmpauthcode)
         return tmpauthcode
 
-    def _auth_any(self, devid, country, request):
+    def _auth_any(self, devid, apptype, country, request):
         try:
             user_devid = devid
             countrycode = country
@@ -269,10 +409,36 @@ class ConfServer:
 
             if user:  # Default to user 0
                 tmpuser = user
+                if "global_" in apptype: #EcoVacs Home
+                    login_details = EcoVacsHome_Login()
+                    login_details.ucUid = "fuid_{}".format(tmpuser["userid"])
+                    login_details.loginName = "fusername_{}".format(tmpuser["userid"])
+                    login_details.mobile = None
+                else:
+                    login_details = EcoVacs_Login()
+
+                login_details.accessToken = self.generate_token(tmpuser)
+                login_details.uid = "fuid_{}".format(tmpuser["userid"])
+                login_details.username = "fusername_{}".format(tmpuser["userid"])
+                login_details.country = countrycode
+                login_details.email = "null@null.com"    
                 bumper.user_add_device(tmpuser["userid"], user_devid)
             else:
                 bumper.user_add("tmpuser")  # Add a new user
                 tmpuser = bumper.user_get("tmpuser")
+                if "global_" in apptype: #EcoVacs Home
+                    login_details = EcoVacsHome_Login()
+                    login_details.ucUid = "fuid_{}".format(tmpuser["userid"])
+                    login_details.loginName = "fusername_{}".format(tmpuser["userid"])
+                    login_details.mobile = None
+                else:
+                    login_details = EcoVacs_Login()
+
+                login_details.accessToken = self.generate_token(tmpuser)
+                login_details.uid = "fuid_{}".format(tmpuser["userid"])
+                login_details.username = "fusername_{}".format(tmpuser["userid"])
+                login_details.country = countrycode
+                login_details.email = "null@null.com"     
                 bumper.user_add_device(tmpuser["userid"], user_devid)
 
             for bot in bots:  # Add all bots to the user
@@ -280,7 +446,7 @@ class ConfServer:
 
             if "checkLogin" in request.path:  # If request was to check a token do so
                 checkToken = self.check_token(
-                    countrycode, tmpuser, request.query["accessToken"]
+                    apptype, countrycode, tmpuser, request.query["accessToken"]
                 )
                 isGood = json.loads(checkToken.text)
                 if isGood["code"] == "0000":
@@ -288,16 +454,18 @@ class ConfServer:
 
             # Deactivate old tokens and authcodes
             bumper.user_revoke_expired_tokens(tmpuser["userid"])
+            
 
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": {
-                    "accessToken": self.generate_token(tmpuser),  # Generate a token
-                    "country": countrycode,
-                    "email": "null@null.com",
-                    "uid": "fuid_{}".format(tmpuser["userid"]),
-                    "username": "fusername_{}".format(tmpuser["userid"]),
-                },
+                "data": json.loads(login_details.toJSON()),
+                #{
+                #    "accessToken": self.generate_token(tmpuser),  # Generate a token
+                #    "country": countrycode,
+                #    "email": "null@null.com",
+                #    "uid": "fuid_{}".format(tmpuser["userid"]),
+                #    "username": "fusername_{}".format(tmpuser["userid"]),
+                #},
                 "msg": "操作成功",
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
@@ -333,14 +501,19 @@ class ConfServer:
 
     async def handle_getAuthCode(self, request):
         try:
+            apptype = request.match_info.get("apptype", "")            
+            user_devid = request.match_info.get("devid", "") #Ecovacs
+            if user_devid == "":
+                user_devid = request.query["deviceId"] #Ecovacs Home
 
-            user_devid = request.match_info.get("devid", "")
             if not user_devid == "":
                 user = bumper.user_by_deviceid(user_devid)
+                token = ""
                 if user:
-                    token = bumper.user_get_token(
-                        user["userid"], request.query["accessToken"]
-                    )
+                    if "accessToken" in request.query:
+                        token = bumper.user_get_token(
+                            user["userid"], request.query["accessToken"]
+                        )
                     if token:
                         authcode = ""
                         if not "authcode" in token:
@@ -351,18 +524,31 @@ class ConfServer:
                             )
                         else:
                             authcode = token["authcode"]
-
-                        body = {
+                        if "global" in apptype:
+                            body = {
                             "code": bumper.RETURN_API_SUCCESS,
                             "data": {
                                 "authCode": authcode,
                                 "ecovacsUid": request.query["uid"],
                             },
                             "msg": "操作成功",
+                            "success": True,
                             "time": bumper.get_milli_time(
                                 datetime.utcnow().timestamp()
                             ),
                         }
+                        else:
+                            body = {
+                                "code": bumper.RETURN_API_SUCCESS,
+                                "data": {
+                                    "authCode": authcode,
+                                    "ecovacsUid": request.query["uid"],
+                                },
+                                "msg": "操作成功",
+                                "time": bumper.get_milli_time(
+                                    datetime.utcnow().timestamp()
+                                ),
+                            }
                         return web.json_response(body)
 
             body = {
@@ -399,14 +585,203 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
-    async def handle_checkAgreement(self, request):
+    async def handle_checkAPPVersion(self, request): #EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": [],
+                "data": {
+                    "c": None,
+                    "downPageUrl": None,
+                    "img": None,
+                    "nextAlertTime": None,
+                    "r": 0,
+                    "t": None,
+                    "u": None,
+                    "ut": 0,
+                    "v": None,
+                },
                 "msg": "操作成功",
+                "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))       
+    
+    async def handle_uploadDeviceInfo(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": None,                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))            
+
+    async def handle_getAdByPositionType(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": None,                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))       
+
+    async def handle_getBootScreen(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": None,                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                           
+
+    async def handle_hasUnreadMessage(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": "N",                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))       
+
+
+    async def handle_neng_hasUnreadMessage(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": 0,
+                "data": {
+                    "hasUnRead": True
+                },                                
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                   
+
+
+    async def handle_getMsgList(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": {
+                    "hasNextPage": 0,
+                    "items": []
+                },                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                   
+
+    async def handle_getCnWapShopConfig(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": {
+                    "myShopShowFlag": "N",
+                    "myShopUrl": "",
+                    "shopIndexShowFlag": "N",
+                    "shopIndexUrl": ""
+                    },              
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                 
+
+    async def handle_getSystemReminder(self, request): #EcoVacs Home
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": 
+                {
+                    "iosGradeTime": {
+                        "iodGradeFlag": "N"
+                    },
+                    "openNotification": {
+                        "openNotificationContent": None,
+                        "openNotificationFlag": "N",
+                        "openNotificationTitle": None
+                    }
+                },                
+                "msg": "操作成功",
+                "success": True,
+                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                        
+
+    async def handle_checkAgreement(self, request):
+        try:
+            apptype = request.match_info.get("apptype", "")
+            if "global_" in apptype:
+                body = {
+                    "code": bumper.RETURN_API_SUCCESS,
+                    "data": [
+                        {
+                            "force": "N",
+                            "id": "20180804040641_7d746faf18b8cb22a50d145598fe4c90",
+                            "type": "USER",
+                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN", #"https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN
+                            "version": "1.01"
+                        },
+                        {
+                            "force": "N",
+                            "id": "20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac",
+                            "type": "PRIVACY",
+                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN", #"https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN"
+                            "version": "1.01"
+                        }
+                    ],
+                    "msg": "操作成功",
+                    "success": True,
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                }
+            else:
+                body = {
+                    "code": bumper.RETURN_API_SUCCESS,
+                    "data": [],
+                    "msg": "操作成功",
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                }
 
             return web.json_response(body)
 
@@ -439,6 +814,7 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_getProductIotMap(self, request):
+        user_devid = request.match_info.get("devid", "")
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
@@ -541,14 +917,28 @@ class ConfServer:
                         body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
 
                 elif todo == "loginByItToken":
-                    if bumper.check_authcode(postbody["userId"], postbody["token"]):
-                        body = {
-                            "resource": postbody["resource"],
-                            "result": "ok",
-                            "todo": "result",
-                            "token": postbody["token"],
-                            "userId": postbody["userId"],
-                        }
+                    if "userId" in postbody:
+                        if bumper.check_authcode(postbody["userId"], postbody["token"]):
+                            body = {
+                                "resource": postbody["resource"],
+                                "result": "ok",
+                                "todo": "result",
+                                "token": postbody["token"],
+                                "userId": postbody["userId"],
+                            }
+                    else: #EcoVacs Home LoginByITToken
+                        loginToken = bumper.loginByItToken(postbody["token"])
+                        if not loginToken == {}:                        
+                            body = {
+                                "resource": postbody["resource"],
+                                "result": "ok",
+                                "todo": "result",
+                                "token": loginToken["token"],
+                                "userId": loginToken["userid"],
+                            }
+                        else:
+                            body = {"result": "fail", "todo": "result"}
+                            
 
                 elif todo == "GetDeviceList":
                     body = {
@@ -581,6 +971,51 @@ class ConfServer:
         # Return fail for GET
         body = {"result": "fail", "todo": "result"}
         return web.json_response(body)
+
+ 
+
+    async def handle_appsvr_api(self, request):
+        if not request.method == "GET":  # Skip GET for now
+            try:
+
+                body = {}
+                postbody = {}
+                if request.content_type == "application/x-www-form-urlencoded":
+                    postbody = await request.post()
+
+                else:
+                    postbody = json.loads(await request.text())
+
+                todo = postbody["todo"]
+
+                if todo == "GetGlobalDeviceList": #EcoVacs Home
+                    bots = bumper.db_get().table("bots").all()
+                    botlist = []
+                    for bot in bots:
+                        if bot["class"] != "":
+                            b = bumper.bot_toEcoVacsHome_JSON(bot)
+                            botlist.append(json.loads(b))
+                        
+                    body = {
+                        "code": 0,                        
+                        "devices": botlist,
+                        "ret": "ok",
+                        "todo": "result",
+                    }
+                
+                confserverlog.debug(
+                    "\r\n POST: {} \r\n Response: {}".format(postbody, body)
+                )
+
+                return web.json_response(body)
+
+            except Exception as e:
+                confserverlog.exception("{}".format(e))
+
+        # Return fail for GET
+        body = {"result": "fail", "todo": "result"}
+        return web.json_response(body)        
+
 
     async def handle_lookup(self, request):
         try:
@@ -651,6 +1086,10 @@ class ConfServer:
                 if "td" in json_body:  # Seen when doing initial wifi config
                     if json_body["td"] == "PollSCResult":
                         body = {"ret": "ok"}
+                        return web.json_response(body)
+                    
+                    if json_body["td"] == "HasUnreadMsg": #EcoVacs Home
+                        body = {"ret":"ok","unRead":False}
                         return web.json_response(body)
 
         except Exception as e:
