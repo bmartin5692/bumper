@@ -1164,7 +1164,7 @@ class ConfServer:
                             json_body["toId"]
                         )
                     )
-                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+                    body = {"id": randomid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
                     return web.json_response(body)
             
             else:
