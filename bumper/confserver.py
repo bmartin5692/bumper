@@ -8,7 +8,6 @@ import bumper
 import time
 from datetime import datetime, timedelta
 import asyncio
-import contextvars
 from aiohttp import web
 import uuid
 import xml.etree.ElementTree as ET
@@ -33,7 +32,7 @@ class aiohttp_filter(logging.Filter):
 
 confserverlog = logging.getLogger("confserver")
 
-logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
+#logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
 
 class EcoVacs_Login:
