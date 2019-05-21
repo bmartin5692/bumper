@@ -22,12 +22,16 @@ def main():
                 format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
             )
             # format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
-
-    if platform.system() == "Darwin":  # If a Mac, use 0.0.0.0 for listening
-        listen_host = "0.0.0.0"
-    else:
-        listen_host = socket.gethostbyname(socket.gethostname())
-        #listen_host = "localhost"  # Try this if the above doesn't work
+    
+    listen_host = args.index("--listen")
+    if (len(args) - 1) >= (listen_host + 1):
+        listen_host = args[listen_host+1]
+    else:        
+        if platform.system() == "Darwin":  # If a Mac, use 0.0.0.0 for listening
+            listen_host = "0.0.0.0"
+        else:
+            listen_host = socket.gethostbyname(socket.gethostname())
+            #listen_host = "localhost"  # Try this if the above doesn't work
 
     
     conf_address_443 = (listen_host, 443)
