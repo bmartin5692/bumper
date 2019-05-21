@@ -1,19 +1,17 @@
-
-
 # Bumper 
-A standalone implementation of the central server used by Ecovacs Deebot cleaning robots to relay data between the robot and client.
+A standalone and self-hosted implementation of the central server used by Ecovacs vacuum robots.
 
-The current master branch is unstable and based on the work for adding D900 series support to bumper, along with other code changes.  Additional testing is needed with bots that use the XMPP protocols to ensure compatibility, so at this time it can only be guaranteed for 900-series bots (900/901/907).
+**Note:** The current master branch is unstable.
 
-Bumper needs users of models that use XMPP (M81 Pro, N79S, Ozmo) to assist with development efforts and testing in order to ensure compatability as bumper moves forward.
+Bumper needs users to assist with development efforts and testing in order to ensure compatability as bumper moves forward!  If you've tested Bumper with your bot, please open an issue with details on success or issues.
 
 The original bumper code base has been branched off as [v0.1.0](https://github.com/bmartin5692/bumper/tree/v0.1.0
-) and will remain in the original state, this will work for XMPP bots (M81 Pro, and others).
+) and will remain in the original state, this will work for XMPP bots (M81 Pro, N79S, and others), but not bots that utilize MQTT (D900, D600, and others).
 
 *Please note: this software is experimental and not ready for production use. Use at your own risk.* 
 
 ## Compatibility
-As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models and varying protocols that it hasn't been tested against.  So far two different protocols have been seen, **XMPP** and **MQTT**.  Bumper should be compatible with most wifi-enabled robots that use the Ecovacs Android app, but has only been reported to work on the below:
+As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models and varying protocols that it hasn't been tested against.  So far two different protocols have been seen, **XMPP** and **MQTT**.  Bumper should be compatible with most wifi-enabled robots that use either the Ecovacs Android/iOS app or the Ecovacs Home Android/iOS app, but has only been reported to work on the below:
 
 | Model | Protocol Used | Bumper Version |
 |--|--|--|
@@ -21,7 +19,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | Deebot Ozmo 930 | XMPP | master |
 | Deebot M81 Pro | XMPP | v0.1.0 |
 
-For more information about the protocols and how it works, see the [How does it work?](#how-does-it-work) section at the end.  If you test against another model and it works, please report it so it can be added to the list.
+For more information about the protocols and how it works, see the [How does it work?](#how-does-it-work) section at the end.  If you test against another model and it works, please open an issue to report it.
 
 ## Why?
 For fun, mostly :)
@@ -38,8 +36,7 @@ But seriously, there are a several reasons for eliminating the central server:
 - Python 3 and pipenv
 - A network router that has functionality for overriding DNS queries
 - A client that can connect to Bumper and talk to the robot over the Ecovacs protocol.
-  - The "Ecovacs" Android or iOS apps can be used if configured properly. See [Using with the official Android/iOS App](#using-with-the-official-androidios-app) below.
-    - **Note:** Bumper is not compatible with the "Ecovacs Home" app at this time.
+  - The "Ecovacs" or "Ecovacs Home" Android or iOS apps can be used if configured properly. See [Using with the official Android/iOS App](#using-with-the-official-androidios-app) below.
   - [Sucks](https://github.com/wpietri/sucks) can also be used, which can act as a client and control the robots via command-line.
 
 ## Usage
@@ -54,7 +51,8 @@ The easiest way is overriding the main domains used by EcoVacs using DNSMasq/PiH
     address=/ecovacs.net/{bumper server ip}
 
 If this isn't an option, you'll need to configure your router DNS to point a number of domains used by the app/robot to the Bumper server.  
-**Note:** Depending on country, your phone may be using a different domain.  Most of these domains contain country-specific placeholders.
+**Note:** Depending on country, your phone may be using a different domain.  Most of these domains contain country-specific placeholders.  We'll work to document all domains we encounter, but there may be additional domains and the preferred method is a overriding the full domains as above.
+
   - Example: If you see `eco-{countrycode}-api.ecovacs.com` and you live in the US/North America you would use: `eco-us-api.ecovacs.com`
 
 | Address | Description |
@@ -62,8 +60,13 @@ If this isn't an option, you'll need to configure your router DNS to point a num
 | `lb-{countrycode}.ecovacs.net` | Load-balancer that is checked by the app/robot |
 | `eco-{countrycode}-api.ecovacs.com` | Used for Login |
 | `portal-{countrycode}.ecouser.net` | Used for Login and Rest API |
+| `portal-ww.ecouser.net` | Used for various Rest APIs |
 | `msg-{countrycode}.ecouser.net` | Used for XMPP |
 | `mq-ww.ecouser.net` | Used for MQTT |
+| `gl-{countrycode}-api.ecovacs.com` | Used by Ecovacs Home app for API |
+| `recommender.ecovacs.com` | Used by Ecovacs Home app |
+
+
 
 ### Starting Bumper
 - Start Bumper with `pipenv run python start_bumper.py`
@@ -82,8 +85,7 @@ Instructions (verified to work with Sucks 0.8.3)
 - See the [example script](examples/sucks.py) for how to connect  
 
 ## Using with the official Android/iOS App 
-Bumper *can* be used with the official "Ecovacs" app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.
-  - **Note:** Bumper is not compatible with the "Ecovacs Home" app at this time.
+Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.
 
 ### DNS
 - Configure your DNS server as described above in the [DNS](#dns) section. 
