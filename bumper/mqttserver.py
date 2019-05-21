@@ -142,11 +142,13 @@ class MQTTHelperBot:
                             self.command_responses.set(cresp)
                             return resp
 
-            return {"id": requestid, "errno": "timeout", "ret": "fail"}
+            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
         except asyncio.CancelledError as e:
             helperbotlog.debug("wait_for_resp cancelled by asyncio")
+            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
         except Exception as e:
             helperbotlog.exception("{}".format(e))
+            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
 
     async def send_command(self, cmdjson, requestid):
         try:
