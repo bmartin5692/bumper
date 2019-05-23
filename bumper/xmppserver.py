@@ -243,7 +243,8 @@ class XMPPAsyncClient:
                     and client.state == client.READY
                 ):
                     ctl_to = xml.get("to")
-                    xml.attrib["from"] = "{}".format(self.bumper_jid)
+                    if not "from" in xml.attrib:
+                        xml.attrib["from"] = "{}".format(self.bumper_jid)
                     rxmlstring = ET.tostring(xml).decode("utf-8")
                     # clean up string to remove namespaces added by ET
                     rxmlstring = rxmlstring.replace("xmlns:ns0=", "xmlns=")
@@ -274,8 +275,8 @@ class XMPPAsyncClient:
             else:
                 pingto = xml.get("to")
                 pingfrom = self.bumper_jid
-
-                xml.attrib["from"] = pingfrom                
+                if not "from" in xml.attrib:
+                    xml.attrib["from"] = "{}".format(pingfrom)   
                 pingstring = ET.tostring(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
@@ -289,14 +290,7 @@ class XMPPAsyncClient:
                         client.bumper_jid != self.bumper_jid
                         and client.state == client.READY
                     ):
-                        if pingto.lower() in client.bumper_jid.lower():
-                            #pingstring = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
-                            #    xml.get("id"), pingfrom, pingto
-                            #)
-                            #xmppserverlog.debug(
-                            #    "ping from {} to {} with {}".format(pingfrom, pingto, pingstring)
-                            #)
-                            
+                        if client.uid.lower() in pingto.lower():                            
                             await client.send(pingstring)
 
         except Exception as e:
@@ -313,7 +307,8 @@ class XMPPAsyncClient:
     async def _handle_result(self, xml, data):
         try:
             ctl_to = xml.get("to")
-            xml.attrib["from"] = self.bumper_jid
+            if not "from" in xml.attrib:
+                xml.attrib["from"] = "{}".format(self.bumper_jid)
             if (
                 "errno='103' error='permission denied," in data
             ):  # No permissions, usually if bot was last on Ecovac network
