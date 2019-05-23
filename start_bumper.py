@@ -5,10 +5,19 @@ import bumper
 import sys, socket
 import time
 import platform
+import os
+#os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
+import asyncio
 
 
-def main():
+async def main():
+    try:
+        loop = asyncio.get_event_loop()
+    except:
+        loop = asyncio.new_event_loop()
+    
     args = sys.argv
+    listen_host = ""
 
     if len(args) > 0:
         if "--debug" in args:
@@ -16,23 +25,22 @@ def main():
                 level=logging.DEBUG,
                 format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s",
             )
+            loop.set_debug(True) # Set asyncio loop to debug
+            #logging.getLogger("asyncio").setLevel(logging.DEBUG)  # Show debug asyncio logs (disabled in init, uncomment for debugging asyncio)
         else:
             logging.basicConfig(
                 level=logging.INFO,
                 format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
             )
-            # format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
     
-    listen_host = args.index("--listen")
-    if (len(args) - 1) >= (listen_host + 1):
-        listen_host = args[listen_host+1]
-    else:        
+        if "--listen" in args:            
+            listen_host = args[args.index("--listen") + 1]
+    
+    if listen_host == "":
         if platform.system() == "Darwin":  # If a Mac, use 0.0.0.0 for listening
             listen_host = "0.0.0.0"
         else:
-            listen_host = socket.gethostbyname(socket.gethostname())
-            #listen_host = "localhost"  # Try this if the above doesn't work
-
+            listen_host = socket.gethostbyname(socket.gethostname())      
     
     conf_address_443 = (listen_host, 443)
     conf_address_8007 = (listen_host, 8007)
@@ -51,38 +59,39 @@ def main():
         conf_address_8007, usessl=False, helperbot=mqtt_helperbot
     )
 
-    # add user
-    # users = bumper.bumper_users_var.get()
-    # user1 = bumper.BumperUser('user1')
-    # user1.add_device('devid')
-    # user1.add_bot('bot_did')
-    # users.append(user1)
-    # bumper.bumper_users_var.set(users)
+    # Start web servers
+    conf_server.confserver_app()    
+    task_conf_server = asyncio.create_task(conf_server.start_server())
+    bumper.bumperlog.debug("task_conf_server added")        
+    await task_conf_server
 
-    # start xmpp server on port 5223 (sync)
-    xmpp_server.run(run_async=True)  # Start in new thread
+    conf_server_2.confserver_app()
+    task_conf_server2 = asyncio.create_task(conf_server_2.start_server())
+    bumper.bumperlog.debug("task_conf_server2 added")
+    await task_conf_server2
 
-    # start mqtt server on port 8883 (async)
-    mqtt_server.run(run_async=True)  # Start in new thread
+    # Start MQTT Server
+    task_mqtt_server = asyncio.create_task(mqtt_server.broker_coro())
+    bumper.bumperlog.debug("task_mqtt_server added")
+    await task_mqtt_server
 
-    time.sleep(1.5)  # Wait for broker startup
-
-    # start mqtt_helperbot (async)
-    mqtt_helperbot.run(run_async=True)  # Start in new thread
-
-    # start conf server on port 443 (async) - Used for most https calls
-    conf_server.run(run_async=True)  # Start in new thread
-
-    # start conf server on port 8007 (async) - Used for a load balancer request
-    conf_server_2.run(run_async=True)  # Start in new thread
+    # Start MQTT Helperbot
+    task_mqtt_helperbot = asyncio.create_task(mqtt_helperbot.start_helper_bot())
+    bumper.bumperlog.debug("task_mqtt_helperbot added")
+    await task_mqtt_helperbot
+    
+    # Start XMPP Server
+    task_xmpp_server = asyncio.create_task(xmpp_server.async_server())
+    bumper.bumperlog.debug("task_xmpp_server added")
+    await task_xmpp_server
 
     while True:
         try:
-            time.sleep(30)
+            await asyncio.sleep(30)
             bumper.revoke_expired_tokens()
-            disconnected_clients = bumper.get_disconnected_xmpp_clients()
-            for client in disconnected_clients:
-                xmpp_server.remove_client_byuid(client["userid"])
+            #disconnected_clients = bumper.get_disconnected_xmpp_clients()
+            #for client in disconnected_clients:
+            #    xmpp_server.remove_client_byuid(client["userid"])
 
         except KeyboardInterrupt:
             bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
@@ -91,4 +100,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

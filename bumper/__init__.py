@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 
-from .confserver import ConfServer
-from .mqttserver import MQTTServer
-from .mqttserver import MQTTHelperBot
-from .xmppserver import XMPPServer
+from bumper.confserver import ConfServer
+from bumper.mqttserver import MQTTServer, MQTTHelperBot
+from bumper.xmppserver import XMPPServer
 import asyncio
-import contextvars
 import json
 import time
 from datetime import datetime, timedelta
 import platform
-import os
+import os, sys
 import logging
+from logging.handlers import RotatingFileHandler
 from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
+import json
 from tinydb.storages import MemoryStorage
-
-bumper_users_var = contextvars.ContextVar("bumper_users", default=[])
-bumper_clients_var = contextvars.ContextVar("bumper_clients", default=[])
-bumper_bots_var = contextvars.ContextVar("bumper_bots", default=[])
 
 ca_cert = "./certs/CA/cacert.pem"
 server_cert = "./certs/cert.pem"
@@ -29,19 +25,47 @@ token_validity_seconds = 3600  # 1 hour
 db = None
 
 # Logs
+os.makedirs("logs", exist_ok=True) #Ensure logs directory exists or create
+# Set format for all logs
+logformat = logging.Formatter("[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
+
 bumperlog = logging.getLogger("bumper")
+bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
+bumper_rotate.setFormatter(logformat)
+bumperlog.addHandler(bumper_rotate)
+# Override the logging level
+# bumperlog.setLevel(logging.INFO)
+
 confserverlog = logging.getLogger("confserver")
+conf_rotate = RotatingFileHandler("logs/confserver.log", maxBytes=5000000, backupCount=5)
+conf_rotate.setFormatter(logformat)
+confserverlog.addHandler(conf_rotate)
 # Override the logging level
 # confserverlog.setLevel(logging.INFO)
+
 mqttserverlog = logging.getLogger("mqttserver")
+mqtt_rotate = RotatingFileHandler("logs/mqttserver.log", maxBytes=5000000, backupCount=5)
+mqtt_rotate.setFormatter(logformat)
+mqttserverlog.addHandler(mqtt_rotate)
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
+
 helperbotlog = logging.getLogger("helperbot")
+helperbot_rotate = RotatingFileHandler("logs/helperbot.log", maxBytes=5000000, backupCount=5)
+helperbot_rotate.setFormatter(logformat)
+helperbotlog.addHandler(helperbot_rotate)
 # Override the logging level
 # helperbotlog.setLevel(logging.INFO)
+
 xmppserverlog = logging.getLogger("xmppserver")
+xmpp_rotate = RotatingFileHandler("logs/xmppserver.log", maxBytes=5000000, backupCount=5)
+xmpp_rotate.setFormatter(logformat)
+xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
+
+
+logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 
 def get_milli_time(timetoconvert):
@@ -56,23 +80,32 @@ def db_file():
 
 
 def os_db_path():
-    if platform.system() == "Windows":
-        return os.path.join(os.getenv("APPDATA"), "bumper.db")
+    if platform.system() == "Windows":        
+        os.makedirs(os.getenv("APPDATA"), exist_ok=True) #Ensure db_path directory exists or create
+        return os.path.join(os.getenv("APPDATA"), "bumper.db") 
     else:
+        os.makedirs(os.path.expanduser("~/.config"), exist_ok=True) #Ensure db_path directory exists or create
         return os.path.expanduser("~/.config/bumper.db")
 
-
 def db_get():
-    # Will create the database if it doesn't exist
-    db = TinyDB(db_file())
+    try:
+        # Will create the database if it doesn't exist
+        db = TinyDB(db_file())
 
-    # Will create the tables if they don't exist
-    db.table("users", cache_size=0)
-    db.table("clients", cache_size=0)
-    db.table("bots", cache_size=0)
-    db.table("tokens", cache_size=0)
+        # Will create the tables if they don't exist
+        db.table("users", cache_size=0)
+        db.table("clients", cache_size=0)
+        db.table("bots", cache_size=0)
+        db.table("tokens", cache_size=0)
 
-    return db
+        return db
+    
+    
+    except json.decoder.JSONDecodeError as jerr:
+        bumperlog.error("JsonErr: {} - Doc: {}".format(jerr.msg, jerr.doc))
+
+    except Exception as ex:
+        bumperlog.error(ex)
 
 
 class BumperUser(object):
@@ -632,11 +665,12 @@ def bot_add(sn, did, devclass, resource, company):
     newbot.company = company
 
     bot = bot_get(did)
-    if not bot:
-        bumperlog.info(
-            "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
-        )
-        bot_full_upsert(newbot.asdict())
+    if not bot: # Not existing bot in database
+        if not devclass == "" or "@" not in sn or "tmp" not in sn: # try to prevent bad additions to the bot list
+            bumperlog.info(
+               "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
+            )
+            bot_full_upsert(newbot.asdict())
 
 
 def bot_remove(did):

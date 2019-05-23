@@ -8,13 +8,13 @@ from hbmqtt.broker import Broker
 from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
-import contextvars
 import time
 from threading import Thread
 import ssl
 import bumper
 import json
 from datetime import datetime, timedelta
+import bumper
 
 helperbotlog = logging.getLogger("helperbot")
 mqttserverlog = logging.getLogger("mqttserver")
@@ -40,39 +40,16 @@ class MQTTHelperBot:
     ):
         self.address = address
         self.client_id = "helper1@bumper/helper1"
-        self.command_responses = contextvars.ContextVar("command_responses", default=[])
+        self.command_responses = []
         self.helperthread = None
-
-    def run(self, run_async=False):
-        if run_async:
-            hloop = asyncio.new_event_loop()
-            helperbotlog.debug("Starting MQTT HelperBot Thread: 1")
-            self.helperthread = Thread(
-                name="MQTTHelperBot_Thread", target=self.run_helperbot, args=(hloop,)
-            )
-            self.helperthread.setDaemon(True)
-            self.helperthread.start()
-
-        else:
-            self.run_helperbot(asyncio.get_event_loop())
-
-    def run_helperbot(self, loop):
-        logging.info("Starting MQTT HelperBot")
-        print("Starting MQTT HelperBot")
-        try:
-            asyncio.set_event_loop(loop)
-            self.Client = MQTTClient(
-                client_id=self.client_id, config={"check_hostname": False}
-            )
-            loop.run_until_complete(self.start_helper_bot())
-            loop.run_until_complete(self.get_msg())
-            loop.run_forever()
-        except Exception as e:
-            helperbotlog.exception("{}".format(e))
 
     async def start_helper_bot(self):
 
         try:
+            self.Client = MQTTClient(
+                client_id=self.client_id, config={"check_hostname": False}
+            )
+
             await self.Client.connect(
                 "mqtts://{}:{}/".format(self.address[0], self.address[1]),
                 cafile=bumper.ca_cert,
@@ -81,8 +58,10 @@ class MQTTHelperBot:
                 [
                     ("iot/p2p/+/+/+/+/helper1/bumper/helper1/+/+/+", QOS_0),
                     ("iot/p2p/+", QOS_0),
+                    ("iot/atr/+", QOS_0),
                 ]
             )
+            asyncio.create_task(self.get_msg())
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))
@@ -92,29 +71,33 @@ class MQTTHelperBot:
             while True:
                 message = await self.Client.deliver_message()
 
-                # helperbotlog.debug("HelperBot MQTT Received Message on Topic: {} - Message: {}".format(message.topic, str(message.payload.decode("utf-8"))))
-                cresp = self.command_responses.get()
-
                 if str(message.topic).split("/")[6] == "helper1":
-                    cresp.append(
+                    #Response to command
+                    helperbotlog.debug("Received Response - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                    self.command_responses.append(
                         {
                             "time": time.time(),
                             "topic": message.topic,
                             "payload": str(message.data.decode("utf-8")),
                         }
                     )
+                elif str(message.topic).split("/")[3] == "helper1":
+                    #Helperbot sending command
+                    helperbotlog.debug("Send Command - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                elif str(message.topic).split("/")[1] == "atr":
+                    #Broadcast message received on atr
+                    helperbotlog.debug("Received Broadcast - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                else:
+                    helperbotlog.debug("Received Message - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
 
                 # Cleanup "expired messages" > 60 seconds from time
-                for msg in cresp:
+                for msg in self.command_responses:
                     expire_time = (
                         datetime.fromtimestamp(msg["time"]) + timedelta(seconds=10)
                     ).timestamp()
                     if time.time() > expire_time:
-                        # helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
-                        cresp.remove(msg)
-
-                self.command_responses.set(cresp)
-                # helperbotlog.debug("MQTT Command Response List Count: %s" %len(cresp))
+                        helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                        self.command_responses.remove(msg)
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))
@@ -125,10 +108,9 @@ class MQTTHelperBot:
             t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
 
             while time.time() < t_end:
-                await asyncio.sleep(0.1)
-                responses = self.command_responses.get()
-                if len(responses) > 0:
-                    for msg in responses:
+                await asyncio.sleep(0.1)            
+                if len(self.command_responses) > 0:
+                    for msg in self.command_responses:
                         topic = str(msg["topic"]).split("/")
                         if topic[6] == "helper1" and topic[10] == requestid:
                             # helperbotlog.debug('VacBot MQTT Response: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
@@ -136,10 +118,8 @@ class MQTTHelperBot:
                                 resppayload = json.loads(msg["payload"])
                             else:
                                 resppayload = str(msg["payload"])
-                            resp = {"id": requestid, "ret": "ok", "resp": resppayload}
-                            cresp = self.command_responses.get()
-                            cresp.remove(msg)
-                            self.command_responses.set(cresp)
+                            resp = {"id": requestid, "ret": "ok", "resp": resppayload}                            
+                            self.command_responses.remove(msg)
                             return resp
 
             return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
@@ -173,6 +153,7 @@ class MQTTHelperBot:
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))
+            return {}
 
 
 class MQTTServer:
@@ -180,6 +161,7 @@ class MQTTServer:
 
     async def broker_coro(self):
         try:
+            mqttserverlog.info("Starting MQTT Server at {}:{}".format(self.address[0], self.address[1]))            
             broker = hbmqtt.broker.Broker(config=self.default_config)
             await broker.start()
 
@@ -238,32 +220,6 @@ class MQTTServer:
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
-    def run(self, run_async=False):
-        if run_async:
-            sloop = asyncio.new_event_loop()
-            mqttserverlog.debug("Starting MQTTServer Thread: 1")
-            self.mqttserverthread = Thread(
-                name="MQTTServer_Thread", target=self.run_server, args=(sloop,)
-            )
-            self.mqttserverthread.setDaemon(True)
-            self.mqttserverthread.start()
-
-        else:
-            self.run_server(asyncio.get_event_loop())
-
-    def run_server(self, loop):
-
-        logging.info("Starting MQTT Server at {}".format(self.address))
-        print("Starting MQTT Server at {}".format(self.address))
-        try:
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.broker_coro())
-            # loop.run_until_complete(self.active_bot_listing())
-            loop.run_forever()
-
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
-
 
 class BumperMQTTServer_Plugin:
     def __init__(self, context):
@@ -300,11 +256,9 @@ class BumperMQTTServer_Plugin:
                 client_id = session.client_id
 
                 didsplit = str(client_id).split("@")
-                # If this isn't a fake user (fuid) then add as a bot
-                if not (
-                    str(didsplit[0]).startswith("fuid")
-                    or str(didsplit[0]).startswith("helper")
-                ):
+                if not ( # if ecouser or bumper aren't in details it is a bot
+                    "ecouser" in didsplit[1]
+                    or "bumper" in didsplit[1]):
                     tmpbotdetail = str(didsplit[1]).split("/")
                     bumper.bot_add(
                         username,

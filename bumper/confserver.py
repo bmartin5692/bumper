@@ -8,7 +8,6 @@ import bumper
 import time
 from datetime import datetime, timedelta
 import asyncio
-import contextvars
 from aiohttp import web
 import uuid
 import xml.etree.ElementTree as ET
@@ -32,9 +31,7 @@ class aiohttp_filter(logging.Filter):
 
 
 confserverlog = logging.getLogger("confserver")
-
-logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-logging.getLogger("aiohttp.access").addFilter(aiohttp_filter())
+logging.getLogger("aiohttp.access").addFilter(aiohttp_filter()) #Add logging filter above to aiohttp.access
 
 class EcoVacs_Login:
     accessToken = ""
@@ -60,42 +57,6 @@ class ConfServer:
         self.confthread = None
         self.run_async = False
         self.app = None
-
-    def run(self, run_async=False):
-        try:
-            if run_async:
-                self.run_async = True
-                confserverlog.debug("Starting ConfServer Thread: 1")
-                self.confthread = Thread(
-                    name="ConfServer_{}_Thread".format(self.address[1]),
-                    target=self.run_server,
-                )
-                self.confthread.setDaemon(True)
-                self.confthread.start()
-
-            else:
-                try:
-                    self.run_server()
-                except KeyboardInterrupt:
-                    self.disconnect()
-
-        except Exception as e:
-            confserverlog.exception("{}".format(e))
-
-    def run_server(self):
-        logging.info("Starting ConfServer at {}".format(self.address))
-        print("Starting ConfServer at {}".format(self.address))
-        try:
-            loop = asyncio.get_event_loop()
-        except:
-            loop = asyncio.new_event_loop()
-
-        try:
-            self.confserver_app()
-            loop.run_until_complete(self.start_server())
-            loop.run_forever()
-        except Exception as e:
-            confserverlog.exception("{}".format(e))
 
     def confserver_app(self):
         self.app = web.Application()
@@ -197,6 +158,7 @@ class ConfServer:
 
     async def start_server(self):
         try:
+            confserverlog.info("Starting ConfServer at {}:{}".format(self.address[0], self.address[1]))
             runner = web.AppRunner(self.app)
             await runner.setup()
 
@@ -352,55 +314,67 @@ class ConfServer:
               
 
     def check_token(self, apptype, countrycode, user, token):
-        if bumper.check_token(user["userid"], token):
-            
-            if "global_" in apptype: #EcoVacs Home
-                login_details = EcoVacsHome_Login()
-                login_details.ucUid = "fuid_{}".format(user["userid"])
-                login_details.loginName = "fusername_{}".format(user["userid"])
-                login_details.mobile = None
+        try:
+            if bumper.check_token(user["userid"], token):
+                
+                if "global_" in apptype: #EcoVacs Home
+                    login_details = EcoVacsHome_Login()
+                    login_details.ucUid = "fuid_{}".format(user["userid"])
+                    login_details.loginName = "fusername_{}".format(user["userid"])
+                    login_details.mobile = None
+                else:
+                    login_details = EcoVacs_Login()
+
+                login_details.accessToken = token
+                login_details.uid = "fuid_{}".format(user["userid"])
+                login_details.username = "fusername_{}".format(user["userid"])
+                login_details.country = countrycode
+                login_details.email = "null@null.com"    
+    
+                body = {
+                    "code": bumper.RETURN_API_SUCCESS,
+                    "data": json.loads(login_details.toJSON()),
+                    #{
+                    #    "accessToken": self.generate_token(tmpuser),  # Generate a token
+                    #    "country": countrycode,
+                    #    "email": "null@null.com",
+                    #    "uid": "fuid_{}".format(tmpuser["userid"]),
+                    #    "username": "fusername_{}".format(tmpuser["userid"]),
+                    #},
+                    "msg": "操作成功",
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                }
+                return web.json_response(body)
+
             else:
-                login_details = EcoVacs_Login()
-
-            login_details.accessToken = token
-            login_details.uid = "fuid_{}".format(user["userid"])
-            login_details.username = "fusername_{}".format(user["userid"])
-            login_details.country = countrycode
-            login_details.email = "null@null.com"    
- 
-            body = {
-                "code": bumper.RETURN_API_SUCCESS,
-                "data": json.loads(login_details.toJSON()),
-                #{
-                #    "accessToken": self.generate_token(tmpuser),  # Generate a token
-                #    "country": countrycode,
-                #    "email": "null@null.com",
-                #    "uid": "fuid_{}".format(tmpuser["userid"]),
-                #    "username": "fusername_{}".format(tmpuser["userid"]),
-                #},
-                "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
-            }
-            return web.json_response(body)
-
-        else:
-            body = {
-                "code": bumper.ERR_TOKEN_INVALID,
-                "data": None,
-                "msg": "当前密码错误",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
-            }
-            return web.json_response(body)
+                body = {
+                    "code": bumper.ERR_TOKEN_INVALID,
+                    "data": None,
+                    "msg": "当前密码错误",
+                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                }
+                return web.json_response(body)
+        
+        except Exception as e:
+            confserverlog.exception("{}".format(e))                
 
     def generate_token(self, user):
-        tmpaccesstoken = uuid.uuid4().hex
-        bumper.user_add_token(user["userid"], tmpaccesstoken)
-        return tmpaccesstoken
+        try:
+            tmpaccesstoken = uuid.uuid4().hex
+            bumper.user_add_token(user["userid"], tmpaccesstoken)
+            return tmpaccesstoken
+        
+        except Exception as e:
+            confserverlog.exception("{}".format(e))            
 
     def generate_authcode(self, user, countrycode, token):
-        tmpauthcode = "{}_{}".format(countrycode, uuid.uuid4().hex)
-        bumper.user_add_authcode(user["userid"], token, tmpauthcode)
-        return tmpauthcode
+        try:            
+            tmpauthcode = "{}_{}".format(countrycode, uuid.uuid4().hex)
+            bumper.user_add_authcode(user["userid"], token, tmpauthcode)
+            return tmpauthcode
+        
+        except Exception as e:
+            confserverlog.exception("{}".format(e))            
 
     def _auth_any(self, devid, apptype, country, request):
         try:
@@ -816,7 +790,6 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_getProductIotMap(self, request):
-        user_devid = request.match_info.get("devid", "")
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
@@ -910,13 +883,23 @@ class ConfServer:
                 if todo == "FindBest":
                     service = postbody["service"]
                     if service == "EcoMsgNew":
+                        srvip = socket.gethostbyname(socket.gethostname())
+                        srvport = 5223
+                        confserverlog.info(
+                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(srvip, srvport)
+                        )
                         body = {
                             "result": "ok",
-                            "ip": socket.gethostbyname(socket.gethostname()),
-                            "port": 5223,
+                            "ip": srvip,
+                            "port": srvport,
                         }
                     elif service == "EcoUpdate":
-                        body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
+                        srvip = "47.88.66.164" #EcoVacs Server
+                        srvport = 8005
+                        confserverlog.info(
+                            "Reporting FindBest-EcoUpdate Server to Bot as: {}:{}".format(srvip, srvport)
+                        )
+                        body = {"result": "ok", "ip": srvip, "port": srvport}
 
                 elif todo == "loginByItToken":
                     if "userId" in postbody:
@@ -996,7 +979,8 @@ class ConfServer:
                     for bot in bots:
                         if bot["class"] != "":
                             b = bumper.bot_toEcoVacsHome_JSON(bot)
-                            botlist.append(json.loads(b))
+                            if not b is None: #Happens if the bot isn't on the EcoVacs Home list
+                                botlist.append(json.loads(b))
                         
                     body = {
                         "code": 0,                        
@@ -1036,9 +1020,12 @@ class ConfServer:
             if todo == "FindBest":
                 service = postbody["service"]
                 if service == "EcoMsgNew":
-
                     srvip = socket.gethostbyname(socket.gethostname())
-                    msgserver = {"ip": srvip, "port": 5223, "result": "ok"}
+                    srvport = 5223
+                    confserverlog.info(
+                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(srvip, srvport)
+                    )
+                    msgserver = {"ip": srvip, "port": srvport, "result": "ok"}
                     msgserver = json.dumps(msgserver)
                     msgserver = msgserver.replace(
                         " ", ""
@@ -1095,11 +1082,16 @@ class ConfServer:
                 
 
             if did != "":
-                confserverlog.debug("BotCommand: {}".format(json_body))
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     body = ""
                     retcmd = await self.helperbot.send_command(json_body, randomid)
+                    confserverlog.debug(
+                        "Send Bot - {}".format(json_body)
+                    )
+                    confserverlog.debug(
+                        "Bot Response - {}".format(body)
+                    )
                     logs = []
                     logsroot = ET.fromstring(retcmd["resp"])
                     if logsroot.attrib["ret"] == "ok":
@@ -1148,13 +1140,15 @@ class ConfServer:
                 did = json_body["toId"]                          
 
             if did != "":
-                confserverlog.debug("BotCommand: {}".format(json_body))
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     retcmd = await self.helperbot.send_command(json_body, randomid)
                     body = retcmd
                     confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+                        "Send Bot - {}".format(json_body)
+                    )
+                    confserverlog.debug(
+                        "Bot Response - {}".format(body)
                     )
                     return web.json_response(body)
                 else:
@@ -1181,7 +1175,7 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
 
-    async def handle_dim_devmanager(self, request):
+    async def handle_dim_devmanager(self, request): #Used in EcoVacs Home App
         try:
             json_body = json.loads(await request.text())
             
@@ -1191,13 +1185,15 @@ class ConfServer:
                 did = json_body["toId"]                          
 
             if did != "":
-                confserverlog.debug("BotCommand: {}".format(json_body))
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     retcmd = await self.helperbot.send_command(json_body, randomid)
                     body = retcmd
                     confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+                        "Send Bot - {}".format(json_body)
+                    )
+                    confserverlog.debug(
+                        "Bot Response - {}".format(body)
                     )
                     return web.json_response(body)
                 else:
@@ -1223,13 +1219,13 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))            
 
-    def disconnect(self):
+    async def disconnect(self):
         try:
             confserverlog.info("shutting down")
             if self.run_async:
                 self.confthread.join()
             else:
-                self.app.shutdown()
+                await self.app.shutdown()
                 
         except Exception as e:
             confserverlog.exception("{}".format(e))

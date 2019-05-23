@@ -15,6 +15,7 @@ nose = "*"
 coverage = "*"
 mock = "*"
 pylint = "*"
+pbr = "*"
 
 [pipenv]
 allow_prereleases = true
