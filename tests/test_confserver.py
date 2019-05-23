@@ -18,7 +18,14 @@ def async_return(result):
     return f    
 
 def test_disconnect():
-    confserver.disconnect()
+    
+    async def test_disconnect_async():    
+        await confserver.disconnect()
+
+    loop = asyncio.get_event_loop()
+    # Test
+    loop.run_until_complete(test_disconnect_async())
+
 
 def test_base():
     if os.path.exists("tests/tmp.db"):

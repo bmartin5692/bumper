@@ -1219,13 +1219,13 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))            
 
-    def disconnect(self):
+    async def disconnect(self):
         try:
             confserverlog.info("shutting down")
             if self.run_async:
                 self.confthread.join()
             else:
-                self.app.shutdown()
+                await self.app.shutdown()
                 
         except Exception as e:
             confserverlog.exception("{}".format(e))
