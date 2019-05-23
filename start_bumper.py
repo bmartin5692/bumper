@@ -6,11 +6,16 @@ import sys, socket
 import time
 import platform
 import os
-os.environ['PYTHONASYNCIODEBUG'] = '1'
+#os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
 import asyncio
 
 
-def main():
+async def main():
+    try:
+        loop = asyncio.get_event_loop()
+    except:
+        loop = asyncio.new_event_loop()
+    
     args = sys.argv
     listen_host = ""
 
@@ -20,12 +25,13 @@ def main():
                 level=logging.DEBUG,
                 format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s",
             )
+            loop.set_debug(True) # Set asyncio loop to debug
+            #logging.getLogger("asyncio").setLevel(logging.DEBUG)  # Show debug asyncio logs (disabled in init, uncomment for debugging asyncio)
         else:
             logging.basicConfig(
                 level=logging.INFO,
                 format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
             )
-            # format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
     
         if "--listen" in args:            
             listen_host = args[args.index("--listen") + 1]
@@ -53,54 +59,39 @@ def main():
         conf_address_8007, usessl=False, helperbot=mqtt_helperbot
     )
 
-    try:
-        loop = asyncio.get_event_loop()
-    except:
-        loop = asyncio.new_event_loop()
-
     # Start web servers
-    loop.set_debug(True)
-    conf_server.confserver_app()
+    conf_server.confserver_app()    
+    task_conf_server = asyncio.create_task(conf_server.start_server())
+    bumper.bumperlog.debug("task_conf_server added")        
+    await task_conf_server
+
     conf_server_2.confserver_app()
-    asyncio.ensure_future(conf_server.start_server(),loop=loop)
-    asyncio.ensure_future(conf_server_2.start_server(),loop=loop)
+    task_conf_server2 = asyncio.create_task(conf_server_2.start_server())
+    bumper.bumperlog.debug("task_conf_server2 added")
+    await task_conf_server2
 
     # Start MQTT Server
-    asyncio.ensure_future(mqtt_server.broker_coro())
+    task_mqtt_server = asyncio.create_task(mqtt_server.broker_coro())
+    bumper.bumperlog.debug("task_mqtt_server added")
+    await task_mqtt_server
 
     # Start MQTT Helperbot
-    asyncio.ensure_future(mqtt_helperbot.start_helper_bot())
+    task_mqtt_helperbot = asyncio.create_task(mqtt_helperbot.start_helper_bot())
+    bumper.bumperlog.debug("task_mqtt_helperbot added")
+    await task_mqtt_helperbot
     
     # Start XMPP Server
-    asyncio.ensure_future(xmpp_server.async_server())
-
-    loop.run_forever()
-
-
-    # start xmpp server on port 5223 (sync)
-    #xmpp_server.run(run_async=True)  # Start in new thread
-
-    # start mqtt server on port 8883 (async)
-    #mqtt_server.run(run_async=True)  # Start in new thread
-
-    #time.sleep(1.5)  # Wait for broker startup
-
-    # start mqtt_helperbot (async)
-    #mqtt_helperbot.run(run_async=True)  # Start in new thread
-
-    # start conf server on port 443 (async) - Used for most https calls
-    #conf_server.run(run_async=True)  # Start in new thread
-
-    # start conf server on port 8007 (async) - Used for a load balancer request
-    #conf_server_2.run(run_async=True)  # Start in new thread
+    task_xmpp_server = asyncio.create_task(xmpp_server.async_server())
+    bumper.bumperlog.debug("task_xmpp_server added")
+    await task_xmpp_server
 
     while True:
         try:
-            time.sleep(30)
+            await asyncio.sleep(30)
             bumper.revoke_expired_tokens()
-            disconnected_clients = bumper.get_disconnected_xmpp_clients()
-            for client in disconnected_clients:
-                xmpp_server.remove_client_byuid(client["userid"])
+            #disconnected_clients = bumper.get_disconnected_xmpp_clients()
+            #for client in disconnected_clients:
+            #    xmpp_server.remove_client_byuid(client["userid"])
 
         except KeyboardInterrupt:
             bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
@@ -109,4 +100,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

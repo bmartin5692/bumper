@@ -5,7 +5,7 @@ import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as
 import base64
 import ssl
 import bumper
-import asyncio
+import asyncio, functools
 
 xmppserverlog = logging.getLogger("xmppserver")
 
@@ -19,11 +19,10 @@ class XMPPServer:
     def __init__(self, address):
         # Initialize bot server
         self.address = address
-        self.aclients = {}  # task -> (reader, writer)
 
     async def async_server(self):
-        xmppserverlog.debug(
-            "listening on {}:{}".format(self.address[0], self.address[1])
+        xmppserverlog.info(
+            "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
         )
         server = await asyncio.start_server(
             self.accept_client, self.address[0], self.address[1]
@@ -34,101 +33,26 @@ class XMPPServer:
     # self.clients = {}  # task -> (reader, writer)
 
     def accept_client(self, client_reader, client_writer):
-        # task = asyncio.Task(self.handle_client(client_reader, client_writer))
-        aclient = XMPPAsyncClient(client_reader, client_writer)
-        task = asyncio.Task(aclient.handle_async_client())
-        self.aclients[task] = (client_reader, client_writer)
+        try:
+            aclient = XMPPAsyncClient(client_reader, client_writer)
+            task = asyncio.Task(aclient.handle_async_client())
+            aclient._async_task = task
+            self.clients.append(aclient)
 
-        def client_done(task):
-            del self.aclients[task]
-            xmppserverlog.info("End Connection for {}".format(client_writer.get_extra_info("peername")))
-            client_writer.close()           
+            def client_done(aclient, task):
+                try:
+                    self.clients.remove(aclient)
+                    xmppserverlog.debug("End Connection for ({}:{} | {})".format(client_writer.get_extra_info("peername")[0], client_writer.get_extra_info("peername")[1], aclient.bumper_jid))
+                    client_writer.close()
+                except Exception as e:
+                    xmppserverlog.error("{}".format(e))
 
-        clientaddr = client_writer.get_extra_info("peername")
-        xmppserverlog.info("New Connection from {}".format(clientaddr))
-        task.add_done_callback(client_done)
+            clientaddr = client_writer.get_extra_info("peername")
+            xmppserverlog.debug("New Connection from {}:{}".format(clientaddr[0],clientaddr[1]))
+            task.add_done_callback(functools.partial(client_done, aclient))
 
-    # def run(self, run_async=False):
-    #     if run_async:
-    #         xmppserverlog.debug("Starting XMPPServer Thread: 1")
-    #         self.xmppthread = Thread(name="XMPPServer_Thread", target=self.run_server)
-    #         self.xmppthread.setDaemon(True)
-    #         self.xmppthread.start()
-
-    #     else:
-    #         try:
-    #             self.run_server()
-    #         except KeyboardInterrupt:
-    #             self.disconnect()
-
-    # def run_server(self):
-    #     logging.info("Starting XMPP Server at {}".format(self.address))
-    #     print("Starting XMPP Server at {}".format(self.address))
-
-    #     # xmppserverlog.setLevel(logging.DEBUG)
-
-    #     # Set SSL Context
-    #     self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    #     self.ssl_ctx.load_cert_chain(
-    #         certfile=bumper.server_cert, keyfile=bumper.server_key
-    #     )
-
-    #     self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    #     self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    #     try:
-    #         self.socket.bind(self.address)
-    #         self.socket.listen(5)
-
-    #         xmppserverlog.debug(
-    #             "listening on {}:{}".format(self.address[0], self.address[1])
-    #         )
-    #         while not self.exit_flag:
-    #             connection, client_address = self.socket.accept()
-
-    #             # disconnect any clients with this ip
-    #             for client in self.clients:
-    #                 if client.address == client_address[0]:
-    #                     xmppserverlog.debug(
-    #                         "disconnecting existing client {} with resource {}".format(
-    #                             client.address, client.clientresource
-    #                         )
-    #                     )
-    #                     client._disconnect()
-    #                     self.remove_client_byip(client.address)
-
-    #             xmppserverlog.debug(
-    #                 "starting new client with ip {}".format(client_address[0])
-    #             )
-    #             thread_id = uuid.uuid4()
-    #             client = XMPPAsyncClient(thread_id, connection, client_address)
-    #             client.setDaemon(True)
-    #             client.start()
-    #             self.clients.append(client)
-
-    #     except PermissionError as e:
-    #         if "bind" in e.strerror:
-    #             xmppserverlog.exception(
-    #                 "Error binding XMPPServer, exiting. Try using a different hostname or IP - {}".format(
-    #                     e
-    #                 )
-    #             )
-    #             exit(1)
-
-    #     except Exception as e:
-    #         xmppserverlog.exception("{}".format(e))
-    #         exit(1)
-
-    #     except KeyboardInterrupt as e:
-    #         xmppserverlog.exception("{}".format(e))
-
-    #     finally:
-    #         connection.shutdown(socket.SHUT_RDWR)
-    #         connection.close()
-    #         self.disconnect()
-    #         xmppserverlog.info("disconnecting")
-
-    #     self.socket.close()
+        except Exception as e:
+            xmppserverlog.error("{}".format(e))            
 
     def disconnect(self):
         try:
@@ -140,41 +64,7 @@ class XMPPServer:
             xmppserverlog.debug("shutting down")
 
         except Exception as e:
-            xmppserverlog.exception("{}".format(e))
-
-    def remove_client_byip(self, ip):
-        for client in self.clients:
-            if client.address == ip:
-                xmppserverlog.debug(
-                    "removing client from client list with ip {} and resource {}".format(
-                        client.address, client.clientresource
-                    )
-                )
-                client._disconnect()
-                self.clients.remove(client)
-
-    def remove_client_byresource(self, resource):
-        for client in self.clients:
-            if str(client.clientresource).lower() == str(resource).lower():
-                xmppserverlog.debug(
-                    "removing client from client list with ip {} and resource {}".format(
-                        client.address, client.clientresource
-                    )
-                )
-                client._disconnect()
-                self.clients.remove(client)
-
-    def remove_client_byuid(self, uid):
-        for client in self.clients:
-            if str(client.uid).lower() == str(uid).lower():
-                xmppserverlog.debug(
-                    "removing client from client list with ip {} and resource {}".format(
-                        client.address, client.clientresource
-                    )
-                )
-                client._disconnect()
-                self.clients.remove(client)
-
+            xmppserverlog.error("{}".format(e))
 
 class XMPPAsyncClient:
     IDLE = 0
@@ -186,6 +76,7 @@ class XMPPAsyncClient:
     UNKNOWN = 0
     BOT = 1
     CONTROLLER = 2
+    _async_task = None
 
     def __init__(self, client_reader, client_writer):
         self.type = self.UNKNOWN
@@ -204,20 +95,17 @@ class XMPPAsyncClient:
 
     async def handle_async_client(self):
         # xmppserverlog.info('client connected - {}'.format(self.address))        
-        #await self._set_state("READY")
-        await self._set_state("CONNECT")
-        #asyncio.Task(self.send_ping(30))        
+        await self._set_state("CONNECT")        
         while True:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
             if not self.state == self.DISCONNECT:
                 data = await self.client_reader.read(4096)
-                # data = await asyncio.wait_for(client_reader.readline(), timeout=10.0)
-                if data is None:
-                    xmppserverlog.warning("Received no data")
+                if data is None or data == b'':
+                    xmppserverlog.debug("Received no data")
                     # exit loop and disconnect
                     return
-
-                await self._parse_data(data)
+                else:
+                    await self._parse_data(data)
             else:
                 break
 
@@ -228,25 +116,25 @@ class XMPPAsyncClient:
         try:
             # if not self.connection._closed:
             if self.log_sent_message:
-                xmppserverlog.debug("send {} - {}".format(self.address, command))
-            # self.connection.send(command.encode())
+                xmppserverlog.debug("send to ({}:{} | {}) - {}".format(self.address[0], self.address[1], self.bumper_jid, command))
+            
             self.client_writer.write(command.encode())
             await self.client_writer.drain()
 
         except BrokenPipeError as e:
-            xmppserverlog.debug("{}".format(e))
+            #xmppserverlog.debug("{}".format(e))            
             await self._set_state("DISCONNECT")
 
         except ConnectionResetError as e:
-            xmppserverlog.debug("{}".format(e))
+            #xmppserverlog.debug("{}".format(e))
             await self._set_state("DISCONNECT")
 
         except ConnectionAbortedError as e:
-            xmppserverlog.debug("{}".format(e))
+            #xmppserverlog.debug("{}".format(e))
             await self._set_state("DISCONNECT")
 
         except OSError as e:
-            xmppserverlog.debug("{}".format(e))
+            xmppserverlog.error("{}".format(e))
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -265,7 +153,7 @@ class XMPPAsyncClient:
             self.client_writer.close()
 
         except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+            xmppserverlog.error("{}".format(e))
 
     async def _tag_strip_uri(self, tag):
         try:
@@ -274,7 +162,7 @@ class XMPPAsyncClient:
             return tag
 
         except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+            xmppserverlog.error("{}".format(e))
 
     async def _set_state(self, state):
         try:
@@ -286,7 +174,7 @@ class XMPPAsyncClient:
                     )
                 )
 
-            xmppserverlog.debug("{} state: {}".format(self.address, state))
+            xmppserverlog.debug("({}:{} | {}) state: {}".format(self.address[0],self.address[1],self.bumper_jid, state))
 
             self.state = new_state
 
@@ -294,7 +182,7 @@ class XMPPAsyncClient:
                 await self._disconnect()
 
         except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+            xmppserverlog.error("{}".format(e))
 
     async def _handle_ctl(self, xml, data):
         try:
@@ -365,13 +253,13 @@ class XMPPAsyncClient:
 
                     if client.type == self.BOT:
                         if client.uid.lower() in ctl_to.lower():
-                            xmppserverlog.info(
+                            xmppserverlog.debug(
                                 "Sending ctl to bot: {}".format(rxmlstring)
                             )
-                            client.send(rxmlstring)
+                            await client.send(rxmlstring)
 
         except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+            xmppserverlog.error("{}".format(e))
 
     async def _handle_ping(self, xml, data):
         try:
@@ -387,37 +275,40 @@ class XMPPAsyncClient:
                 pingto = xml.get("to")
                 pingfrom = self.bumper_jid
 
-                xml.attrib["from"] = pingfrom
+                xml.attrib["from"] = pingfrom                
                 pingstring = ET.tostring(xml).decode("utf-8")
                 # clean up string to remove namespaces added by ET
                 pingstring = pingstring.replace("xmlns:ns0=", "xmlns=")
                 pingstring = pingstring.replace("ns0:", "")
-                pingstring = pingstring.replace('iq xmlns="com:ctl"', "iq")
-                pingstring = pingstring.replace("<query", '<query xmlns="com:ctl"')
-
+                pingstring = pingstring.replace('iq xmlns="urn:xmpp:ping"', "iq")
+                pingstring = pingstring.replace("<ping", '<ping xmlns="urn:xmpp:ping"')
+                
+                
                 for client in XMPPServer.clients:
                     if (
                         client.bumper_jid != self.bumper_jid
                         and client.state == client.READY
                     ):
                         if pingto.lower() in client.bumper_jid.lower():
-                            pingstring = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
-                                xml.get("id"), pingfrom, pingto
-                            )
-                            xmppserverlog.debug(
-                                "ping from {} to {}".format(pingfrom, pingto)
-                            )
-                            client.send(pingstring)
+                            #pingstring = '<iq type="result" id="{}" from="{}" to="{}" />'.format(
+                            #    xml.get("id"), pingfrom, pingto
+                            #)
+                            #xmppserverlog.debug(
+                            #    "ping from {} to {} with {}".format(pingfrom, pingto, pingstring)
+                            #)
+                            
+                            await client.send(pingstring)
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
 
-    async def send_ping(self, time):
+
+    async def schedule_ping(self, time):
         if not self.state == 5: #disconnected
             pingstring = "<iq from='{}' to='{}' id='s2c1' type='get'><ping xmlns='urn:xmpp:ping'/></iq>".format(XMPPServer.server_id, self.bumper_jid)
             await self.send(pingstring)
             await asyncio.sleep(time)
-            asyncio.Task(self.send_ping(time))
+            asyncio.Task(self.schedule_ping(time))
         
     async def _handle_result(self, xml, data):
         try:
@@ -433,7 +324,7 @@ class XMPPAsyncClient:
                     adminuser = ctlerr.replace("permission denied, please contact ", "")
                     adminuser = adminuser.replace(" ", "")
                     if not (
-                        adminuser.startswith("fuid_") or bumper.use_auth
+                        adminuser.startswith("fuid_") or adminuser.startswith("fusername_") or bumper.use_auth
                     ):  # if not fuid_ then its ecovacs OR ignore bumper auth
                         # TODO: Implement auth later, should this user have access to bot?
 
@@ -474,7 +365,7 @@ class XMPPAsyncClient:
                             )
                         )
                         for client in XMPPServer.clients:
-                            client.send(rxmlstring)
+                            await client.send(rxmlstring)
 
                 if xml.get("to").find("@") == -1:  # No to address
                     ctl_to = xml.get("to")
@@ -488,7 +379,7 @@ class XMPPAsyncClient:
                     ):
                         if not "@" in ctl_to:  # No user@, send to all clients?
                             # TODO: Revisit later, this may be wrong
-                            client.send(rxmlstring)
+                           await client.send(rxmlstring)
 
                         elif (
                             client.uid.lower() in ctl_to.lower()
@@ -498,7 +389,7 @@ class XMPPAsyncClient:
                                     self.uid, client.uid, rxmlstring
                                 )
                             )
-                            client.send(rxmlstring)
+                            await client.send(rxmlstring)
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
@@ -617,11 +508,9 @@ class XMPPAsyncClient:
                         self.clientresource = aitem.text
                         resource = self.clientresource
 
-                if not self.uid.startswith("fuid"):
-
-                    # Need sample data to see details here
+                if self.devclass: # if there is a devclass it is a bot
                     bumper.bot_add("", self.uid, "", resource, "eco-legacy")
-                    xmppserverlog.info("bot authenticated {}".format(self.uid))
+                    xmppserverlog.debug("bot authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
                     await self._set_state("INIT")
@@ -690,12 +579,11 @@ class XMPPAsyncClient:
 
             if len(saslauth) > 2:
                 authcode = saslauth[2]
-
-            if not self.uid.startswith("fuid"):
-                # Need sample data to see details here
+            
+            if self.devclass: # if there is a devclass it is a bot
                 bumper.bot_add(self.uid, self.uid, self.devclass, "atom", "eco-legacy")
                 self.type = self.BOT
-                xmppserverlog.info("bot authenticated {}".format(self.uid))
+                xmppserverlog.debug("bot authenticated {}".format(self.uid))
                 # Send response
                 await self.send(
                     '<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>'
@@ -751,7 +639,7 @@ class XMPPAsyncClient:
                 self.bumper_jid = "{}@{}.ecorobot.net/atom".format(
                     self.uid, self.devclass
                 )
-                xmppserverlog.debug("new bot {}".format(self.uid))
+                xmppserverlog.debug("new bot ({}:{} | {})".format(self.address[0],self.address[1], self.bumper_jid))
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
                     xml.get("id"), self.bumper_jid
                 )
@@ -761,18 +649,14 @@ class XMPPAsyncClient:
                 self.bumper_jid = "{}@{}/{}".format(
                     self.uid, XMPPServer.server_id, self.clientresource
                 )
-                xmppserverlog.debug(
-                    "new client {} using resource {}".format(
-                        self.uid, self.clientresource
-                    )
-                )
+                xmppserverlog.debug("new client ({}:{} | {})".format(self.address[0],self.address[1], self.bumper_jid))                
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
                     xml.get("id"), self.bumper_jid
                 )
             else:
                 self.name = "XMPP_Client_{}_{}".format(self.uid, self.address)
                 self.bumper_jid = "{}@{}".format(self.uid, XMPPServer.server_id)
-                xmppserverlog.debug("new client {}".format(self.uid))
+                xmppserverlog.debug("new client ({}:{} | {})".format(self.address[0],self.address[1], self.bumper_jid))
                 res = '<iq type="result" id="{}"><bind xmlns="urn:ietf:params:xml:ns:xmpp-bind"><jid>{}</jid></bind></iq>'.format(
                     xml.get("id"), self.bumper_jid
                 )
@@ -788,7 +672,7 @@ class XMPPAsyncClient:
             res = '<iq type="result" id="{}" />'.format(xml.get("id"))
             await self._set_state("READY")           
             await self.send(res)
-            asyncio.Task(self.send_ping(30))  
+            asyncio.Task(self.schedule_ping(30))  
            
 
         except Exception as e:
@@ -799,7 +683,7 @@ class XMPPAsyncClient:
 
             if len(xml) and xml[0].tag == "status":
                 xmppserverlog.debug(
-                    "bot presence {} ".format(ET.tostring(xml, encoding="utf-8"))
+                    "bot presence {} ".format(ET.tostring(xml, encoding="utf-8").decode("utf-8"))
                 )
                 # Most likely a bot, possibly hello world in text
 
@@ -823,15 +707,15 @@ class XMPPAsyncClient:
 
             else:
                 xmppserverlog.debug(
-                    "client presence - {} ".format(ET.tostring(xml, encoding="utf-8"))
+                    "client presence - {} ".format(ET.tostring(xml, encoding="utf-8").decode("utf-8"))
                 )
                 
                 if xml.get("type") == "available":
                     xmppserverlog.debug(
                         "client presence available - {} ".format(
-                            ET.tostring(xml, encoding="utf-8")
-                        )
+                            ET.tostring(xml, encoding="utf-8").decode("utf-8"))
                     )
+                    
                     # Send dummy return
                     await self.send(
                         '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
@@ -839,9 +723,8 @@ class XMPPAsyncClient:
                 elif xml.get("type") == "unavailable":
                     xmppserverlog.debug(
                         "client presence unavailable (DISCONNECT) - {} ".format(
-                            ET.tostring(xml, encoding="utf-8")
-                        )
-                    )
+                            ET.tostring(xml, encoding="utf-8").decode("utf-8"))
+                    )                    
 
                     await self._set_state("DISCONNECT")
                 else:
@@ -880,8 +763,8 @@ class XMPPAsyncClient:
                     if item.tag == "iq":
                         if self.log_incoming_data:
                             xmppserverlog.debug(
-                                "from {} - {}".format(
-                                    self.address,
+                                "from ({}:{} | {}) - {}".format(
+                                    self.address[0],self.address[1],self.bumper_jid,
                                     str(
                                         ET.tostring(item, encoding="utf-8").decode(
                                             "utf-8"

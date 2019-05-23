@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-from .confserver import ConfServer
-from .mqttserver import MQTTServer
-from .mqttserver import MQTTHelperBot
-from .xmppserver import XMPPServer
+from bumper.confserver import ConfServer
+from bumper.mqttserver import MQTTServer, MQTTHelperBot
+from bumper.xmppserver import XMPPServer
 import asyncio
 import json
 import time
@@ -64,6 +63,9 @@ xmpp_rotate.setFormatter(logformat)
 xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
+
+
+logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 
 def get_milli_time(timetoconvert):
@@ -663,11 +665,12 @@ def bot_add(sn, did, devclass, resource, company):
     newbot.company = company
 
     bot = bot_get(did)
-    if not bot:
-        bumperlog.info(
-            "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
-        )
-        bot_full_upsert(newbot.asdict())
+    if not bot: # Not existing bot in database
+        if not devclass == "" or "@" not in sn or "tmp" not in sn: # try to prevent bad additions to the bot list
+            bumperlog.info(
+               "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
+            )
+            bot_full_upsert(newbot.asdict())
 
 
 def bot_remove(did):
