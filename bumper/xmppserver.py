@@ -15,6 +15,10 @@ class XMPPServer:
     client_id = None
     clients = []
     exit_flag = False
+    server_cert = "./certs/cert.pem"
+    server_key = "./certs/key.pem"
+    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    ssl_ctx.load_cert_chain(server_cert, server_key)
 
     def __init__(self, address):
         # Initialize bot server
@@ -24,10 +28,17 @@ class XMPPServer:
         xmppserverlog.info(
             "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
         )
+        #if self.usessl:
+        ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+        #server = await asyncio.start_server(
+        #    self.accept_client, self.address[0], self.address[1],ssl=ssl_ctx,
+        #)
+        #else:    
         server = await asyncio.start_server(
             self.accept_client, self.address[0], self.address[1]
         )
-
+        
         await server.serve_forever()
 
     # self.clients = {}  # task -> (reader, writer)
@@ -408,13 +419,17 @@ class XMPPAsyncClient:
                             )
                         )
                         # with STARTTLS
-                        # await self.send('<stream:stream xmlns:stream="http://etherx.jabber.org/streams" xmlns:tls="http://www.ietf.org/rfc/rfc2595.txt" xmlns="jabber:client" version="1.0" id="1" from="{}">'.format(XMPPServer.server_id))
+                        #await self.send('<stream:stream xmlns:stream="http://etherx.jabber.org/streams" xmlns:tls="http://www.ietf.org/rfc/rfc2595.txt" xmlns="jabber:client" version="1.0" id="1" from="{}">'.format(XMPPServer.server_id))
                         
                         await asyncio.sleep(0.25)
                         #time.sleep(0.25)
                         # send authentication support for iq-auth (fallback) and SASL
+                        #await self.send(
+                        #    '<stream:features><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
+                        #)
+                        #With STARTTLS #https://xmpp.org/rfcs/rfc3920.html
                         await self.send(
-                            '<stream:features><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
+                            '<stream:features><starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"><required/></starttls><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
                         )
                         # await self.send('<stream:features><auth xmlns="http://jabber.org/features/iq-auth"/></stream:features>')
 
@@ -462,6 +477,32 @@ class XMPPAsyncClient:
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))
+
+    
+    async def _handle_starttls(self, data):
+        try:
+
+            peer = self.client_writer.get_extra_info("peername")            
+            xmppserverlog.debug("Upgrading connection with STARTTLS for {}:{}".format(peer[0],peer[1]))            
+            await self.send("<proceed xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>") #send process to client
+
+            # After proceed the connection should be upgraded to TLS
+            loop = asyncio.get_event_loop()
+            transport = self.client_writer._transport
+            protocol = self.client_writer.transport.get_protocol()
+            new_transport = await loop.start_tls(transport , protocol, XMPPServer.ssl_ctx, server_side=True)
+            #protocol._stream_reader = asyncio.StreamReader(loop=loop)
+            #protocol._client_connected_cb = do_after_startls()
+           # protocol.connection_made(new_transport)
+            #self.client_reader.set_transport(new_transport)
+            #self.client_writer = transport#protocol._stream_writer
+            #await loop.start_tls(self.client_writer.transport, self.client_writer._protocol, XMPPServer.ssl_ctx, server_side=True)
+        
+        except Exception as e:
+            xmppserverlog.exception("{}".format(e))
+
+    
+        
 
     async def _handle_iq_auth(self, data):
         try:
@@ -774,6 +815,9 @@ class XMPPAsyncClient:
                         if "urn:ietf:params:xml:ns:xmpp-sasl" in item.tag:  # SASL Auth
                             await self._handle_sasl_auth(item)
                             item.clear()
+
+                    elif "-tls" in item.tag:
+                        await self._handle_starttls(newdata.encode("utf-8"))
 
                     elif "presence" in item.tag:
                         await self._handle_presence(item)
