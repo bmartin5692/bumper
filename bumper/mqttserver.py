@@ -34,10 +34,7 @@ class MQTTHelperBot:
 
     Client = MQTTClient()
 
-    def __init__(
-        self,
-        address
-    ):
+    def __init__(self, address):
         self.address = address
         self.client_id = "helper1@bumper/helper1"
         self.command_responses = []
@@ -62,7 +59,7 @@ class MQTTHelperBot:
                 ]
             )
             asyncio.create_task(self.get_msg())
-    
+
         except Exception as e:
             helperbotlog.exception("{}".format(e))
 
@@ -71,8 +68,12 @@ class MQTTHelperBot:
             message = await self.Client.deliver_message()
 
             if str(message.topic).split("/")[6] == "helper1":
-                #Response to command
-                helperbotlog.debug("Received Response - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                # Response to command
+                helperbotlog.debug(
+                    "Received Response - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
                 self.command_responses.append(
                     {
                         "time": time.time(),
@@ -81,13 +82,25 @@ class MQTTHelperBot:
                     }
                 )
             elif str(message.topic).split("/")[3] == "helper1":
-                #Helperbot sending command
-                helperbotlog.debug("Send Command - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                # Helperbot sending command
+                helperbotlog.debug(
+                    "Send Command - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
             elif str(message.topic).split("/")[1] == "atr":
-                #Broadcast message received on atr
-                helperbotlog.debug("Received Broadcast - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                # Broadcast message received on atr
+                helperbotlog.debug(
+                    "Received Broadcast - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
             else:
-                helperbotlog.debug("Received Message - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                helperbotlog.debug(
+                    "Received Message - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
 
             # Cleanup "expired messages" > 60 seconds from time
             for msg in self.command_responses:
@@ -95,9 +108,12 @@ class MQTTHelperBot:
                     datetime.fromtimestamp(msg["time"]) + timedelta(seconds=10)
                 ).timestamp()
                 if time.time() > expire_time:
-                    helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                    helperbotlog.debug(
+                        "Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(
+                            time.time(), msg["time"], expire_time
+                        )
+                    )
                     self.command_responses.remove(msg)
-
 
     async def wait_for_resp(self, requestid):
         try:
@@ -105,7 +121,7 @@ class MQTTHelperBot:
             t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
 
             while time.time() < t_end:
-                await asyncio.sleep(0.1)            
+                await asyncio.sleep(0.1)
                 if len(self.command_responses) > 0:
                     for msg in self.command_responses:
                         topic = str(msg["topic"]).split("/")
@@ -115,17 +131,32 @@ class MQTTHelperBot:
                                 resppayload = json.loads(msg["payload"])
                             else:
                                 resppayload = str(msg["payload"])
-                            resp = {"id": requestid, "ret": "ok", "resp": resppayload}                            
+                            resp = {"id": requestid, "ret": "ok", "resp": resppayload}
                             self.command_responses.remove(msg)
                             return resp
 
-            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
+            return {
+                "id": requestid,
+                "errno": 500,
+                "ret": "fail",
+                "debug": "wait for response timed out",
+            }
         except asyncio.CancelledError as e:
             helperbotlog.debug("wait_for_resp cancelled by asyncio")
-            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
+            return {
+                "id": requestid,
+                "errno": 500,
+                "ret": "fail",
+                "debug": "wait for response timed out",
+            }
         except Exception as e:
             helperbotlog.exception("{}".format(e))
-            return {"id": requestid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
+            return {
+                "id": requestid,
+                "errno": 500,
+                "ret": "fail",
+                "debug": "wait for response timed out",
+            }
 
     async def send_command(self, cmdjson, requestid):
         try:
@@ -154,11 +185,13 @@ class MQTTHelperBot:
 
 
 class MQTTServer:
-    default_config = {}    
+    default_config = {}
 
     async def broker_coro(self):
         try:
-            mqttserverlog.info("Starting MQTT Server at {}:{}".format(self.address[0], self.address[1]))            
+            mqttserverlog.info(
+                "Starting MQTT Server at {}:{}".format(self.address[0], self.address[1])
+            )
             broker = hbmqtt.broker.Broker(config=self.default_config)
             await broker.start()
 
@@ -174,13 +207,9 @@ class MQTTServer:
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
             exit(1)
-   
 
-    def __init__(
-        self,
-        address
-    ):
-        try:           
+    def __init__(self, address):
+        try:
             self.mqttserverthread = None
             self.address = address
 
@@ -211,7 +240,7 @@ class MQTTServer:
                     ),
                     "plugins": ["bumper"],  # No plugins == no auth
                 },
-                "topic-check": {"enabled": False},               
+                "topic-check": {"enabled": False},
             }
 
         except Exception as e:
@@ -253,9 +282,9 @@ class BumperMQTTServer_Plugin:
                 client_id = session.client_id
 
                 didsplit = str(client_id).split("@")
-                if not ( # if ecouser or bumper aren't in details it is a bot
-                    "ecouser" in didsplit[1]
-                    or "bumper" in didsplit[1]):
+                if not (  # if ecouser or bumper aren't in details it is a bot
+                    "ecouser" in didsplit[1] or "bumper" in didsplit[1]
+                ):
                     tmpbotdetail = str(didsplit[1]).split("/")
                     bumper.bot_add(
                         username,
@@ -264,7 +293,7 @@ class BumperMQTTServer_Plugin:
                         tmpbotdetail[1],
                         "eco-ng",
                     )
-                    
+
                     mqttserverlog.debug(
                         "new bot authenticated SN: {} DID: {}".format(
                             username, didsplit[0]
@@ -298,7 +327,9 @@ class BumperMQTTServer_Plugin:
                             authenticated = False
 
             except Exception as e:
-                mqttserverlog.exception("Session: {} - {}".format((kwargs.get("session", None)),e))
+                mqttserverlog.exception(
+                    "Session: {} - {}".format((kwargs.get("session", None)), e)
+                )
                 authenticated = False
 
         return authenticated
@@ -312,7 +343,7 @@ class BumperMQTTServer_Plugin:
                 bumper.bot_set_mqtt(bot["did"], True)
                 return
 
-            #clientuserid = didsplit[0]
+            # clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
@@ -330,7 +361,7 @@ class BumperMQTTServer_Plugin:
             if bot:
                 bumper.bot_set_mqtt(bot["did"], False)
 
-            #clientuserid = didsplit[0]
+            # clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:

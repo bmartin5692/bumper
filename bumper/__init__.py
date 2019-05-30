@@ -25,9 +25,11 @@ token_validity_seconds = 3600  # 1 hour
 db = None
 
 # Logs
-os.makedirs("logs", exist_ok=True) #Ensure logs directory exists or create
+os.makedirs("logs", exist_ok=True)  # Ensure logs directory exists or create
 # Set format for all logs
-logformat = logging.Formatter("[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s")
+logformat = logging.Formatter(
+    "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s"
+)
 
 bumperlog = logging.getLogger("bumper")
 bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
@@ -37,28 +39,36 @@ bumperlog.addHandler(bumper_rotate)
 # bumperlog.setLevel(logging.INFO)
 
 confserverlog = logging.getLogger("confserver")
-conf_rotate = RotatingFileHandler("logs/confserver.log", maxBytes=5000000, backupCount=5)
+conf_rotate = RotatingFileHandler(
+    "logs/confserver.log", maxBytes=5000000, backupCount=5
+)
 conf_rotate.setFormatter(logformat)
 confserverlog.addHandler(conf_rotate)
 # Override the logging level
 # confserverlog.setLevel(logging.INFO)
 
 mqttserverlog = logging.getLogger("mqttserver")
-mqtt_rotate = RotatingFileHandler("logs/mqttserver.log", maxBytes=5000000, backupCount=5)
+mqtt_rotate = RotatingFileHandler(
+    "logs/mqttserver.log", maxBytes=5000000, backupCount=5
+)
 mqtt_rotate.setFormatter(logformat)
 mqttserverlog.addHandler(mqtt_rotate)
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
 
 helperbotlog = logging.getLogger("helperbot")
-helperbot_rotate = RotatingFileHandler("logs/helperbot.log", maxBytes=5000000, backupCount=5)
+helperbot_rotate = RotatingFileHandler(
+    "logs/helperbot.log", maxBytes=5000000, backupCount=5
+)
 helperbot_rotate.setFormatter(logformat)
 helperbotlog.addHandler(helperbot_rotate)
 # Override the logging level
 # helperbotlog.setLevel(logging.INFO)
 
 xmppserverlog = logging.getLogger("xmppserver")
-xmpp_rotate = RotatingFileHandler("logs/xmppserver.log", maxBytes=5000000, backupCount=5)
+xmpp_rotate = RotatingFileHandler(
+    "logs/xmppserver.log", maxBytes=5000000, backupCount=5
+)
 xmpp_rotate.setFormatter(logformat)
 xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
@@ -80,12 +90,17 @@ def db_file():
 
 
 def os_db_path():
-    if platform.system() == "Windows":        
-        os.makedirs(os.getenv("APPDATA"), exist_ok=True) #Ensure db_path directory exists or create
-        return os.path.join(os.getenv("APPDATA"), "bumper.db") 
+    if platform.system() == "Windows":
+        os.makedirs(
+            os.getenv("APPDATA"), exist_ok=True
+        )  # Ensure db_path directory exists or create
+        return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
-        os.makedirs(os.path.expanduser("~/.config"), exist_ok=True) #Ensure db_path directory exists or create
+        os.makedirs(
+            os.path.expanduser("~/.config"), exist_ok=True
+        )  # Ensure db_path directory exists or create
         return os.path.expanduser("~/.config/bumper.db")
+
 
 def db_get():
     try:
@@ -99,8 +114,7 @@ def db_get():
         db.table("tokens", cache_size=0)
 
         return db
-    
-    
+
     except json.decoder.JSONDecodeError as jerr:
         bumperlog.error("JsonErr: {} - Doc: {}".format(jerr.msg, jerr.doc))
 
@@ -284,297 +298,293 @@ class VacBotDevice(object):
         }
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__,
-            sort_keys=False)#, indent=4)        
+        return json.dumps(
+            self, default=lambda o: o.__dict__, sort_keys=False
+        )  # , indent=4)
 
-class GlobalVacBotDevice(VacBotDevice): #EcoVacs Home
+
+class GlobalVacBotDevice(VacBotDevice):  # EcoVacs Home
     UILogicId = ""
     ota = True
-    updateInfo = {
-        "changeLog": "",
-        "needUpdate": False
-    }        
+    updateInfo = {"changeLog": "", "needUpdate": False}
     icon = ""
     deviceName = ""
-    
 
-#EcoVacs Home Product IOT Map - 2019-05-20
-#https://portal-ww.ecouser.net/api/pim/product/getProductIotMap
+
+# EcoVacs Home Product IOT Map - 2019-05-20
+# https://portal-ww.ecouser.net/api/pim/product/getProductIotMap
 EcoVacsHomeProducts = [
-        {
-            "classid": "dl8fht",
-            "product": {
-                "UILogicId": "D_600",
-                "_id": "5acb0fa87c295c0001876ecf",
-                "icon": "5acc32067c295c0001876eea",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea",
-                "materialNo": "702-0000-0170",
-                "name": "DEEBOT 600 Series",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    {
+        "classid": "dl8fht",
+        "product": {
+            "UILogicId": "D_600",
+            "_id": "5acb0fa87c295c0001876ecf",
+            "icon": "5acc32067c295c0001876eea",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5acc32067c295c0001876eea",
+            "materialNo": "702-0000-0170",
+            "name": "DEEBOT 600 Series",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "02uwxm",
-            "product": {
-                "UILogicId": "D_OZMO_SLIM10",
-                "_id": "5ae1481e7ccd1a0001e1f69e",
-                "icon": "5b1dddc48bc45700014035a1",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1",
-                "materialNo": "110-1715-0201",
-                "name": "DEEBOT OZMO Slim10 Series",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "02uwxm",
+        "product": {
+            "UILogicId": "D_OZMO_SLIM10",
+            "_id": "5ae1481e7ccd1a0001e1f69e",
+            "icon": "5b1dddc48bc45700014035a1",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b1dddc48bc45700014035a1",
+            "materialNo": "110-1715-0201",
+            "name": "DEEBOT OZMO Slim10 Series",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "y79a7u",
-            "product": {
-                "UILogicId": "D_OZMO_900",
-                "_id": "5b04c0227ccd1a0001e1f6a8",
-                "icon": "5b04c0217ccd1a0001e1f6a7",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7",
-                "materialNo": "110-1810-0101",
-                "name": "DEEBOT OZMO 900 Series",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "y79a7u",
+        "product": {
+            "UILogicId": "D_OZMO_900",
+            "_id": "5b04c0227ccd1a0001e1f6a8",
+            "icon": "5b04c0217ccd1a0001e1f6a7",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b04c0217ccd1a0001e1f6a7",
+            "materialNo": "110-1810-0101",
+            "name": "DEEBOT OZMO 900 Series",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "jr3pqa",
-            "product": {
-                "UILogicId": "D_700",
-                "_id": "5b43077b8bc457000140363e",
-                "icon": "5b5ac4cc8d5a56000111e769",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769",
-                "materialNo": "702-0000-0202",
-                "name": "DEEBOT 711",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "jr3pqa",
+        "product": {
+            "UILogicId": "D_700",
+            "_id": "5b43077b8bc457000140363e",
+            "icon": "5b5ac4cc8d5a56000111e769",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4cc8d5a56000111e769",
+            "materialNo": "702-0000-0202",
+            "name": "DEEBOT 711",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "uv242z",
-            "product": {
-                "UILogicId": "D_700",
-                "_id": "5b5149b4ac0b87000148c128",
-                "icon": "5b5ac4e45f21100001882bb9",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9",
-                "materialNo": "702-0000-0205",
-                "name": "DEEBOT 710",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "uv242z",
+        "product": {
+            "UILogicId": "D_700",
+            "_id": "5b5149b4ac0b87000148c128",
+            "icon": "5b5ac4e45f21100001882bb9",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b5ac4e45f21100001882bb9",
+            "materialNo": "702-0000-0205",
+            "name": "DEEBOT 710",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "ls1ok3",
-            "product": {
-                "UILogicId": "D_900",
-                "_id": "5b6561060506b100015c8868",
-                "icon": "5ba4a2cb6c2f120001c32839",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839",
-                "materialNo": "110-1711-0201",
-                "name": "DEEBOT 900 Series",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "ls1ok3",
+        "product": {
+            "UILogicId": "D_900",
+            "_id": "5b6561060506b100015c8868",
+            "icon": "5ba4a2cb6c2f120001c32839",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5ba4a2cb6c2f120001c32839",
+            "materialNo": "110-1711-0201",
+            "name": "DEEBOT 900 Series",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "eyi9jv",
-            "product": {
-                "UILogicId": "D_700",
-                "_id": "5b7b65f364e1680001a08b54",
-                "icon": "5b7b65f176f7f10001e9a0c2",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b7b65f176f7f10001e9a0c2",
-                "materialNo": "715",
-                "name": "DEEBOT 715",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "eyi9jv",
+        "product": {
+            "UILogicId": "D_700",
+            "_id": "5b7b65f364e1680001a08b54",
+            "icon": "5b7b65f176f7f10001e9a0c2",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5b7b65f176f7f10001e9a0c2",
+            "materialNo": "715",
+            "name": "DEEBOT 715",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "4zfacv",
-            "product": {
-                "UILogicId": "DN_2G",
-                "_id": "5bf2596f23244a00013f2f13",
-                "icon": "5c778731280fda0001770ba0",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c778731280fda0001770ba0",
-                "materialNo": "910",
-                "name": "DEEBOT 910",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "4zfacv",
+        "product": {
+            "UILogicId": "DN_2G",
+            "_id": "5bf2596f23244a00013f2f13",
+            "icon": "5c778731280fda0001770ba0",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c778731280fda0001770ba0",
+            "materialNo": "910",
+            "name": "DEEBOT 910",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "vi829v",
-            "product": {
-                "UILogicId": "DX_5G",
-                "_id": "5c19a8f3a1e6ee0001782247",
-                "icon": "5c9c7995e9e9270001354ab4",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c9c7995e9e9270001354ab4",
-                "materialNo": "920",
-                "name": "DEEBOT OZMO 920 Series",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "vi829v",
+        "product": {
+            "UILogicId": "DX_5G",
+            "_id": "5c19a8f3a1e6ee0001782247",
+            "icon": "5c9c7995e9e9270001354ab4",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c9c7995e9e9270001354ab4",
+            "materialNo": "920",
+            "name": "DEEBOT OZMO 920 Series",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "gd4uut",
-            "product": {
-                "UILogicId": "DR_935G",
-                "_id": "5bc8189d68142800016a6937",
-                "icon": "5c7384767b93c700013f12e7",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c7384767b93c700013f12e7",
-                "materialNo": "960",
-                "name": "DEEBOT OZMO 960",
-                "ota": True,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": False,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "gd4uut",
+        "product": {
+            "UILogicId": "DR_935G",
+            "_id": "5bc8189d68142800016a6937",
+            "icon": "5c7384767b93c700013f12e7",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c7384767b93c700013f12e7",
+            "materialNo": "960",
+            "name": "DEEBOT OZMO 960",
+            "ota": True,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": False,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "9akc61",
-            "product": {
-                "UILogicId": "D_500",
-                "_id": "5c763f8263023c0001e7f855",
-                "icon": "5c932067280fda0001770d7f",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c932067280fda0001770d7f",
-                "materialNo": "D505",
-                "name": "DEEBOT 505",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "9akc61",
+        "product": {
+            "UILogicId": "D_500",
+            "_id": "5c763f8263023c0001e7f855",
+            "icon": "5c932067280fda0001770d7f",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c932067280fda0001770d7f",
+            "materialNo": "D505",
+            "name": "DEEBOT 505",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "r8ead0",
-            "product": {
-                "UILogicId": "D_500",
-                "_id": "5c763f63280fda0001770b88",
-                "icon": "5c93204b63023c0001e7faa7",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c93204b63023c0001e7faa7",
-                "materialNo": "D502",
-                "name": "DEEBOT 502",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "r8ead0",
+        "product": {
+            "UILogicId": "D_500",
+            "_id": "5c763f63280fda0001770b88",
+            "icon": "5c93204b63023c0001e7faa7",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c93204b63023c0001e7faa7",
+            "materialNo": "D502",
+            "name": "DEEBOT 502",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "emzppx",
-            "product": {
-                "UILogicId": "D_500",
-                "_id": "5c763f35280fda0001770b84",
-                "icon": "5c931fef280fda0001770d7e",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c931fef280fda0001770d7e",
-                "materialNo": "D501",
-                "name": "DEEBOT 501",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "emzppx",
+        "product": {
+            "UILogicId": "D_500",
+            "_id": "5c763f35280fda0001770b84",
+            "icon": "5c931fef280fda0001770d7e",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c931fef280fda0001770d7e",
+            "materialNo": "D501",
+            "name": "DEEBOT 501",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "vsc5ia",
-            "product": {
-                "UILogicId": "D_500",
-                "_id": "5c763eba280fda0001770b81",
-                "icon": "5c874326280fda0001770d2a",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c874326280fda0001770d2a",
-                "materialNo": "D500",
-                "name": "DEEBOT 500",
-                "ota": False,
-                "supportType": {
-                    "alexa": True,
-                    "assistant": True,
-                    "share": True,
-                    "tmjl": False
-                }
-            }
+    },
+    {
+        "classid": "vsc5ia",
+        "product": {
+            "UILogicId": "D_500",
+            "_id": "5c763eba280fda0001770b81",
+            "icon": "5c874326280fda0001770d2a",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5c874326280fda0001770d2a",
+            "materialNo": "D500",
+            "name": "DEEBOT 500",
+            "ota": False,
+            "supportType": {
+                "alexa": True,
+                "assistant": True,
+                "share": True,
+                "tmjl": False,
+            },
         },
-        {
-            "classid": "aqdd5p",
-            "product": {
-                "UILogicId": "D_900",
-                "_id": "5cb7cfba179839000114d762",
-                "icon": "5cb7cfbab72c4d00010e5fc7",
-                "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5cb7cfbab72c4d00010e5fc7",
-                "materialNo": "110-1711-0001",
-                "name": "DEEBOT DE55",
-                "ota": True,
-                "supportType": {
-                    "alexa": False,
-                    "assistant": False,
-                    "share": False,
-                    "tmjl": False
-                }
-            }
-        }
-    ]
-
-
-
+    },
+    {
+        "classid": "aqdd5p",
+        "product": {
+            "UILogicId": "D_900",
+            "_id": "5cb7cfba179839000114d762",
+            "icon": "5cb7cfbab72c4d00010e5fc7",
+            "iconUrl": "https://portal-ww.ecouser.net/api/pim/file/get/5cb7cfbab72c4d00010e5fc7",
+            "materialNo": "110-1711-0001",
+            "name": "DEEBOT DE55",
+            "ota": True,
+            "supportType": {
+                "alexa": False,
+                "assistant": False,
+                "share": False,
+                "tmjl": False,
+            },
+        },
+    },
+]
 
 
 class VacBotClient(object):
@@ -616,19 +626,20 @@ def check_authcode(uid, authcode):
 
     return False
 
+
 def loginByItToken(authcode):
     bumperlog.debug("Checking for authcode: {}".format(authcode))
     tokens = db_get().table("tokens")
     tmpauth = tokens.get(
         (Query().authcode == authcode)
-        #& (  # Match authcode
+        # & (  # Match authcode
         #    (Query().userid == uid.replace("fuid_", ""))
         #    | (Query().userid == "fuid_{}".format(uid))
-        #)  # Userid with or without fuid_
+        # )  # Userid with or without fuid_
     )
     if tmpauth:
-        return {"token":tmpauth["token"], "userid":tmpauth["userid"]}
-        
+        return {"token": tmpauth["token"], "userid": tmpauth["userid"]}
+
     return {}
 
 
@@ -665,10 +676,12 @@ def bot_add(sn, did, devclass, resource, company):
     newbot.company = company
 
     bot = bot_get(did)
-    if not bot: # Not existing bot in database
-        if not devclass == "" or "@" not in sn or "tmp" not in sn: # try to prevent bad additions to the bot list
+    if not bot:  # Not existing bot in database
+        if (
+            not devclass == "" or "@" not in sn or "tmp" not in sn
+        ):  # try to prevent bad additions to the bot list
             bumperlog.info(
-               "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
+                "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
             )
             bot_full_upsert(newbot.asdict())
 
@@ -685,14 +698,15 @@ def bot_get(did):
     return bots.get(Bot.did == did)
 
 
-def bot_toEcoVacsHome_JSON(bot): #EcoVacs Home
-        for botprod in EcoVacsHomeProducts:
-            if botprod["classid"] == bot["class"]:
-                bot["UILogicId"] = botprod["product"]["UILogicId"]
-                bot["ota"] = botprod["product"]["ota"]
-                bot["icon"] = botprod["product"]["iconUrl"]    
-                return json.dumps(bot, default=lambda o: o.__dict__,
-                    sort_keys=False)#, indent=4)            
+def bot_toEcoVacsHome_JSON(bot):  # EcoVacs Home
+    for botprod in EcoVacsHomeProducts:
+        if botprod["classid"] == bot["class"]:
+            bot["UILogicId"] = botprod["product"]["UILogicId"]
+            bot["ota"] = botprod["product"]["ota"]
+            bot["icon"] = botprod["product"]["iconUrl"]
+            return json.dumps(
+                bot, default=lambda o: o.__dict__, sort_keys=False
+            )  # , indent=4)
 
 
 def bot_full_upsert(vacbot):

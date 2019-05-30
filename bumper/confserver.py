@@ -31,7 +31,10 @@ class aiohttp_filter(logging.Filter):
 
 
 confserverlog = logging.getLogger("confserver")
-logging.getLogger("aiohttp.access").addFilter(aiohttp_filter()) #Add logging filter above to aiohttp.access
+logging.getLogger("aiohttp.access").addFilter(
+    aiohttp_filter()
+)  # Add logging filter above to aiohttp.access
+
 
 class EcoVacs_Login:
     accessToken = ""
@@ -41,13 +44,16 @@ class EcoVacs_Login:
     username = ""
 
     def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__,
-        sort_keys=False)#, indent=4)
-    
+        return json.dumps(
+            self, default=lambda o: o.__dict__, sort_keys=False
+        )  # , indent=4)
+
+
 class EcoVacsHome_Login(EcoVacs_Login):
     loginName = ""
     mobile = ""
-    ucUid = ""        
+    ucUid = ""
+
 
 class ConfServer:
     def __init__(self, address, usessl=False, helperbot=None):
@@ -72,10 +78,10 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkLogin",
                     self.handle_login,
                 ),
-                web.get( #EcoVacs Home GetUserAccountInfo
+                web.get(  # EcoVacs Home GetUserAccountInfo
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserAccountInfo",
                     self.handle_getUserAccountInfo,
-                ),                
+                ),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/logout",
                     self.handle_logout,
@@ -84,15 +90,14 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getAuthCode",
                     self.handle_getAuthCode,
                 ),
-                web.get( #EcoVacs Home GetAuthCode
-                    "/{apiversion}/{apptype}/auth/getAuthCode",
-                    self.handle_getAuthCode
+                web.get(  # EcoVacs Home GetAuthCode
+                    "/{apiversion}/{apptype}/auth/getAuthCode", self.handle_getAuthCode
                 ),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement",
                     self.handle_checkAgreement,
                 ),
-                web.get( #EcoVacs Home CheckAgreement
+                web.get(  # EcoVacs Home CheckAgreement
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreementBatch",
                     self.handle_checkAgreement,
                 ),
@@ -100,56 +105,57 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkVersion",
                     self.handle_checkVersion,
                 ),
-                web.get( #EcoVacs Home CheckAPPVersion
+                web.get(  # EcoVacs Home CheckAPPVersion
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/checkAPPVersion",
                     self.handle_checkAPPVersion,
                 ),
-                web.get( #EcoVacs Home Upload Device Info
+                web.get(  # EcoVacs Home Upload Device Info
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/uploadDeviceInfo",
                     self.handle_uploadDeviceInfo,
-                ),       
-                web.get( #EcoVacs Home GetAdByPositionType
+                ),
+                web.get(  # EcoVacs Home GetAdByPositionType
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/ad/getAdByPositionType",
                     self.handle_getAdByPositionType,
-                ),         
-                web.get( #EcoVacs Home Get Boot Screen
+                ),
+                web.get(  # EcoVacs Home Get Boot Screen
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/ad/getBootScreen",
                     self.handle_getBootScreen,
-                ),    
-                web.get( #EcoVacs Home message hasUnreadMsg
+                ),
+                web.get(  # EcoVacs Home message hasUnreadMsg
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/message/hasUnreadMsg",
                     self.handle_hasUnreadMessage,
-                ),       
-                web.get( #EcoVacs Home neng message hasUnreadMsg
-                    "/api/neng/message/hasUnreadMsg",
-                    self.handle_neng_hasUnreadMessage,
-                ),     
-                web.get( #EcoVacs Home message getMsgList
+                ),
+                web.get(  # EcoVacs Home neng message hasUnreadMsg
+                    "/api/neng/message/hasUnreadMsg", self.handle_neng_hasUnreadMessage
+                ),
+                web.get(  # EcoVacs Home message getMsgList
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/message/getMsgList",
                     self.handle_getMsgList,
-                ),           
-                web.get( #EcoVacs Home common getSystemReminder
+                ),
+                web.get(  # EcoVacs Home common getSystemReminder
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/common/getSystemReminder",
                     self.handle_getSystemReminder,
-                ),      
-                web.get( #EcoVacs Home shop getCnWapShopConfig
+                ),
+                web.get(  # EcoVacs Home shop getCnWapShopConfig
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/shop/getCnWapShopConfig",
                     self.handle_getCnWapShopConfig,
-                ),         
+                ),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/campaign/homePageAlert",
                     self.handle_homePageAlert,
                 ),
                 web.post("/api/users/user.do", self.handle_usersapi),
                 web.get("/api/users/user.do", self.handle_usersapi),
-                web.post("/api/appsvr/app.do", self.handle_appsvr_api), #EcoVacs Home
-                web.get("/api/appsvr/app.do", self.handle_appsvr_api), #EcoVacs Home
+                web.post("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
+                web.get("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
                 web.post(
                     "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
                 ),
-                web.post("/api/lg/log.do", self.handle_lg_log), #EcoVacs Home
+                web.post("/api/lg/log.do", self.handle_lg_log),  # EcoVacs Home
                 web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
-                web.post("/api/dim/devmanager.do", self.handle_dim_devmanager), #EcoVacs Home
+                web.post(
+                    "/api/dim/devmanager.do", self.handle_dim_devmanager
+                ),  # EcoVacs Home
                 web.post("/lookup.do", self.handle_lookup),
             ]
         )
@@ -158,7 +164,9 @@ class ConfServer:
 
     async def start_server(self):
         try:
-            confserverlog.info("Starting ConfServer at {}:{}".format(self.address[0], self.address[1]))
+            confserverlog.info(
+                "Starting ConfServer at {}:{}".format(self.address[0], self.address[1])
+            )
             runner = web.AppRunner(self.app)
             await runner.setup()
 
@@ -213,15 +221,17 @@ class ConfServer:
                     not user_devid == ""
                 ):  # Performing basic "auth" using devid, super insecure
                     user = bumper.user_by_deviceid(user_devid)
-                    if "checkLogin" in request.path:                        
+                    if "checkLogin" in request.path:
                         self.check_token(
                             apptype, countrycode, user, request.query["accessToken"]
                         )
-                    else:                        
-                        if "global_" in apptype: #EcoVacs Home
+                    else:
+                        if "global_" in apptype:  # EcoVacs Home
                             login_details = EcoVacsHome_Login()
                             login_details.ucUid = "fuid_{}".format(user["userid"])
-                            login_details.loginName = "fusername_{}".format(user["userid"])
+                            login_details.loginName = "fusername_{}".format(
+                                user["userid"]
+                            )
                             login_details.mobile = None
 
                         else:
@@ -239,19 +249,19 @@ class ConfServer:
                         body = {
                             "code": bumper.RETURN_API_SUCCESS,
                             "data": json.loads(login_details.toJSON()),
-                            #{
+                            # {
                             #    "accessToken": self.generate_token(tmpuser),  # Generate a token
                             #    "country": countrycode,
                             #    "email": "null@null.com",
                             #    "uid": "fuid_{}".format(tmpuser["userid"]),
                             #    "username": "fusername_{}".format(tmpuser["userid"]),
-                            #},
+                            # },
                             "msg": "操作成功",
                             "time": bumper.get_milli_time(
                                 datetime.utcnow().timestamp()
                             ),
                         }
-                        
+
                         return web.json_response(body)
 
                 body = {
@@ -277,8 +287,8 @@ class ConfServer:
             countrycode = request.match_info.get("country", "us")
             apptype = request.match_info.get("apptype", "")
             user = bumper.user_by_deviceid(user_devid)
-            
-            if "global_" in apptype: #EcoVacs Home
+
+            if "global_" in apptype:  # EcoVacs Home
                 login_details = EcoVacsHome_Login()
                 login_details.ucUid = "fuid_{}".format(user["userid"])
                 login_details.loginName = "fusername_{}".format(user["userid"])
@@ -289,21 +299,20 @@ class ConfServer:
             login_details.uid = "fuid_{}".format(user["userid"])
             login_details.username = "fusername_{}".format(user["userid"])
             login_details.country = countrycode
-            login_details.email = "null@null.com"    
- 
+            login_details.email = "null@null.com"
+
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": 
-                        {                                                
-                        "email": login_details.email,
-                        "hasMobile": "N",
-                        "hasPassword": "Y",
-                        "uid": login_details.uid,
-                        "userName": login_details.username,
-                        "obfuscatedMobile": None,
-                        "mobile": None,
-                        "loginName": login_details.loginName
-                        },
+                "data": {
+                    "email": login_details.email,
+                    "hasMobile": "N",
+                    "hasPassword": "Y",
+                    "uid": login_details.uid,
+                    "userName": login_details.username,
+                    "obfuscatedMobile": None,
+                    "mobile": None,
+                    "loginName": login_details.loginName,
+                },
                 "msg": "操作成功",
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
@@ -311,13 +320,12 @@ class ConfServer:
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
-              
 
     def check_token(self, apptype, countrycode, user, token):
         try:
             if bumper.check_token(user["userid"], token):
-                
-                if "global_" in apptype: #EcoVacs Home
+
+                if "global_" in apptype:  # EcoVacs Home
                     login_details = EcoVacsHome_Login()
                     login_details.ucUid = "fuid_{}".format(user["userid"])
                     login_details.loginName = "fusername_{}".format(user["userid"])
@@ -329,18 +337,18 @@ class ConfServer:
                 login_details.uid = "fuid_{}".format(user["userid"])
                 login_details.username = "fusername_{}".format(user["userid"])
                 login_details.country = countrycode
-                login_details.email = "null@null.com"    
-    
+                login_details.email = "null@null.com"
+
                 body = {
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": json.loads(login_details.toJSON()),
-                    #{
+                    # {
                     #    "accessToken": self.generate_token(tmpuser),  # Generate a token
                     #    "country": countrycode,
                     #    "email": "null@null.com",
                     #    "uid": "fuid_{}".format(tmpuser["userid"]),
                     #    "username": "fusername_{}".format(tmpuser["userid"]),
-                    #},
+                    # },
                     "msg": "操作成功",
                     "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 }
@@ -354,27 +362,27 @@ class ConfServer:
                     "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
                 }
                 return web.json_response(body)
-        
+
         except Exception as e:
-            confserverlog.exception("{}".format(e))                
+            confserverlog.exception("{}".format(e))
 
     def generate_token(self, user):
         try:
             tmpaccesstoken = uuid.uuid4().hex
             bumper.user_add_token(user["userid"], tmpaccesstoken)
             return tmpaccesstoken
-        
+
         except Exception as e:
-            confserverlog.exception("{}".format(e))            
+            confserverlog.exception("{}".format(e))
 
     def generate_authcode(self, user, countrycode, token):
-        try:            
+        try:
             tmpauthcode = "{}_{}".format(countrycode, uuid.uuid4().hex)
             bumper.user_add_authcode(user["userid"], token, tmpauthcode)
             return tmpauthcode
-        
+
         except Exception as e:
-            confserverlog.exception("{}".format(e))            
+            confserverlog.exception("{}".format(e))
 
     def _auth_any(self, devid, apptype, country, request):
         try:
@@ -385,7 +393,7 @@ class ConfServer:
 
             if user:  # Default to user 0
                 tmpuser = user
-                if "global_" in apptype: #EcoVacs Home
+                if "global_" in apptype:  # EcoVacs Home
                     login_details = EcoVacsHome_Login()
                     login_details.ucUid = "fuid_{}".format(tmpuser["userid"])
                     login_details.loginName = "fusername_{}".format(tmpuser["userid"])
@@ -397,12 +405,12 @@ class ConfServer:
                 login_details.uid = "fuid_{}".format(tmpuser["userid"])
                 login_details.username = "fusername_{}".format(tmpuser["userid"])
                 login_details.country = countrycode
-                login_details.email = "null@null.com"    
+                login_details.email = "null@null.com"
                 bumper.user_add_device(tmpuser["userid"], user_devid)
             else:
                 bumper.user_add("tmpuser")  # Add a new user
                 tmpuser = bumper.user_get("tmpuser")
-                if "global_" in apptype: #EcoVacs Home
+                if "global_" in apptype:  # EcoVacs Home
                     login_details = EcoVacsHome_Login()
                     login_details.ucUid = "fuid_{}".format(tmpuser["userid"])
                     login_details.loginName = "fusername_{}".format(tmpuser["userid"])
@@ -414,7 +422,7 @@ class ConfServer:
                 login_details.uid = "fuid_{}".format(tmpuser["userid"])
                 login_details.username = "fusername_{}".format(tmpuser["userid"])
                 login_details.country = countrycode
-                login_details.email = "null@null.com"     
+                login_details.email = "null@null.com"
                 bumper.user_add_device(tmpuser["userid"], user_devid)
 
             for bot in bots:  # Add all bots to the user
@@ -430,18 +438,17 @@ class ConfServer:
 
             # Deactivate old tokens and authcodes
             bumper.user_revoke_expired_tokens(tmpuser["userid"])
-            
 
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": json.loads(login_details.toJSON()),
-                #{
+                # {
                 #    "accessToken": self.generate_token(tmpuser),  # Generate a token
                 #    "country": countrycode,
                 #    "email": "null@null.com",
                 #    "uid": "fuid_{}".format(tmpuser["userid"]),
                 #    "username": "fusername_{}".format(tmpuser["userid"]),
-                #},
+                # },
                 "msg": "操作成功",
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
             }
@@ -477,10 +484,10 @@ class ConfServer:
 
     async def handle_getAuthCode(self, request):
         try:
-            apptype = request.match_info.get("apptype", "")            
-            user_devid = request.match_info.get("devid", "") #Ecovacs
+            apptype = request.match_info.get("apptype", "")
+            user_devid = request.match_info.get("devid", "")  # Ecovacs
             if user_devid == "":
-                user_devid = request.query["deviceId"] #Ecovacs Home
+                user_devid = request.query["deviceId"]  # Ecovacs Home
 
             if not user_devid == "":
                 user = bumper.user_by_deviceid(user_devid)
@@ -502,17 +509,17 @@ class ConfServer:
                             authcode = token["authcode"]
                         if "global" in apptype:
                             body = {
-                            "code": bumper.RETURN_API_SUCCESS,
-                            "data": {
-                                "authCode": authcode,
-                                "ecovacsUid": request.query["uid"],
-                            },
-                            "msg": "操作成功",
-                            "success": True,
-                            "time": bumper.get_milli_time(
-                                datetime.utcnow().timestamp()
-                            ),
-                        }
+                                "code": bumper.RETURN_API_SUCCESS,
+                                "data": {
+                                    "authCode": authcode,
+                                    "ecovacsUid": request.query["uid"],
+                                },
+                                "msg": "操作成功",
+                                "success": True,
+                                "time": bumper.get_milli_time(
+                                    datetime.utcnow().timestamp()
+                                ),
+                            }
                         else:
                             body = {
                                 "code": bumper.RETURN_API_SUCCESS,
@@ -561,7 +568,7 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
-    async def handle_checkAPPVersion(self, request): #EcoVacs Home
+    async def handle_checkAPPVersion(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
@@ -584,13 +591,13 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))       
-    
-    async def handle_uploadDeviceInfo(self, request): #EcoVacs Home
+            confserverlog.exception("{}".format(e))
+
+    async def handle_uploadDeviceInfo(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": None,                
+                "data": None,
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -599,13 +606,13 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))            
+            confserverlog.exception("{}".format(e))
 
-    async def handle_getAdByPositionType(self, request): #EcoVacs Home
+    async def handle_getAdByPositionType(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": None,                
+                "data": None,
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -614,13 +621,13 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))       
+            confserverlog.exception("{}".format(e))
 
-    async def handle_getBootScreen(self, request): #EcoVacs Home
+    async def handle_getBootScreen(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": None,                
+                "data": None,
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -629,13 +636,13 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))                           
+            confserverlog.exception("{}".format(e))
 
-    async def handle_hasUnreadMessage(self, request): #EcoVacs Home
+    async def handle_hasUnreadMessage(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": "N",                
+                "data": "N",
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -644,32 +651,22 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))       
+            confserverlog.exception("{}".format(e))
 
-
-    async def handle_neng_hasUnreadMessage(self, request): #EcoVacs Home
+    async def handle_neng_hasUnreadMessage(self, request):  # EcoVacs Home
         try:
-            body = {
-                "code": 0,
-                "data": {
-                    "hasUnRead": True
-                },                                
-            }
+            body = {"code": 0, "data": {"hasUnRead": True}}
 
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))                   
+            confserverlog.exception("{}".format(e))
 
-
-    async def handle_getMsgList(self, request): #EcoVacs Home
+    async def handle_getMsgList(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": {
-                    "hasNextPage": 0,
-                    "items": []
-                },                
+                "data": {"hasNextPage": 0, "items": []},
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -678,9 +675,9 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))                   
+            confserverlog.exception("{}".format(e))
 
-    async def handle_getCnWapShopConfig(self, request): #EcoVacs Home
+    async def handle_getCnWapShopConfig(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
@@ -688,8 +685,8 @@ class ConfServer:
                     "myShopShowFlag": "N",
                     "myShopUrl": "",
                     "shopIndexShowFlag": "N",
-                    "shopIndexUrl": ""
-                    },              
+                    "shopIndexUrl": "",
+                },
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -698,23 +695,20 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))                 
+            confserverlog.exception("{}".format(e))
 
-    async def handle_getSystemReminder(self, request): #EcoVacs Home
+    async def handle_getSystemReminder(self, request):  # EcoVacs Home
         try:
             body = {
                 "code": bumper.RETURN_API_SUCCESS,
-                "data": 
-                {
-                    "iosGradeTime": {
-                        "iodGradeFlag": "N"
-                    },
+                "data": {
+                    "iosGradeTime": {"iodGradeFlag": "N"},
                     "openNotification": {
                         "openNotificationContent": None,
                         "openNotificationFlag": "N",
-                        "openNotificationTitle": None
-                    }
-                },                
+                        "openNotificationTitle": None,
+                    },
+                },
                 "msg": "操作成功",
                 "success": True,
                 "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
@@ -723,7 +717,7 @@ class ConfServer:
             return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))                        
+            confserverlog.exception("{}".format(e))
 
     async def handle_checkAgreement(self, request):
         try:
@@ -736,16 +730,16 @@ class ConfServer:
                             "force": "N",
                             "id": "20180804040641_7d746faf18b8cb22a50d145598fe4c90",
                             "type": "USER",
-                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN", #"https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN
-                            "version": "1.01"
+                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN",  # "https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040641_7d746faf18b8cb22a50d145598fe4c90&language=EN
+                            "version": "1.01",
                         },
                         {
                             "force": "N",
                             "id": "20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac",
                             "type": "PRIVACY",
-                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN", #"https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN"
-                            "version": "1.01"
-                        }
+                            "url": "https://bumper.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN",  # "https://gl-us-wap.ecovacs.com/content/agreement?id=20180804040245_4e7c56dfb7ebd3b81b1f2747d0859fac&language=EN"
+                            "version": "1.01",
+                        },
                     ],
                     "msg": "操作成功",
                     "success": True,
@@ -886,18 +880,18 @@ class ConfServer:
                         srvip = socket.gethostbyname(socket.gethostname())
                         srvport = 5223
                         confserverlog.info(
-                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(srvip, srvport)
+                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(
+                                srvip, srvport
+                            )
                         )
-                        body = {
-                            "result": "ok",
-                            "ip": srvip,
-                            "port": srvport,
-                        }
+                        body = {"result": "ok", "ip": srvip, "port": srvport}
                     elif service == "EcoUpdate":
-                        srvip = "47.88.66.164" #EcoVacs Server
+                        srvip = "47.88.66.164"  # EcoVacs Server
                         srvport = 8005
                         confserverlog.info(
-                            "Reporting FindBest-EcoUpdate Server to Bot as: {}:{}".format(srvip, srvport)
+                            "Reporting FindBest-EcoUpdate Server to Bot as: {}:{}".format(
+                                srvip, srvport
+                            )
                         )
                         body = {"result": "ok", "ip": srvip, "port": srvport}
 
@@ -911,9 +905,9 @@ class ConfServer:
                                 "token": postbody["token"],
                                 "userId": postbody["userId"],
                             }
-                    else: #EcoVacs Home LoginByITToken
+                    else:  # EcoVacs Home LoginByITToken
                         loginToken = bumper.loginByItToken(postbody["token"])
-                        if not loginToken == {}:                        
+                        if not loginToken == {}:
                             body = {
                                 "resource": postbody["resource"],
                                 "result": "ok",
@@ -923,7 +917,6 @@ class ConfServer:
                             }
                         else:
                             body = {"result": "fail", "todo": "result"}
-                            
 
                 elif todo == "GetDeviceList":
                     body = {
@@ -957,8 +950,6 @@ class ConfServer:
         body = {"result": "fail", "todo": "result"}
         return web.json_response(body)
 
- 
-
     async def handle_appsvr_api(self, request):
         if not request.method == "GET":  # Skip GET for now
             try:
@@ -973,22 +964,24 @@ class ConfServer:
 
                 todo = postbody["todo"]
 
-                if todo == "GetGlobalDeviceList": #EcoVacs Home
+                if todo == "GetGlobalDeviceList":  # EcoVacs Home
                     bots = bumper.db_get().table("bots").all()
                     botlist = []
                     for bot in bots:
                         if bot["class"] != "":
                             b = bumper.bot_toEcoVacsHome_JSON(bot)
-                            if not b is None: #Happens if the bot isn't on the EcoVacs Home list
+                            if (
+                                not b is None
+                            ):  # Happens if the bot isn't on the EcoVacs Home list
                                 botlist.append(json.loads(b))
-                        
+
                     body = {
-                        "code": 0,                        
+                        "code": 0,
                         "devices": botlist,
                         "ret": "ok",
                         "todo": "result",
                     }
-                
+
                 confserverlog.debug(
                     "\r\n POST: {} \r\n Response: {}".format(postbody, body)
                 )
@@ -1000,8 +993,7 @@ class ConfServer:
 
         # Return fail for GET
         body = {"result": "fail", "todo": "result"}
-        return web.json_response(body)        
-
+        return web.json_response(body)
 
     async def handle_lookup(self, request):
         try:
@@ -1023,7 +1015,9 @@ class ConfServer:
                     srvip = socket.gethostbyname(socket.gethostname())
                     srvport = 5223
                     confserverlog.info(
-                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(srvip, srvport)
+                        "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(
+                            srvip, srvport
+                        )
                     )
                     msgserver = {"ip": srvip, "port": srvport, "result": "ok"}
                     msgserver = json.dumps(msgserver)
@@ -1047,11 +1041,10 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
-
-    async def handle_lg_log(self, request): #EcoVacs Home
+    async def handle_lg_log(self, request):  # EcoVacs Home
         try:
             json_body = json.loads(await request.text())
-            
+
             randomid = "".join(random.sample(string.ascii_letters, 6))
             did = json_body["did"]
 
@@ -1060,8 +1053,8 @@ class ConfServer:
                 if not "cmdName" in json_body:
                     if "td" in json_body:
                         json_body["cmdName"] = json_body["td"]
-                        #json_body["td"] = "q"
-                
+                        # json_body["td"] = "q"
+
                 if not "toId" in json_body:
                     json_body["toId"] = did
 
@@ -1078,39 +1071,31 @@ class ConfServer:
                     json_body["payload"] = ""
                     if json_body["td"] == "GetCleanLogs":
                         json_body["td"] = "q"
-                        json_body["payload"] = '<ctl count=\"30\"/>' #<ctl />"
-                
+                        json_body["payload"] = '<ctl count="30"/>'  # <ctl />"
 
             if did != "":
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     body = ""
                     retcmd = await self.helperbot.send_command(json_body, randomid)
-                    confserverlog.debug(
-                        "Send Bot - {}".format(json_body)
-                    )
-                    confserverlog.debug(
-                        "Bot Response - {}".format(body)
-                    )
+                    confserverlog.debug("Send Bot - {}".format(json_body))
+                    confserverlog.debug("Bot Response - {}".format(body))
                     logs = []
                     logsroot = ET.fromstring(retcmd["resp"])
                     if logsroot.attrib["ret"] == "ok":
                         cleanlogs = logsroot.getchildren()
                         for l in cleanlogs:
-                            logs.append(l.attrib)                        
-                        
+                            logs.append(l.attrib)
+
                         body = {
-                        "ret": "ok",
-                        #"logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
-                        "logs": []
-                        } 
-                    
+                            "ret": "ok",
+                            # "logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
+                            "logs": [],
+                        }
+
                     else:
-                        body = {
-                        "ret": "ok",
-                        "logs": [],
-                        }                                       
-                    
+                        body = {"ret": "ok", "logs": []}
+
                     confserverlog.debug(
                         "\r\n POST: {} \r\n Response: {}".format(json_body, body)
                     )
@@ -1125,7 +1110,6 @@ class ConfServer:
                     )
                     body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
                     return web.json_response(body)
-            
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
@@ -1133,23 +1117,19 @@ class ConfServer:
     async def handle_devmanager_botcommand(self, request):
         try:
             json_body = json.loads(await request.text())
-            
+
             randomid = "".join(random.sample(string.ascii_letters, 6))
             did = ""
-            if "toId" in json_body: # Its a command
-                did = json_body["toId"]                          
+            if "toId" in json_body:  # Its a command
+                did = json_body["toId"]
 
             if did != "":
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     retcmd = await self.helperbot.send_command(json_body, randomid)
                     body = retcmd
-                    confserverlog.debug(
-                        "Send Bot - {}".format(json_body)
-                    )
-                    confserverlog.debug(
-                        "Bot Response - {}".format(body)
-                    )
+                    confserverlog.debug("Send Bot - {}".format(json_body))
+                    confserverlog.debug("Bot Response - {}".format(body))
                     return web.json_response(body)
                 else:
                     # No response, send error back
@@ -1158,43 +1138,43 @@ class ConfServer:
                             json_body["toId"]
                         )
                     )
-                    body = {"id": randomid, "errno": 500, "ret": "fail", "debug": "wait for response timed out"}
+                    body = {
+                        "id": randomid,
+                        "errno": 500,
+                        "ret": "fail",
+                        "debug": "wait for response timed out",
+                    }
                     return web.json_response(body)
-            
+
             else:
                 if "td" in json_body:  # Seen when doing initial wifi config
                     if json_body["td"] == "PollSCResult":
                         body = {"ret": "ok"}
                         return web.json_response(body)
-                    
-                    if json_body["td"] == "HasUnreadMsg": #EcoVacs Home
-                        body = {"ret":"ok","unRead":False}
+
+                    if json_body["td"] == "HasUnreadMsg":  # EcoVacs Home
+                        body = {"ret": "ok", "unRead": False}
                         return web.json_response(body)
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
-
-    async def handle_dim_devmanager(self, request): #Used in EcoVacs Home App
+    async def handle_dim_devmanager(self, request):  # Used in EcoVacs Home App
         try:
             json_body = json.loads(await request.text())
-            
+
             randomid = "".join(random.sample(string.ascii_letters, 6))
             did = ""
-            if "toId" in json_body: # Its a command
-                did = json_body["toId"]                          
+            if "toId" in json_body:  # Its a command
+                did = json_body["toId"]
 
             if did != "":
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
                     retcmd = await self.helperbot.send_command(json_body, randomid)
                     body = retcmd
-                    confserverlog.debug(
-                        "Send Bot - {}".format(json_body)
-                    )
-                    confserverlog.debug(
-                        "Bot Response - {}".format(body)
-                    )
+                    confserverlog.debug("Send Bot - {}".format(json_body))
+                    confserverlog.debug("Bot Response - {}".format(body))
                     return web.json_response(body)
                 else:
                     # No response, send error back
@@ -1205,19 +1185,19 @@ class ConfServer:
                     )
                     body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
                     return web.json_response(body)
-            
+
             else:
                 if "td" in json_body:  # Seen when doing initial wifi config
                     if json_body["td"] == "PollSCResult":
                         body = {"ret": "ok"}
                         return web.json_response(body)
-                    
-                    if json_body["td"] == "HasUnreadMsg": #EcoVacs Home
-                        body = {"ret":"ok","unRead":False}
+
+                    if json_body["td"] == "HasUnreadMsg":  # EcoVacs Home
+                        body = {"ret": "ok", "unRead": False}
                         return web.json_response(body)
 
         except Exception as e:
-            confserverlog.exception("{}".format(e))            
+            confserverlog.exception("{}".format(e))
 
     async def disconnect(self):
         try:
@@ -1226,7 +1206,7 @@ class ConfServer:
                 self.confthread.join()
             else:
                 await self.app.shutdown()
-                
+
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
