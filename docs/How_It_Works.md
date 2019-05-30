@@ -3,6 +3,7 @@
 Bumper runs multiple services to re-create what the central EcoVacs servers provide the bots and users. At this point two different protocols have been seen, **XMPP** and **MQTT**.
 
 **Services**
+
 | Service | Description | Ports | Source File |
 |--|--|--|--|
 | Web Servers | Provide authentication and for MQTT bots command | 443 and 8007 | `confserver.py` |
@@ -18,6 +19,7 @@ EcoVacs servers provide authentication of accounts and match those up to registe
 So far two protocols have been identified that various models of EcoVacs robots use: **XMPP** and **MQTT**.  These appear to be mutually exclusive and your robot model will use one of these two protocols for communication.  ***Bumper*** provides an implementation of both protocols handling communication between the app and robots.
 
 ----
+
 ### Login/Authentication/RestAPI
 
 ***Bumper*** provides a fully simulated central server that handles login/authentication for the app/clients.  
@@ -29,6 +31,7 @@ Future versions may add additional options here for security.
 Bots have no authentication and once a robot has been configured to access your WiFi it never needs to communicate with EcoVac's servers again.
 
 ----
+
 ### XMPP
 
 *Example Model:* Ozmo 601/930
@@ -42,6 +45,7 @@ Both the app and robot connect to the central XMPP server, which relays messages
 **Note:** It's been observed that the apps will attempt to utilize XMPP regardless of robot model.  For models that utilize MQTT, no activity is performed over XMPP just pings.
 
 ----
+
 ### MQTT
 
 *Example Model:* Deebot 600/900/901
