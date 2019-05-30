@@ -89,16 +89,19 @@ def db_file():
     return os_db_path()
 
 
-def os_db_path():
+def os_db_path(createdir=True):
+    # createdir - Set to False during tests to not create paths
     if platform.system() == "Windows":
-        os.makedirs(
-            os.getenv("APPDATA"), exist_ok=True
-        )  # Ensure db_path directory exists or create
+        if createdir:
+            os.makedirs(
+                os.getenv("APPDATA"), exist_ok=True
+            )  # Ensure db_path directory exists or create
         return os.path.join(os.getenv("APPDATA"), "bumper.db")
     else:
-        os.makedirs(
-            os.path.expanduser("~/.config"), exist_ok=True
-        )  # Ensure db_path directory exists or create
+        if createdir:
+            os.makedirs(
+                os.path.expanduser("~/.config"), exist_ok=True
+            )  # Ensure db_path directory exists or create
         return os.path.expanduser("~/.config/bumper.db")
 
 

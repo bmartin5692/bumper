@@ -29,10 +29,10 @@ def test_user_db():
     p = platform.system()
     os.getenv = mock.MagicMock(return_value="C:\AppData")
     o = os.getenv("APPDATA")
-    assert_equals(bumper.os_db_path(), os.path.join(os.getenv("APPDATA"), "bumper.db"))
+    assert_equals(bumper.os_db_path(createdir=False), os.path.join(os.getenv("APPDATA"), "bumper.db"))
 
     platform.system = mock.MagicMock(return_value="Linux")
-    assert_equals(bumper.os_db_path(), os.path.expanduser("~/.config/bumper.db"))
+    assert_equals(bumper.os_db_path(createdir=False), os.path.expanduser("~/.config/bumper.db"))
 
     bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.user_add("testuser")  # Add testuser
@@ -184,4 +184,3 @@ def test_client_db():
     assert_equals(
         len(bumper.get_disconnected_xmpp_clients()), 1
     )  # Test len of connected xmpp clients is 1
-
