@@ -1,13 +1,17 @@
 # Using Bumper with the official Android/iOS App 
+
 Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with limitations. Your phone needs to use your DNS server with custom settings, and you ***must*** import Bumper's CA cert and trust it before the app will work.
 
 **Steps**
-**1.** Configure your DNS server as described above in the [DNS](../README.md#dns) section. 
-**2.** [Import the Bumper CA Cert](#import-the-bumper-ca-cert)
-**3.** [Use the app](#use-the-app)
+
+1. Configure your DNS server as described above in the [DNS](../README.md#dns) section
+2. [Import the Bumper CA Cert](#import-the-bumper-ca-cert)
+3. [Use the app](#use-the-app)
 
 ## Import the Bumper CA Cert
+
 - E-mail yourself the Bumper CA cert (located at `./certs/CA/cacert.crt`)
+
 **Note:** Make sure you select the `cacert.crt` file, which is a DER encoded version that will work on either Android or iOS.
 
 ![Example of emailing CA cert](images/emailcert.png)
