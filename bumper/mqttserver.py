@@ -62,45 +62,42 @@ class MQTTHelperBot:
                 ]
             )
             asyncio.create_task(self.get_msg())
-
+    
         except Exception as e:
             helperbotlog.exception("{}".format(e))
 
     async def get_msg(self):
-        try:
-            while True:
-                message = await self.Client.deliver_message()
+        while True:
+            message = await self.Client.deliver_message()
 
-                if str(message.topic).split("/")[6] == "helper1":
-                    #Response to command
-                    helperbotlog.debug("Received Response - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
-                    self.command_responses.append(
-                        {
-                            "time": time.time(),
-                            "topic": message.topic,
-                            "payload": str(message.data.decode("utf-8")),
-                        }
-                    )
-                elif str(message.topic).split("/")[3] == "helper1":
-                    #Helperbot sending command
-                    helperbotlog.debug("Send Command - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
-                elif str(message.topic).split("/")[1] == "atr":
-                    #Broadcast message received on atr
-                    helperbotlog.debug("Received Broadcast - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
-                else:
-                    helperbotlog.debug("Received Message - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+            if str(message.topic).split("/")[6] == "helper1":
+                #Response to command
+                helperbotlog.debug("Received Response - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+                self.command_responses.append(
+                    {
+                        "time": time.time(),
+                        "topic": message.topic,
+                        "payload": str(message.data.decode("utf-8")),
+                    }
+                )
+            elif str(message.topic).split("/")[3] == "helper1":
+                #Helperbot sending command
+                helperbotlog.debug("Send Command - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+            elif str(message.topic).split("/")[1] == "atr":
+                #Broadcast message received on atr
+                helperbotlog.debug("Received Broadcast - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
+            else:
+                helperbotlog.debug("Received Message - Topic: {} - Message: {}".format(message.topic, str(message.data.decode("utf-8"))))
 
-                # Cleanup "expired messages" > 60 seconds from time
-                for msg in self.command_responses:
-                    expire_time = (
-                        datetime.fromtimestamp(msg["time"]) + timedelta(seconds=10)
-                    ).timestamp()
-                    if time.time() > expire_time:
-                        helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
-                        self.command_responses.remove(msg)
+            # Cleanup "expired messages" > 60 seconds from time
+            for msg in self.command_responses:
+                expire_time = (
+                    datetime.fromtimestamp(msg["time"]) + timedelta(seconds=10)
+                ).timestamp()
+                if time.time() > expire_time:
+                    helperbotlog.debug("Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(time.time(), msg['time'], expire_time))
+                    self.command_responses.remove(msg)
 
-        except Exception as e:
-            helperbotlog.exception("{}".format(e))
 
     async def wait_for_resp(self, requestid):
         try:
