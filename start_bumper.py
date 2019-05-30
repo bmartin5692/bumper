@@ -18,7 +18,7 @@ async def main():
     
     args = sys.argv
     listen_host = ""
-
+    
     if len(args) > 0:
         if "--debug" in args:
             logging.basicConfig(
@@ -41,7 +41,7 @@ async def main():
             listen_host = "0.0.0.0"
         else:
             listen_host = socket.gethostbyname(socket.gethostname())      
-    
+
     conf_address_443 = (listen_host, 443)
     conf_address_8007 = (listen_host, 8007)
     xmpp_address = (listen_host, 5223)
@@ -58,46 +58,47 @@ async def main():
     conf_server_2 = bumper.ConfServer(
         conf_address_8007, usessl=False, helperbot=mqtt_helperbot
     )
+    xmpp_server = bumper.XMPPServer(xmpp_address)
 
-    # Start web servers
-    conf_server.confserver_app()    
-    task_conf_server = asyncio.create_task(conf_server.start_server())
-    bumper.bumperlog.debug("task_conf_server added")        
-    await task_conf_server
+    try:
+        # Start web servers
+        conf_server.confserver_app()    
+        asyncio.create_task(conf_server.start_server())
+        
+        conf_server_2.confserver_app()
+        asyncio.create_task(conf_server_2.start_server())
+        
+        # Start MQTT Server
+        asyncio.create_task(mqtt_server.broker_coro())
+        
+        # Start MQTT Helperbot
+        asyncio.create_task(mqtt_helperbot.start_helper_bot())
+        
+        # Start XMPP Server
+        asyncio.create_task(xmpp_server.start_async_server())
+        
+        maintain = asyncio.create_task(maintenance_tasks())
+        await maintain #Keeps the loop running until this exits
 
-    conf_server_2.confserver_app()
-    task_conf_server2 = asyncio.create_task(conf_server_2.start_server())
-    bumper.bumperlog.debug("task_conf_server2 added")
-    await task_conf_server2
+    finally:
+        # Cleanup and close tasks/loop
+        for task in asyncio.Task.all_tasks():
+            task.cancel()
+        loop.close()
 
-    # Start MQTT Server
-    task_mqtt_server = asyncio.create_task(mqtt_server.broker_coro())
-    bumper.bumperlog.debug("task_mqtt_server added")
-    await task_mqtt_server
-
-    # Start MQTT Helperbot
-    task_mqtt_helperbot = asyncio.create_task(mqtt_helperbot.start_helper_bot())
-    bumper.bumperlog.debug("task_mqtt_helperbot added")
-    await task_mqtt_helperbot
-    
-    # Start XMPP Server
-    task_xmpp_server = asyncio.create_task(xmpp_server.async_server())
-    bumper.bumperlog.debug("task_xmpp_server added")
-    await task_xmpp_server
-
+async def maintenance_tasks():
     while True:
-        try:
-            await asyncio.sleep(30)
-            bumper.revoke_expired_tokens()
-            #disconnected_clients = bumper.get_disconnected_xmpp_clients()
-            #for client in disconnected_clients:
-            #    xmpp_server.remove_client_byuid(client["userid"])
-
-        except KeyboardInterrupt:
-            bumper.bumperlog.info("Bumper Exiting - Keyboard Interrupt")
-            print("Bumper Exiting")
-            exit(0)
-
+        await asyncio.sleep(30) # Sleep 30 seconds
+        bumper.revoke_expired_tokens()
+        
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    
+    except KeyboardInterrupt:
+        bumper.bumperlog.info("Keyboard Interrupt!")
+        pass
+    finally:
+        bumper.bumperlog.info("Bumper Exiting!")
+   
