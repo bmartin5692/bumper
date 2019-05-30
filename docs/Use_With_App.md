@@ -4,7 +4,7 @@ Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with
 
 **Steps**
 
-1. Configure your DNS server as described above in the [DNS](../README.md#dns) section
+1. Configure your DNS server as described above in the [DNS](DNS_Setup.md) doc
 2. [Import the Bumper CA Cert](#import-the-bumper-ca-cert)
 3. [Use the app](#use-the-app)
 
