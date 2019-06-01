@@ -64,8 +64,11 @@ class ConfServer:
         self.run_async = False
         self.app = None
 
-    def confserver_app(self):
-        self.app = web.Application()
+    def confserver_app(self, loop=None):
+        if loop:
+            self.app = web.Application(loop=loop)
+        else:
+            self.app = web.Application()
 
         self.app.add_routes(
             [

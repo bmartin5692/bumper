@@ -3,6 +3,7 @@ __pycache__
 .vscode/
 .coverage
 .noseids
+.pytest_cache
 nosetests.xml
 tests/report
 tests/tmp.db
