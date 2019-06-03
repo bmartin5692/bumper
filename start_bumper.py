@@ -48,7 +48,6 @@ async def main():
     xmpp_address = (listen_host, 5223)
     mqtt_address = (listen_host, 8883)
 
-    
     mqtt_server = bumper.MQTTServer(mqtt_address)
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
     conf_server = bumper.ConfServer(
