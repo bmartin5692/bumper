@@ -18,6 +18,7 @@ pbr = "*"
 pytest-asyncio = "*"
 pytest-aiohttp = "*"
 pytest-cov = "*"
+testfixtures = "*"
 
 [pipenv]
 allow_prereleases = true
