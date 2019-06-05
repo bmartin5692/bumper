@@ -9,7 +9,7 @@ install:
   - pip install pipenv
   - pipenv install --dev
 
-script: pipenv run python -m pytest
+script: pipenv run python -m pytest --cov=./
 
 after_success:
   - codecov
