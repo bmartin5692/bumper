@@ -4,6 +4,13 @@ Bumper is a standalone and self-hosted implementation of the central server used
 
 **Note:** The current master branch is unstable, and in active development.
 
+| Master Build Status | Status |
+|--|--|
+|AppVeyor (Win32) | ![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg)|
+|TravisCI (Linux) | ![Travis (.org)](https://img.shields.io/travis/bmartin5692/bumper.svg)|
+
+Code Test Coverage: ![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg)
+
 ***Testing needed***
 Bumper needs users to assist with testing in order to ensure compatability as bumper moves forward!  If you've tested Bumper with your bot, please open an issue with details on success or issues.
 
