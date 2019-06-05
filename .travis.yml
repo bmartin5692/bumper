@@ -9,4 +9,4 @@ install:
   - pip install pipenv
   - pipenv install --dev
 
-script: nosetests
+script: pipenv run python -m pytest

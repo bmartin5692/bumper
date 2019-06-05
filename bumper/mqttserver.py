@@ -33,6 +33,8 @@ logging.getLogger("hbmqtt.client").setLevel(logging.CRITICAL + 1)  # Ignore this
 class MQTTHelperBot:
 
     Client = MQTTClient()
+    wait_resp_timeout_seconds = 10
+    expire_msg_seconds = 10
 
     def __init__(self, address):
         self.address = address
@@ -105,12 +107,13 @@ class MQTTHelperBot:
             # Cleanup "expired messages" > 60 seconds from time
             for msg in self.command_responses:
                 expire_time = (
-                    datetime.fromtimestamp(msg["time"]) + timedelta(seconds=10)
+                    datetime.fromtimestamp(msg["time"])
+                    + timedelta(seconds=self.expire_msg_seconds)
                 ).timestamp()
                 if time.time() > expire_time:
                     helperbotlog.debug(
-                        "Pruning Message Time: {}, MsgTime: {}, MsgTime+60: {}".format(
-                            time.time(), msg["time"], expire_time
+                        "Pruning Message Due To Expiration - Message Topic: {}".format(
+                            msg["topic"]
                         )
                     )
                     self.command_responses.remove(msg)
@@ -118,7 +121,9 @@ class MQTTHelperBot:
     async def wait_for_resp(self, requestid):
         try:
 
-            t_end = (datetime.now() + timedelta(seconds=10)).timestamp()
+            t_end = (
+                datetime.now() + timedelta(seconds=self.wait_resp_timeout_seconds)
+            ).timestamp()
 
             while time.time() < t_end:
                 await asyncio.sleep(0.1)
@@ -186,14 +191,15 @@ class MQTTHelperBot:
 
 class MQTTServer:
     default_config = {}
+    broker = None
 
     async def broker_coro(self):
         try:
             mqttserverlog.info(
                 "Starting MQTT Server at {}:{}".format(self.address[0], self.address[1])
             )
-            broker = hbmqtt.broker.Broker(config=self.default_config)
-            await broker.start()
+            self.broker = hbmqtt.broker.Broker(config=self.default_config)
+            await self.broker.start()
 
         except PermissionError as e:
             if "bind" in e.strerror:
@@ -360,12 +366,14 @@ class BumperMQTTServer_Plugin:
             bot = bumper.bot_get(didsplit[0])
             if bot:
                 bumper.bot_set_mqtt(bot["did"], False)
+                return
 
             # clientuserid = didsplit[0]
             clientresource = didsplit[1].split("/")[1]
             client = bumper.client_get(clientresource)
             if client:
                 bumper.client_set_mqtt(client["resource"], False)
+                return
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))

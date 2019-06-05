@@ -14,6 +14,7 @@ class XMPPServer:
     server_id = "ecouser.net"
     clients = []
     exit_flag = False
+    server = None
 
     def __init__(self, address):
         # Initialize bot server
@@ -27,12 +28,11 @@ class XMPPServer:
 
         loop = asyncio.get_running_loop()
 
-        server = await loop.create_server(
+        self.server = await loop.create_server(
             self.xmpp_protocol, host=self.address[0], port=self.address[1]
         )
 
-        async with server:
-            await server.serve_forever()
+        self.server_coro = loop.create_task(self.server.serve_forever())
 
     def disconnect(self):
         try:
@@ -42,6 +42,7 @@ class XMPPServer:
 
             self.exit_flag = True
             xmppserverlog.debug("shutting down")
+            self.server_coro.cancel()
 
         except Exception as e:
             xmppserverlog.error("{}".format(e))
@@ -402,22 +403,20 @@ class XMPPAsyncClient:
                         if self.TLSUpgraded == False:
                             # With STARTTLS #https://xmpp.org/rfcs/rfc3920.html
                             self.send(
-                                '<stream:features><starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"><required/></starttls><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
+                                '<stream:features><starttls xmlns="urn:ietf:params:xml:ns:xmpp-tls"><required/></starttls><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
                             )
 
                         else:
-                            # Already using TLS send authentication support for iq-auth (fallback) and SASL
+                            # Already using TLS send authentication support for SASL
                             self.send(
-                                '<stream:features><auth xmlns="http://jabber.org/features/iq-auth"/><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
+                                '<stream:features><mechanisms xmlns="urn:ietf:params:xml:ns:xmpp-sasl"><mechanism>PLAIN</mechanism></mechanisms></stream:features>'
                             )
 
                     else:
                         self.send("</stream>")
 
                 else:
-                    if "jabber:iq:auth" in xml.tag:  # Handle iq-auth
-                        self._handle_iq_auth(xml)
-                    elif (
+                    if (
                         "urn:ietf:params:xml:ns:xmpp-sasl" in xml.tag
                     ):  # Handle SASL Auth
                         self._handle_sasl_auth(xml)
@@ -482,98 +481,6 @@ class XMPPAsyncClient:
                     transport, protocol, ssl_ctx, server_side=True
                 )
                 protocol.connection_made(new_transport)
-
-        except Exception as e:
-            xmppserverlog.exception("{}".format(e))
-
-    def _handle_iq_auth(self, data):
-        try:
-            xml = ET.fromstring(data.decode("utf-8"))
-            ctl = xml[0][0]
-            xmppserverlog.info("IQ AUTH XML: {}".format(xml))
-            # Received username and auth tag, send username/password requirement
-            if (
-                xml.get("type") == "get"
-                and "auth}username" in ctl.tag
-                and self.type == self.UNKNOWN
-            ):
-                self.send(
-                    '<iq type="result" id="{}"><query xmlns="jabber:iq:auth"><username/><password/></query></iq>'.format(
-                        xml.get("id")
-                    )
-                )
-
-            # Received username, password, resource - Handle auth here and return pass or fail
-            if (
-                xml.get("type") == "set"
-                and "auth}username" in ctl.tag
-                and self.type == self.UNKNOWN
-            ):
-                xmlauth = xml[0].getchildren()
-                # uid = ""
-                password = ""
-                authcode = ""
-                resource = ""
-                for aitem in xmlauth:
-                    if "username" in aitem.tag:
-                        self.uid = aitem.text
-
-                    elif "password" in aitem.tag:
-                        password = aitem.text.split("/")[2]
-                        authcode = password
-
-                    elif "resource" in aitem.tag:
-                        self.clientresource = aitem.text
-                        resource = self.clientresource
-
-                if self.devclass:  # if there is a devclass it is a bot
-                    bumper.bot_add("", self.uid, "", resource, "eco-legacy")
-                    xmppserverlog.debug("bot authenticated {}".format(self.uid))
-
-                    # Client authenticated, move to next state
-                    self._set_state("INIT")
-
-                    # Successful auth
-                    self.send('<iq type="result" id="{}"/>'.format(xml.get("id")))
-
-                else:
-                    auth = False
-                    if bumper.check_authcode(self.uid, authcode):
-                        auth = True
-                    elif bumper.use_auth == False:
-                        auth = True
-
-                    if auth:
-                        bumper.client_add(self.uid, "bumper", self.clientresource)
-                        xmppserverlog.debug("client authenticated {}".format(self.uid))
-
-                        # Client authenticated, move to next state
-                        self._set_state("INIT")
-
-                        # Successful auth
-                        self.send('<iq type="result" id="{}"/>'.format(xml.get("id")))
-
-                    else:
-                        # Failed auth
-                        self.send(
-                            '<iq type="error" id="{}"><error code="401" type="auth"><not-authorized xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>'.format(
-                                xml.get("id")
-                            )
-                        )
-
-        except ET.ParseError as e:
-            if "no element found" in e.msg:
-                xmppserverlog.debug(
-                    "xml parse error - {} - {}".format(data.decode("utf-8"), e)
-                )
-            elif "not well-formed (invalid token)" in e.msg:
-                xmppserverlog.debug(
-                    "xml parse error - {} - {}".format(data.decode("utf-8"), e)
-                )
-            else:
-                xmppserverlog.debug(
-                    "xml parse error - {} - {}".format(data.decode("utf-8"), e)
-                )
 
         except Exception as e:
             xmppserverlog.exception("{}".format(e))

@@ -65,7 +65,7 @@ class ConfServer:
         self.app = None
 
     def confserver_app(self):
-        self.app = web.Application()
+        self.app = web.Application(loop=asyncio.get_event_loop())
 
         self.app.add_routes(
             [
@@ -125,7 +125,7 @@ class ConfServer:
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/message/hasUnreadMsg",
                     self.handle_hasUnreadMessage,
                 ),
-                web.get(  # EcoVacs Home neng message hasUnreadMsg
+                web.post(  # EcoVacs Home neng message hasUnreadMsg
                     "/api/neng/message/hasUnreadMsg", self.handle_neng_hasUnreadMessage
                 ),
                 web.get(  # EcoVacs Home message getMsgList
