@@ -19,6 +19,7 @@ pytest-asyncio = "*"
 pytest-aiohttp = "*"
 pytest-cov = "*"
 testfixtures = "*"
+codecov = "*"
 
 [pipenv]
 allow_prereleases = true

@@ -10,3 +10,6 @@ install:
   - pipenv install --dev
 
 script: pipenv run python -m pytest
+
+after_success:
+  - codecov
