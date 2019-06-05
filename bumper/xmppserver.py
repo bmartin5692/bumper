@@ -14,6 +14,7 @@ class XMPPServer:
     server_id = "ecouser.net"
     clients = []
     exit_flag = False
+    server = None
 
     def __init__(self, address):
         # Initialize bot server
@@ -27,12 +28,11 @@ class XMPPServer:
 
         loop = asyncio.get_running_loop()
 
-        server = await loop.create_server(
+        self.server = await loop.create_server(
             self.xmpp_protocol, host=self.address[0], port=self.address[1]
         )
 
-        async with server:
-            await server.serve_forever()
+        self.server_coro = loop.create_task(self.server.serve_forever())
 
     def disconnect(self):
         try:
@@ -42,6 +42,7 @@ class XMPPServer:
 
             self.exit_flag = True
             xmppserverlog.debug("shutting down")
+            self.server_coro.cancel()
 
         except Exception as e:
             xmppserverlog.error("{}".format(e))

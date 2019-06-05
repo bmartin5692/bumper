@@ -7,6 +7,9 @@ import json
 import tinydb
 import pytest_asyncio
 import xml.etree.ElementTree as ET
+import socket
+from testfixtures import LogCapture
+import ssl
 
 
 def return_send_data(data, *args, **kwargs):
@@ -14,7 +17,45 @@ def return_send_data(data, *args, **kwargs):
 
 
 def mock_transport_extra_info(*args, **kwargs):
-    return ("127.0.0.1", 1234)
+    return ("127.0.0.1", 5223)
+
+
+async def test_xmpp_server():
+    with LogCapture("xmppserver") as l:
+        xmpp_address = ("127.0.0.1", 5223)
+        xmpp_server = bumper.XMPPServer(xmpp_address)
+        await xmpp_server.start_async_server()
+
+        reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+
+        writer.write(b"<stream:stream />")  # Start stream
+        await writer.drain()
+
+        await asyncio.sleep(0.1)
+
+        assert len(xmpp_server.clients) == 1  # Client count increased
+        assert (
+            xmpp_server.clients[0].address[1]
+            == writer.transport.get_extra_info("sockname")[1]
+        )
+
+        writer.close()  # Close connection
+        await writer.wait_closed()
+
+        await asyncio.sleep(0.1)
+
+        assert len(xmpp_server.clients) == 0  # Client count decreased
+
+        reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+
+        writer.write(b"<stream:stream />")  # Start stream
+        await writer.drain()
+
+        await asyncio.sleep(0.1)
+        xmpp_server.disconnect()
+        await asyncio.sleep(0.1)
+        assert len(xmpp_server.clients) == 0  # Client count decreased
+        print(l)
 
 
 async def test_client_connect_no_starttls(*args, **kwargs):
@@ -165,6 +206,66 @@ async def test_client_connect_starttls_called(*args, **kwargs):
         == '<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>'
     )  # Client successfully authenticated
     assert xmppclient.state == xmppclient.INIT  # Client moved to INIT state
+
+
+async def test_xmpp_server_client_tls():
+    with LogCapture("xmppserver") as l:
+
+        async def do_stuff_after_start_tls(
+            ssl_reader, ssl_writer
+        ):  # Used after starttls
+
+            writer.write(
+                b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
+            )  # New Stream
+
+            await writer.drain()
+
+            await asyncio.sleep(0.1)
+
+            writer.write(
+                b'<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="PLAIN">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>'
+            )  # Send Auth
+
+            await writer.drain()
+
+            await asyncio.sleep(0.1)
+
+    xmpp_address = ("127.0.0.1", 5223)
+    xmpp_server = bumper.XMPPServer(xmpp_address)
+    await xmpp_server.start_async_server()
+
+    reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
+
+    writer.write(
+        b"<stream:stream xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0' to='ecouser.net'>"
+    )  # Start stream
+    await writer.drain()
+
+    await asyncio.sleep(0.1)
+
+    writer.write(
+        b"<starttls xmlns='urn:ietf:params:xml:ns:xmpp-tls'/>"
+    )  # Send StartTLS
+    await writer.drain()
+
+    await asyncio.sleep(0.1)
+
+    # Below will upgrade connection to TLS then callback to "do_stuff_after_start_tls"
+    ssl_context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
+    ssl_context.check_hostname = False
+    ssl_context.load_verify_locations(cafile=bumper.ca_cert)
+    loop = asyncio.get_event_loop()
+    transport = writer.transport
+    protocol = writer.transport.get_protocol()
+    new_transport = await loop.start_tls(
+        transport, protocol, ssl_context, server_side=False
+    )
+    protocol._stream_reader = asyncio.StreamReader(loop=loop)
+    protocol._client_connected_cb = do_stuff_after_start_tls
+    protocol.connection_made(new_transport)
+
+    print(l)
 
 
 async def test_client_init(*args, **kwargs):

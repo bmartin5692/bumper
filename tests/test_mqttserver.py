@@ -365,8 +365,7 @@ async def test_mqttserver():
         fake_bot.Client._connected_state._value == True
     )  # Check fake_bot is connected
     await fake_bot.Client.disconnect()
-
-    await mqtt_helperbot.Client.reconnect()  # This forces the above disconnect
     
+    await asyncio.sleep(0.1)
 
     await mqtt_server.broker.shutdown()
