@@ -64,6 +64,7 @@ class ConfServer:
         self.run_async = False
         self.app = None
         self.site = None
+        self.runner = None
 
     def confserver_app(self):
         self.app = web.Application(loop=asyncio.get_event_loop())
@@ -168,43 +169,43 @@ class ConfServer:
             confserverlog.info(
                 "Starting ConfServer at {}:{}".format(self.address[0], self.address[1])
             )
-            runner = web.AppRunner(self.app)
-            await runner.setup()
+            self.runner = web.AppRunner(self.app)
+            await self.runner.setup()
 
             if self.usessl:
                 ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
                 self.site = web.TCPSite(
-                    runner,
+                    self.runner,
                     host=self.address[0],
                     port=self.address[1],
                     ssl_context=ssl_ctx,
                 )
 
             else:
-                self.site = web.TCPSite(runner, host=self.address[0], port=self.address[1])
+                self.site = web.TCPSite(
+                    self.runner, host=self.address[0], port=self.address[1]
+                )
 
             await self.site.start()
 
         except PermissionError as e:
-            if "bind" in e.strerror:
-                confserverlog.exception(
-                    "Error binding confserver, exiting. Try using a different hostname or IP - {}".format(
-                        e
-                    )
-                )
-            exit(1)
+            confserverlog.error(e.strerror)            
+            asyncio.create_task(bumper.shutdown())
+            
+        except asyncio.CancelledError:
+            pass
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
-            exit(1)
+            asyncio.create_task(bumper.shutdown())
 
     async def stop_server(self):
         try:
-            await self.site.stop()
-        
+            await self.runner.shutdown()            
+
         except Exception as e:
-            confserverlog.exception("{}".format(e))        
+            confserverlog.exception("{}".format(e))
 
     async def handle_base(self, request):
         try:

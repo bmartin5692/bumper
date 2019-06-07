@@ -7,11 +7,11 @@ import asyncio
 if __name__ == "__main__":
     try:
         parser = argparse.ArgumentParser()
-        parser.add_argument("--listen", type=str, default=None, help="listen address")
+        parser.add_argument("--listen", type=str, default=None, help="start serving on address")
         parser.add_argument(
-            "--announce", type=str, default=None, help="announce address (for bot)"
+            "--announce", type=str, default=None, help="announce address to bots on checkin"
         )
-        parser.add_argument("--debug", action="store_true")
+        parser.add_argument("--debug", action="store_true", help="enable debug logs")
         args = parser.parse_args()
 
         if args.debug:
@@ -27,6 +27,10 @@ if __name__ == "__main__":
 
     except KeyboardInterrupt:
         bumper.bumperlog.info("Keyboard Interrupt!")
+        pass
+
+    except Exception as e:
+        bumper.bumperlog.Exception(e)
         pass
 
     finally:

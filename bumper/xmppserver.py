@@ -24,17 +24,30 @@ class XMPPServer:
         self.xmpp_protocol = lambda: XMPPServer_Protocol()
 
     async def start_async_server(self):
-        xmppserverlog.info(
-            "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
-        )
+        try:
+            xmppserverlog.info(
+                "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
+            )
 
-        loop = asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
 
-        self.server = await loop.create_server(
-            self.xmpp_protocol, host=self.address[0], port=self.address[1]
-        )
+            self.server = await loop.create_server(
+                self.xmpp_protocol, host=self.address[0], port=self.address[1]
+            )
 
-        self.server_coro = loop.create_task(self.server.serve_forever())
+            self.server_coro = loop.create_task(self.server.serve_forever())
+
+        except PermissionError as e:
+            xmppserverlog.error(e.strerror)
+            asyncio.create_task(bumper.shutdown())
+            pass
+
+        except asyncio.CancelledError:
+            pass
+
+        except Exception as e:
+            xmppserverlog.exception("{}".format(e))
+            asyncio.create_task(bumper.shutdown())
 
     def disconnect(self):
         try:

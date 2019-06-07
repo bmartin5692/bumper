@@ -13,11 +13,13 @@ from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 import socket
 
+
 def strtobool(strbool):
-    if str(strbool).lower() in ['true', '1', 't', 'y', 'on','yes']:
+    if str(strbool).lower() in ["true", "1", "t", "y", "on", "yes"]:
         return True
     else:
         return False
+
 
 # os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
 
@@ -118,6 +120,7 @@ xmppserverlog.addHandler(xmpp_rotate)
 
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
+
 async def start():
 
     try:
@@ -173,7 +176,7 @@ async def start():
     # Start maintenance
     while not shutting_down:
         asyncio.create_task(maintenance())
-        await asyncio.sleep(30)
+        await asyncio.sleep(5)
 
 
 async def maintenance():
@@ -183,11 +186,20 @@ async def maintenance():
 async def shutdown():
     try:
         bumperlog.info("Shutting down")
-        await mqtt_server.broker.shutdown()
-        xmpp_server.server.close()
-        await xmpp_server.server.wait_closed()
+
         await conf_server.stop_server()
         await conf_server_2.stop_server()
+        if mqtt_server.broker.transitions.state == "started":
+            await mqtt_server.broker.shutdown()
+        elif mqtt_server.broker.transitions.state == "starting":
+            while mqtt_server.broker.transitions.state == "starting":
+                await asyncio.sleep(0.1)
+            await mqtt_server.broker.shutdown()
+            await mqtt_helperbot.Client.disconnect()
+        if xmpp_server.server:
+            if xmpp_server.server._serving:
+                xmpp_server.server.close()
+            await xmpp_server.server.wait_closed()
         global shutting_down
         shutting_down = True
 
