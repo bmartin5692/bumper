@@ -15,6 +15,11 @@ tests/*
 !tests/pytest.ini
 
 # Ignore logs/data/certs
-logs/
-data/
-certs/
+logs/*
+data/*
+certs/*
+
+# Except README in logs/data/certs
+!logs/README.md
+!data/README.md
+!certs/README.md
