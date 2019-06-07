@@ -26,6 +26,11 @@ def async_return(result):
     return f
 
 
+def remove_existing_db():
+    if os.path.exists("tests/tmp.db"):
+        os.remove("tests/tmp.db")  # Remove existing db
+
+
 async def test_confserver_ssl():
     conf_server = bumper.ConfServer(("127.0.0.1", 111111), usessl=True, helperbot=None)
     conf_server.confserver_app()
@@ -39,8 +44,7 @@ async def test_confserver_no_ssl():
 
 
 async def test_base(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -51,8 +55,7 @@ async def test_base(aiohttp_client):
 
 
 async def test_login(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -66,8 +69,7 @@ async def test_login(aiohttp_client):
     assert "uid" in jsonresp["data"]
     assert "username" in jsonresp["data"]
 
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
 
     # Test global_e without user
@@ -104,8 +106,7 @@ async def test_login(aiohttp_client):
 
 
 async def test_logout(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -126,8 +127,7 @@ async def test_logout(aiohttp_client):
 
 
 async def test_checkLogin(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -217,8 +217,7 @@ async def test_checkLogin(aiohttp_client):
 
 
 async def test_getAuthCode(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -273,8 +272,7 @@ async def test_getAuthCode(aiohttp_client):
 
 
 async def test_checkAgreement(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -295,8 +293,7 @@ async def test_checkAgreement(aiohttp_client):
 
 
 async def test_homePageAlert(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -310,8 +307,7 @@ async def test_homePageAlert(aiohttp_client):
 
 
 async def test_checkVersion(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -323,8 +319,7 @@ async def test_checkVersion(aiohttp_client):
 
 
 async def test_checkAppVersion(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -338,8 +333,7 @@ async def test_checkAppVersion(aiohttp_client):
 
 
 async def test_uploadDeviceInfo(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -353,8 +347,7 @@ async def test_uploadDeviceInfo(aiohttp_client):
 
 
 async def test_getAdByPositionType(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -368,8 +361,7 @@ async def test_getAdByPositionType(aiohttp_client):
 
 
 async def test_getBootScreen(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -383,8 +375,7 @@ async def test_getBootScreen(aiohttp_client):
 
 
 async def test_hasUnreadMsg(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -398,8 +389,7 @@ async def test_hasUnreadMsg(aiohttp_client):
 
 
 async def test_getMsgList(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -413,8 +403,7 @@ async def test_getMsgList(aiohttp_client):
 
 
 async def test_getSystemReminder(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -428,8 +417,7 @@ async def test_getSystemReminder(aiohttp_client):
 
 
 async def test_getCnWapShopConfig(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -443,8 +431,7 @@ async def test_getCnWapShopConfig(aiohttp_client):
 
 
 async def test_neng_hasUnreadMessage(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -466,8 +453,7 @@ async def test_neng_hasUnreadMessage(aiohttp_client):
 
 
 async def test_getProductIotMap(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -479,8 +465,7 @@ async def test_getProductIotMap(aiohttp_client):
 
 
 async def test_getUsersAPI(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -492,8 +477,7 @@ async def test_getUsersAPI(aiohttp_client):
 
 
 async def test_getUserAccountInfo(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.user_add("testuser")
     bumper.user_add_device("testuser", "dev_1234")
@@ -516,8 +500,7 @@ async def test_getUserAccountInfo(aiohttp_client):
 
 
 async def test_postUsersAPI(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -668,8 +651,7 @@ async def test_postUsersAPI(aiohttp_client):
 
 
 async def test_appsvr_api(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -708,8 +690,7 @@ async def test_appsvr_api(aiohttp_client):
 
 
 async def test_lg_logs(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.bot_add("sn_1234", "did_1234", "ls1ok3", "res_1234", "eco-ng")
     bumper.bot_set_mqtt("did_1234", True)
@@ -755,8 +736,7 @@ async def test_lg_logs(aiohttp_client):
 
 
 async def test_postLookup(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     client = await aiohttp_client(create_app)
 
@@ -778,8 +758,7 @@ async def test_postLookup(aiohttp_client):
 
 
 async def test_devmgr(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     confserver = create_confserver()
     client = await aiohttp_client(create_app)
@@ -845,8 +824,7 @@ async def test_devmgr(aiohttp_client):
 
 
 async def test_dim_devmanager(aiohttp_client):
-    if os.path.exists("tests/tmp.db"):
-        os.remove("tests/tmp.db")  # Remove existing db
+    remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
     confserver = create_confserver()
     client = await aiohttp_client(create_app)

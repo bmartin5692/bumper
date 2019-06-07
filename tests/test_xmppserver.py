@@ -221,15 +221,11 @@ async def test_xmpp_server_client_tls():
 
             await writer.drain()
 
-            await asyncio.sleep(0.1)
-
             writer.write(
                 b'<auth xmlns="urn:ietf:params:xml:ns:xmpp-sasl" mechanism="PLAIN">AGZ1aWRfdG1wdXNlcgAwL0lPU0Y1M0QwN0JBL3VzXzg5ODgwMmZkYmM0NDQxYjBiYzgxNWIxZDFjNjgzMDJl</auth>'
             )  # Send Auth
 
             await writer.drain()
-
-            await asyncio.sleep(0.1)
 
     xmpp_address = ("127.0.0.1", 5223)
     xmpp_server = bumper.XMPPServer(xmpp_address)
