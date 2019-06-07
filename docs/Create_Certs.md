@@ -7,7 +7,7 @@ Certificates should be placed in the `{bumper_home}/certs` directory.  If certif
 Users can generate certificates in the following ways:
 
 | Method                                            | Description                                                                                                         |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |  |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | [Create_Certs](#creating-certs-using-createcerts) | ***(Preferred)*** This is a utility that has been created to assist in generating the certificates required easily. |
 | [OpenSSL](#manually-create-certs-with-openssl)    | Users can manually create the same certificates as Create_Certs by utilizing OpenSSL.                               |
 | [Custom CA/Self](#using-a-custom-caself)          | If a user has their own CA the certificates can be generated there and used within Bumper.                          |
