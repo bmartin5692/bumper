@@ -6,7 +6,6 @@ from bumper.xmppserver import XMPPServer
 import asyncio
 import json
 import time
-import distutils
 from datetime import datetime, timedelta
 import platform
 import os, sys
