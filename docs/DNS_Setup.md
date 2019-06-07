@@ -28,13 +28,23 @@ Not all domains have been documented at this point, and this list will be update
 
   - Example: If you see `eco-{countrycode}-api.ecovacs.com` and you live in the US/North America you would use: `eco-us-api.ecovacs.com`
 
-| Address | Description |
-|--|--|
-| `lb-{countrycode}.ecovacs.net` | Load-balancer that is checked by the app/robot |
-| `eco-{countrycode}-api.ecovacs.com` | Used for Login |
-| `portal-{countrycode}.ecouser.net` | Used for Login and Rest API |
-| `portal-ww.ecouser.net` | Used for various Rest APIs |
-| `msg-{countrycode}.ecouser.net` | Used for XMPP |
-| `mq-ww.ecouser.net` | Used for MQTT |
-| `gl-{countrycode}-api.ecovacs.com` | Used by Ecovacs Home app for API |
-| `recommender.ecovacs.com` | Used by Ecovacs Home app |
+| Address                                 | Description                                    |
+| --------------------------------------- | ---------------------------------------------- |
+| `lb-{countrycode}.ecovacs.net`          | Load-balancer that is checked by the app/robot |
+| `lb-{countrycode}.ecouser.net`          | Load-balancer that is checked by the app/robot |
+| `lbus.ecouser.net`                      | Load-balancer that is checked by the app/robot |
+| `lb{countrycode}.ecouser.net`           | Load-balancer that is checked by the app/robot |
+| `eco-{countrycode}-api.ecovacs.com`     | Used for Login                                 |
+| `gl-{countrycode}-api.ecovacs.com`      | Used by EcoVacs Home app                       |
+| `gl-{countrycode}-openapi.ecovacs.com`  | Used by EcoVacs Home app                       |
+| `portal-{countrycode}.ecouser.net`      | Used for Login and Rest API                    |
+| `portal-ww.ecouser.net`                 | Used for various Rest APIs                     |
+| `msg-{countrycode}.ecouser.net`         | Used for XMPP                                  |
+| `msg-ww.ecouser.net`                    | Used for XMPP                                  |
+| `mq-ww.ecouser.net`                     | Used for MQTT                                  |
+| `mq-{countrycode}.ecouser.net`          | Used for MQTT                                  |
+| `gl-{countrycode}-api.ecovacs.com`      | Used by Ecovacs Home app for API               |
+| `recommender.ecovacs.com`               | Used by Ecovacs Home app                       |
+| `bigdata-international.ecovacs.com`     | Telemetry/tracking                             |
+| `bigdata-northamerica.ecovacs.com`      | Telemetry/tracking                             |
+| `bigdata-{unknown regions}.ecovacs.com` | Telemetry/tracking                             |
