@@ -6,6 +6,7 @@ from bumper.xmppserver import XMPPServer
 import asyncio
 import json
 import time
+import distutils
 from datetime import datetime, timedelta
 import platform
 import os, sys
@@ -13,19 +14,64 @@ import logging
 from logging.handlers import RotatingFileHandler
 from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
-import json
 from tinydb.storages import MemoryStorage
+import socket
 
-ca_cert = "./certs/CA/cacert.pem"
-server_cert = "./certs/cert.pem"
-server_key = "./certs/key.pem"
+def strtobool(strbool):
+    if str(strbool).lower() in ['true', '1', 't', 'y', 'on','yes']:
+        return True
+    else:
+        return False
 
+# os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
+
+bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# Set defaults from environment variables first
+# Certs
+ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs/ca.crt")
+server_cert = os.environ.get("BUMPER_CERT") or os.path.join(
+    bumper_dir, "certs/bumper.crt"
+)
+server_key = os.environ.get("BUMPER_KEY") or os.path.join(
+    bumper_dir, "certs/bumper.key"
+)
+
+if not (
+    os.path.exists(ca_cert) or os.path.exists(server_cert) or os.path.exists(server_key)
+):
+    logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
+    os._exit(1)
+
+# Folders
+logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
+os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
+data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
+os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
+
+# Listeners
+bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
+    socket.gethostname()
+)
+if not bumper_listen:
+    logging.log(logging.FATAL, "No listen address configured!")
+    os._exit(1)
+
+bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
+
+# Other
+bumper_debug = strtobool(os.environ.get("BUMPER_DEBUG")) or False
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
 db = None
 
-# Logs
-os.makedirs("logs", exist_ok=True)  # Ensure logs directory exists or create
+mqtt_server = None
+mqtt_helperbot = None
+conf_server = None
+conf_server_2 = None
+xmpp_server = None
+
+shutting_down = False
+
 # Set format for all logs
 logformat = logging.Formatter(
     "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s"
@@ -74,8 +120,89 @@ xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
 
-
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
+
+async def start():
+
+    try:
+        loop = asyncio.get_event_loop()
+    except:
+        loop = asyncio.new_event_loop()
+
+    if bumper_debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s",
+        )
+        loop.set_debug(True)  # Set asyncio loop to debug
+        # logging.getLogger("asyncio").setLevel(logging.DEBUG)  # Show debug asyncio logs (disabled in init, uncomment for debugging asyncio)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
+        )
+
+    bumperlog.info("Starting Bumper")
+    global mqtt_server
+    mqtt_server = MQTTServer((bumper_listen, 8883))
+    global mqtt_helperbot
+    mqtt_helperbot = MQTTHelperBot((bumper_listen, 8883))
+    global conf_server
+    conf_server = ConfServer(
+        (bumper_listen, 443), usessl=True, helperbot=mqtt_helperbot
+    )
+    global conf_server_2
+    conf_server_2 = ConfServer(
+        (bumper_listen, 8007), usessl=False, helperbot=mqtt_helperbot
+    )
+    global xmpp_server
+    xmpp_server = XMPPServer((bumper_listen, 5223))
+
+    # Start web servers
+    conf_server.confserver_app()
+    asyncio.create_task(conf_server.start_server())
+
+    conf_server_2.confserver_app()
+    asyncio.create_task(conf_server_2.start_server())
+
+    # Start MQTT Server
+    asyncio.create_task(mqtt_server.broker_coro())
+
+    # Start MQTT Helperbot
+    asyncio.create_task(mqtt_helperbot.start_helper_bot())
+
+    # Start XMPP Server
+    asyncio.create_task(xmpp_server.start_async_server())
+
+    # Start maintenance
+    while not shutting_down:
+        asyncio.create_task(maintenance())
+        await asyncio.sleep(30)
+
+
+async def maintenance():
+    revoke_expired_tokens()
+
+
+async def shutdown():
+    try:
+        bumperlog.info("Shutting down")
+        await mqtt_server.broker.shutdown()
+        xmpp_server.server.close()
+        await xmpp_server.server.wait_closed()
+        await conf_server.stop_server()
+        await conf_server_2.stop_server()
+        global shutting_down
+        shutting_down = True
+
+    except asyncio.CancelledError:
+        bumperlog.info("Coroutine canceled")
+
+    except Exception as e:
+        bumperlog.info("Exception: {}".format(e))
+
+    finally:
+        bumperlog.info("Shutdown complete")
 
 
 def get_milli_time(timetoconvert):
@@ -89,20 +216,8 @@ def db_file():
     return os_db_path()
 
 
-def os_db_path(createdir=True):
-    # createdir - Set to False during tests to not create paths
-    if platform.system() == "Windows":
-        if createdir:
-            os.makedirs(
-                os.getenv("APPDATA"), exist_ok=True
-            )  # Ensure db_path directory exists or create
-        return os.path.join(os.getenv("APPDATA"), "bumper.db")
-    else:
-        if createdir:
-            os.makedirs(
-                os.path.expanduser("~/.config"), exist_ok=True
-            )  # Ensure db_path directory exists or create
-        return os.path.expanduser("~/.config/bumper.db")
+def os_db_path():  # createdir=True):
+    return os.path.join(data_dir, "bumper.db")
 
 
 def db_get():

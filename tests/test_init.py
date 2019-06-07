@@ -23,20 +23,6 @@ def test_user_db():
     if os.path.exists("tests/tmp.db"):
         os.remove("tests/tmp.db")  # Remove existing db
 
-    # Test os_db_path
-    platform.system = mock.MagicMock(return_value="Windows")
-    p = platform.system()
-    os.getenv = mock.MagicMock(return_value="C:\\AppData")
-    o = os.getenv("APPDATA")
-    assert bumper.os_db_path(createdir=False) == os.path.join(
-        os.getenv("APPDATA"), "bumper.db"
-    )
-
-    platform.system = mock.MagicMock(return_value="Linux")
-    assert bumper.os_db_path(createdir=False) == os.path.expanduser(
-        "~/.config/bumper.db"
-    )
-
     bumper.db = "tests/tmp.db"  # Set db location for testing
     bumper.user_add("testuser")  # Add testuser
 

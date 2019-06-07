@@ -300,8 +300,8 @@ class BumperMQTTServer_Plugin:
                         "eco-ng",
                     )
 
-                    mqttserverlog.debug(
-                        "new bot authenticated SN: {} DID: {}".format(
+                    mqttserverlog.info(
+                        "bot authenticated SN: {} DID: {}".format(
                             username, didsplit[0]
                         )
                     )
@@ -324,7 +324,7 @@ class BumperMQTTServer_Plugin:
 
                         if auth:
                             bumper.client_add(userid, realm, resource)
-                            mqttserverlog.debug(
+                            mqttserverlog.info(
                                 "client authenticated {}".format(userid)
                             )
                             authenticated = True

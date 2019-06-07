@@ -63,6 +63,7 @@ class ConfServer:
         self.confthread = None
         self.run_async = False
         self.app = None
+        self.site = None
 
     def confserver_app(self):
         self.app = web.Application(loop=asyncio.get_event_loop())
@@ -173,7 +174,7 @@ class ConfServer:
             if self.usessl:
                 ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
                 ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
-                site = web.TCPSite(
+                self.site = web.TCPSite(
                     runner,
                     host=self.address[0],
                     port=self.address[1],
@@ -181,9 +182,9 @@ class ConfServer:
                 )
 
             else:
-                site = web.TCPSite(runner, host=self.address[0], port=self.address[1])
+                self.site = web.TCPSite(runner, host=self.address[0], port=self.address[1])
 
-            await site.start()
+            await self.site.start()
 
         except PermissionError as e:
             if "bind" in e.strerror:
@@ -197,6 +198,13 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
             exit(1)
+
+    async def stop_server(self):
+        try:
+            await self.site.stop()
+        
+        except Exception as e:
+            confserverlog.exception("{}".format(e))        
 
     async def handle_base(self, request):
         try:
@@ -877,19 +885,26 @@ class ConfServer:
                 if todo == "FindBest":
                     service = postbody["service"]
                     if service == "EcoMsgNew":
-                        srvip = socket.gethostbyname(socket.gethostname())
+                        srvip = bumper.bumper_announce_ip
                         srvport = 5223
                         confserverlog.info(
-                            "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(
+                            "Announcing EcoMsgNew Server to bot as: {}:{}".format(
                                 srvip, srvport
                             )
                         )
-                        body = {"result": "ok", "ip": srvip, "port": srvport}
+                        msgserver = {"ip": srvip, "port": srvport, "result": "ok"}
+                        msgserver = json.dumps(msgserver)
+                        msgserver = msgserver.replace(
+                            " ", ""
+                        )  # bot seems to be very picky about having no spaces, only way was with text
+
+                        return web.json_response(text=msgserver)
+
                     elif service == "EcoUpdate":
                         srvip = "47.88.66.164"  # EcoVacs Server
                         srvport = 8005
                         confserverlog.info(
-                            "Reporting FindBest-EcoUpdate Server to Bot as: {}:{}".format(
+                            "Announcing EcoUpdate Server to bot as: {}:{}".format(
                                 srvip, srvport
                             )
                         )
@@ -937,9 +952,7 @@ class ConfServer:
                     bumper.bot_remove(postbody["did"])
                     body = {"result": "ok", "todo": "result"}
 
-                confserverlog.debug(
-                    "\r\n POST: {} \r\n Response: {}".format(postbody, body)
-                )
+                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
 
                 return web.json_response(body)
 
@@ -982,9 +995,7 @@ class ConfServer:
                         "todo": "result",
                     }
 
-                confserverlog.debug(
-                    "\r\n POST: {} \r\n Response: {}".format(postbody, body)
-                )
+                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
 
                 return web.json_response(body)
 
@@ -1012,10 +1023,10 @@ class ConfServer:
             if todo == "FindBest":
                 service = postbody["service"]
                 if service == "EcoMsgNew":
-                    srvip = socket.gethostbyname(socket.gethostname())
+                    srvip = bumper.bumper_announce_ip
                     srvport = 5223
                     confserverlog.info(
-                        "Reporting FindBest-EcoMsgNew Server to Bot as: {}:{}".format(
+                        "Announcing EcoMsgNew Server to bot as: {}:{}".format(
                             srvip, srvport
                         )
                     )
@@ -1025,17 +1036,18 @@ class ConfServer:
                         " ", ""
                     )  # bot seems to be very picky about having no spaces, only way was with text
 
-                    confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(postbody, msgserver)
-                    )
                     return web.json_response(text=msgserver)
 
                 elif service == "EcoUpdate":
-                    body = {"result": "ok", "ip": "47.88.66.164", "port": 8005}
+                    srvip = "47.88.66.164"  # EcoVacs Server
+                    srvport = 8005
+                    confserverlog.info(
+                        "Announcing EcoUpdate Server to bot as: {}:{}".format(
+                            srvip, srvport
+                        )
+                    )
+                    body = {"result": "ok", "ip": srvip, "port": srvport}
 
-            confserverlog.debug(
-                "\r\n POST: {} \r\n Response: {}".format(postbody, body)
-            )
             return web.json_response(body)
 
         except Exception as e:
@@ -1097,7 +1109,7 @@ class ConfServer:
                         body = {"ret": "ok", "logs": []}
 
                     confserverlog.debug(
-                        "\r\n POST: {} \r\n Response: {}".format(json_body, body)
+                        "POST: {} - Response: {}".format(json_body, body)
                     )
 
                     return web.json_response(body)

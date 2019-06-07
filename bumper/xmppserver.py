@@ -51,10 +51,6 @@ class XMPPServer:
 class XMPPServer_Protocol(asyncio.Protocol):
     client_id = None
     exit_flag = False
-    server_cert = "./certs/cert.pem"
-    server_key = "./certs/key.pem"
-    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_ctx.load_cert_chain(server_cert, server_key)
     aclient = None
 
     def connection_made(self, transport):
@@ -506,7 +502,7 @@ class XMPPAsyncClient:
             if self.devclass:  # if there is a devclass it is a bot
                 bumper.bot_add(self.uid, self.uid, self.devclass, "atom", "eco-legacy")
                 self.type = self.BOT
-                xmppserverlog.debug("bot authenticated {}".format(self.uid))
+                xmppserverlog.info("bot authenticated SN: {}".format(self.uid))
                 # Send response
                 self.send(
                     '<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>'
@@ -525,7 +521,7 @@ class XMPPAsyncClient:
                 if auth:
                     self.type = self.CONTROLLER
                     bumper.client_add(self.uid, "bumper", self.clientresource)
-                    xmppserverlog.debug("client authenticated {}".format(self.uid))
+                    xmppserverlog.info("client authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
                     self._set_state("INIT")
