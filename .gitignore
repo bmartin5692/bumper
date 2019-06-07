@@ -11,6 +11,8 @@ __pycache__
 # Ignore items in test (report, cache, etc), except files starting with test
 tests/* 
 !tests/test*
+!tests/test_certs
+!tests/pytest.ini
 
 # Ignore logs/data/certs
 logs/

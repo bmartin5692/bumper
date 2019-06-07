@@ -21,6 +21,7 @@ pytest-cov = "*"
 testfixtures = "*"
 codecov = "*"
 autoflake = "*"
+pytest-env = "*"
 
 [pipenv]
 allow_prereleases = true

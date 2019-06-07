@@ -725,7 +725,6 @@ async def test_lg_logs(aiohttp_client):
     confserver.helperbot.send_command = mock.MagicMock(
         return_value=async_return(command_getstatus_resp)
     )
-    
 
     # Test GetGlobalDeviceList
     postbody = {
@@ -800,7 +799,7 @@ async def test_devmgr(aiohttp_client):
     text = await resp.text()
     test_resp = json.loads(text)
     assert test_resp["ret"] == "ok"
-    assert test_resp["unRead"] == False    
+    assert test_resp["unRead"] == False
 
     # Test BotCommand
     bumper.bot_add("sn_1234", "did_1234", "dev_1234", "res_1234", "eco-ng")
