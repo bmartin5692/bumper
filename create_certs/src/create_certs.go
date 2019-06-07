@@ -52,12 +52,18 @@ func make_CA() {
 
 	// Public key
 	certOut, err := os.Create("ca.crt")
+	if err != nil {
+		log.Fatal("create ca.crt failed", err)
+	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: ca_b})
 	certOut.Close()
 	log.Print("ca.crt created\n")
 
 	// Private key
 	keyOut, err := os.OpenFile("ca.key", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatal("create ca.key failed", err)
+	}
 	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	keyOut.Close()
 	log.Print("ca.key created\n")
@@ -68,11 +74,12 @@ func signCert() {
 	// Load CA
 	catls, err := tls.LoadX509KeyPair("ca.crt", "ca.key")
 	if err != nil {
-		panic(err)
+		log.Fatal("error loading ca cert", err)
 	}
+
 	ca, err := x509.ParseCertificate(catls.Certificate[0])
 	if err != nil {
-		panic(err)
+		log.Fatal("error parsing ca cert", err)
 	}
 
 	hostname, _ := os.Hostname()
@@ -131,19 +138,25 @@ func signCert() {
 	}
 
 	// Sign the certificate
-	cert_b, err := x509.CreateCertificate(rand.Reader, &template, ca, pubKey, catls.PrivateKey)
+	cert_b, err := x509.CreateCertificate(rand.Reader, &template, ca, pubKey, catls.PrivateKey)	
 
 	// Public key
 	certOut, err := os.Create("bumper.crt")
+	if err != nil {
+		log.Fatal("create bumper.crt failed", err)
+	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: cert_b})
 	certOut.Close()
 	log.Print("bumper.crt created\n")
 
 	// Private key
 	keyOut, err := os.OpenFile("bumper.key", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	if err != nil {
+		log.Fatal("create bumper.key failed", err)
+	}
 	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privateKey)})
 	keyOut.Close()
-	log.Print("bumper.key create\n")
+	log.Print("bumper.key created\n")
 }
 
 func bigIntHash(n *big.Int) []byte {

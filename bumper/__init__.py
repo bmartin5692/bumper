@@ -26,19 +26,20 @@ def strtobool(strbool):
 bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 # Set defaults from environment variables first
 # Certs
-ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs/ca.crt")
+ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs", "ca.crt")
 server_cert = os.environ.get("BUMPER_CERT") or os.path.join(
-    bumper_dir, "certs/bumper.crt"
+    bumper_dir, "certs", "bumper.crt"
 )
 server_key = os.environ.get("BUMPER_KEY") or os.path.join(
-    bumper_dir, "certs/bumper.key"
+    bumper_dir, "certs", "bumper.key"
 )
 
 if not (
-    os.path.exists(ca_cert) or os.path.exists(server_cert) or os.path.exists(server_key)
+    os.path.exists(ca_cert)
+    and os.path.exists(server_cert)
+    and os.path.exists(server_key)
 ):
     logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
-    os._exit(1)
 
 # Folders
 logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
@@ -140,6 +141,14 @@ async def start():
             level=logging.INFO,
             format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
         )
+
+    if not (
+        os.path.exists(ca_cert)
+        and os.path.exists(server_cert)
+        and os.path.exists(server_key)
+    ):
+        logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
+        os._exit(1)
 
     bumperlog.info("Starting Bumper")
     global mqtt_server
