@@ -72,6 +72,24 @@ But seriously, there are a several reasons for eliminating the central server:
 	- This doesn't seem to be required for models that don't have easily accessible batteries such as the 900/901.
 - If your configuration is correct, the robot will connect to Bumper within about 30 seconds. Bumper will output information about the connection status. 
 
+#### Command-Line Usage
+
+`start_bumper.py` is a helper script that starts up Bumper for you.  It has a number of available command-line arguments that can be viewed by adding the `-h` flag.
+
+  ````
+  usage: start_bumper.py [-h] [--listen LISTEN] [--announce ANNOUNCE] [--debug]
+
+  optional arguments:
+    -h, --help           show this help message and exit
+    --listen LISTEN      start serving on address
+    --announce ANNOUNCE  announce address to bots on checkin
+    --debug              enable debug logs
+  ````
+
+#### Environment Variables
+
+Bumper looks for a number of Environment Variables at initialization allowing for customizing a number of settings.  For more information see the [Environment Variables](docs/Env_Var.md) doc.
+
 ## Thanks
 
 A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build. 
