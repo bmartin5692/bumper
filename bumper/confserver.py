@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from threading import Thread
-import socket, logging, ssl, json
+import json
+import logging
+import ssl
 import string
 import random
 import bumper
-import time
 from datetime import datetime, timedelta
 import asyncio
 from aiohttp import web

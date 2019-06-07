@@ -20,6 +20,7 @@ pytest-aiohttp = "*"
 pytest-cov = "*"
 testfixtures = "*"
 codecov = "*"
+autoflake = "*"
 
 [pipenv]
 allow_prereleases = true

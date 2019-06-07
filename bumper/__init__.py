@@ -5,13 +5,10 @@ from bumper.mqttserver import MQTTServer, MQTTHelperBot
 from bumper.xmppserver import XMPPServer
 import asyncio
 import json
-import time
 from datetime import datetime, timedelta
-import platform
-import os, sys
+import os
 import logging
 from logging.handlers import RotatingFileHandler
-from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 import socket

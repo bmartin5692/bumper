@@ -9,8 +9,6 @@ from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
 import time
-from threading import Thread
-import ssl
 import bumper
 import json
 from datetime import datetime, timedelta

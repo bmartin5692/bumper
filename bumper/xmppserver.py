@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-from threading import Thread
-import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
+import logging
+import re
+import uuid
+import xml.etree.ElementTree as ET
 import base64
 import ssl
 import bumper
-import asyncio, functools
+import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
 
