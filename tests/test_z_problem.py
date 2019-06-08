@@ -62,7 +62,7 @@ def test_argparse(mock_start):
 
 
 @patch("subprocess.run")
-@patch("platform.system.lower")
+@patch("platform.system")
 @patch("platform.machine")
 @patch("os.execv")
 def test_createcert(mock_run, mock_platform, mock_machine, mock_exec):
