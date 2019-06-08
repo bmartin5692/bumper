@@ -12,6 +12,8 @@ from logging.handlers import RotatingFileHandler
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 import socket
+import sys
+
 
 
 def strtobool(strbool):
@@ -34,13 +36,6 @@ server_key = os.environ.get("BUMPER_KEY") or os.path.join(
     bumper_dir, "certs", "bumper.key"
 )
 
-if not (
-    os.path.exists(ca_cert)
-    and os.path.exists(server_cert)
-    and os.path.exists(server_key)
-):
-    logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
-
 # Folders
 logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
 os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
@@ -51,9 +46,7 @@ os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
 bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
     socket.gethostname()
 )
-if not bumper_listen:
-    logging.log(logging.FATAL, "No listen address configured!")
-    os._exit(1)
+
 
 bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
 
@@ -121,9 +114,17 @@ xmppserverlog.addHandler(xmpp_rotate)
 
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
+mqtt_listen_address = bumper_listen
+mqtt_listen_port = 8883 
+conf1_listen_address = bumper_listen
+conf1_listen_port = 443
+conf2_listen_address = bumper_listen
+conf2_listen_port = 8007
+xmpp_listen_address = bumper_listen 
+xmpp_listen_port = 5223
 
 async def start():
-
+    
     try:
         loop = asyncio.get_event_loop()
     except:
@@ -141,6 +142,10 @@ async def start():
             level=logging.INFO,
             format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
         )
+    
+    if not bumper_listen:
+        logging.log(logging.FATAL, "No listen address configured")
+        return        
 
     if not (
         os.path.exists(ca_cert)
@@ -148,23 +153,23 @@ async def start():
         and os.path.exists(server_key)
     ):
         logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
-        os._exit(1)
-
+        return
+        
     bumperlog.info("Starting Bumper")
     global mqtt_server
-    mqtt_server = MQTTServer((bumper_listen, 8883))
+    mqtt_server = MQTTServer((mqtt_listen_address, mqtt_listen_port))
     global mqtt_helperbot
-    mqtt_helperbot = MQTTHelperBot((bumper_listen, 8883))
+    mqtt_helperbot = MQTTHelperBot((mqtt_listen_address, mqtt_listen_port))
     global conf_server
     conf_server = ConfServer(
-        (bumper_listen, 443), usessl=True, helperbot=mqtt_helperbot
+        (conf1_listen_address, conf1_listen_port), usessl=True, helperbot=mqtt_helperbot
     )
     global conf_server_2
     conf_server_2 = ConfServer(
-        (bumper_listen, 8007), usessl=False, helperbot=mqtt_helperbot
+        (conf2_listen_address, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
     )
     global xmpp_server
-    xmpp_server = XMPPServer((bumper_listen, 5223))
+    xmpp_server = XMPPServer((xmpp_listen_address, xmpp_listen_port))
 
     # Start web servers
     conf_server.confserver_app()
@@ -203,8 +208,9 @@ async def shutdown():
         elif mqtt_server.broker.transitions.state == "starting":
             while mqtt_server.broker.transitions.state == "starting":
                 await asyncio.sleep(0.1)
-            await mqtt_server.broker.shutdown()
-            await mqtt_helperbot.Client.disconnect()
+            if mqtt_server.broker.transitions.state == "started":
+                await mqtt_server.broker.shutdown()
+                await mqtt_helperbot.Client.disconnect()
         if xmpp_server.server:
             if xmpp_server.server._serving:
                 xmpp_server.server.close()
@@ -431,12 +437,6 @@ class VacBotDevice(object):
             "mqtt_connection": self.mqtt_connection,
             "xmpp_connection": self.xmpp_connection,
         }
-
-    def toJSON(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False
-        )  # , indent=4)
-
 
 class GlobalVacBotDevice(VacBotDevice):  # EcoVacs Home
     UILogicId = ""
@@ -943,3 +943,111 @@ API_ERRORS = {
     ERR_WRONG_EMAIL_ADDRESS: "1008",
     ERR_WRONG_PWD_FROMATE: "1009",
 }
+
+def create_certs():
+    import platform
+    import os
+    import subprocess
+    import sys
+    path = os.path.dirname(sys.modules[__name__].__file__)
+    path = os.path.join(path, "..")
+    sys.path.insert(0, path)
+
+    print("Creating certificates")
+    odir = os.path.realpath(os.curdir)
+    os.chdir("certs")
+    if str(platform.system()).lower() == "windows":
+        # run for win
+        subprocess.run(
+            [os.path.join("..", "create_certs", "create_certs_windows.exe")]
+        )
+    elif str(platform.system()).lower() == "darwin":
+        # run on mac
+        subprocess.run([os.path.join("..", "create_certs", "create_certs_osx")])
+    elif str(platform.system()).lower() == "linux":
+        if "arm" in platform.machine().lower():
+            # run for pi
+            subprocess.run([os.path.join("..", "create_certs", "create_certs_rpi")])
+        else:
+            # run for linux
+            subprocess.run(
+                [os.path.join("..", "create_certs", "create_certs_linux")]
+            )
+    
+    else:
+        logging.log(logging.FATAL, "Can't determine platform. Create certs manually and try again.")
+        return
+
+    print("Certificates created")    
+    os.chdir(odir)
+    print(os.path.realpath(os.curdir))
+    if "__main__.py" in sys.argv[0]:
+        os.execv(
+            sys.executable, ["python", "-m", "bumper"] + sys.argv[1:]
+        )  # Start again
+
+    else:
+        os.execv(sys.executable, ["python"] + sys.argv)  # Start again
+
+def firstrun_input():    
+    return input(
+        "No certificates found, would you like to create them automatically? (y/n): "
+    ).lower()
+
+def first_run():
+    yes = {"yes", "y", "ye", ""}
+    print("")
+    if firstrun_input() in yes:
+        create_certs()    
+
+    else:
+        logging.log(logging.FATAL, "Can't continue without certificates, please create some then try again.")
+
+def main(argv=None):
+    import argparse
+    global bumper_debug
+    global bumper_listen
+    global bumper_announce_ip
+
+    try:
+
+        if not (
+            os.path.exists(ca_cert)
+            and os.path.exists(server_cert)
+            and os.path.exists(server_key)
+        ):
+            first_run()
+            return
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--listen", type=str, default=None, help="start serving on address"
+        )
+        parser.add_argument(
+            "--announce", type=str, default=None, help="announce address to bots on checkin"
+        )
+        parser.add_argument("--debug", action="store_true", help="enable debug logs")
+        args = parser.parse_args(args=argv)
+
+        if args.debug:
+            bumper_debug = True
+
+        if args.listen:
+            bumper_listen = args.listen
+
+        if args.announce:
+            bumper_announce_ip = args.announce
+
+        asyncio.run(start())
+
+    except KeyboardInterrupt:
+        bumperlog.info("Keyboard Interrupt!")
+        pass
+
+    except Exception as e:
+        bumperlog.exception(e)
+        pass
+
+    finally:
+        asyncio.run(shutdown())
+

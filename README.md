@@ -55,7 +55,6 @@ But seriously, there are a several reasons for eliminating the central server:
 ## Quick Start Usage
 
  - Download bumper then run `pipenv install` to install dependencies
- - Generate certificates for Bumper - See the [Creating Certs](docs/Create_Certs.md) doc
  - Configure your Ecovacs vacuum using the official mobile app (if you haven't done this already)
  - Configure your DNS server as described in the [DNS Setup](docs/DNS_Setup.md) doc. 
  - Start bumper - see the [Starting Bumper](#starting-bumper) section.
@@ -65,7 +64,12 @@ But seriously, there are a several reasons for eliminating the central server:
 
 ### Starting Bumper
 
-- Start Bumper with `pipenv run python start_bumper.py`
+Bumper requires certificates to function.  If certificates aren't found it will prompt to generate them for you.
+
+For more information on generating certificates manually, see the [Creating Certs](docs/Create_Certs.md) doc
+
+- Start Bumper with `pipenv run python -m bumper`
+  - If prompted to generate certificates choose yes or no
 
 - Reboot your robot
 	- **Note:** Some models may require removing and re-inserting the battery pack.
