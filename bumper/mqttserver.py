@@ -9,8 +9,6 @@ from hbmqtt.client import MQTTClient
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
 import time
-from threading import Thread
-import ssl
 import bumper
 import json
 from datetime import datetime, timedelta
@@ -60,7 +58,19 @@ class MQTTHelperBot:
                     ("iot/atr/+", QOS_0),
                 ]
             )
+
             asyncio.create_task(self.get_msg())
+
+        except ConnectionRefusedError as e:
+            helperbotlog.Error(e)
+            pass
+
+        except asyncio.CancelledError as e:
+            pass
+
+        except hbmqtt.client.ConnectException as e:
+            helperbotlog.Error(e)
+            pass
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))
@@ -194,25 +204,23 @@ class MQTTServer:
     broker = None
 
     async def broker_coro(self):
+
+        mqttserverlog.info(
+            "Starting MQTT Server at {}:{}".format(self.address[0], self.address[1])
+        )
+        self.broker = hbmqtt.broker.Broker(config=self.default_config)
+
         try:
-            mqttserverlog.info(
-                "Starting MQTT Server at {}:{}".format(self.address[0], self.address[1])
-            )
-            self.broker = hbmqtt.broker.Broker(config=self.default_config)
             await self.broker.start()
 
-        except PermissionError as e:
-            if "bind" in e.strerror:
-                mqttserverlog.exception(
-                    "Error binding mqttserver, exiting. Try using a different hostname or IP - {}".format(
-                        e
-                    )
-                )
-            exit(1)
+        except hbmqtt.broker.BrokerException as e:
+            mqttserverlog.exception(e)
+            asyncio.create_task(bumper.shutdown())
+            pass
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
-            exit(1)
+            asyncio.create_task(bumper.shutdown())
 
     def __init__(self, address):
         try:
@@ -300,10 +308,8 @@ class BumperMQTTServer_Plugin:
                         "eco-ng",
                     )
 
-                    mqttserverlog.debug(
-                        "new bot authenticated SN: {} DID: {}".format(
-                            username, didsplit[0]
-                        )
+                    mqttserverlog.info(
+                        "bot authenticated SN: {} DID: {}".format(username, didsplit[0])
                     )
                     authenticated = True
 
@@ -324,9 +330,7 @@ class BumperMQTTServer_Plugin:
 
                         if auth:
                             bumper.client_add(userid, realm, resource)
-                            mqttserverlog.debug(
-                                "client authenticated {}".format(userid)
-                            )
+                            mqttserverlog.info("client authenticated {}".format(userid))
                             authenticated = True
 
                         else:

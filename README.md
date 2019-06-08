@@ -4,10 +4,10 @@ Bumper is a standalone and self-hosted implementation of the central server used
 
 **Note:** The current master branch is unstable, and in active development.
 
-| Master Build Status | Status |
-|--|--|
-|AppVeyor (Win32) | ![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg)|
-|TravisCI (Linux) | ![Travis (.org)](https://img.shields.io/travis/bmartin5692/bumper.svg)|
+| Master Build Status | Status                                                                 |
+| ------------------- | ---------------------------------------------------------------------- |
+| AppVeyor (Win32)    | ![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg) |
+| TravisCI (Linux)    | ![Travis (.org)](https://img.shields.io/travis/bmartin5692/bumper.svg) |
 
 Code Test Coverage: ![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg)
 
@@ -20,13 +20,13 @@ Bumper needs users to assist with testing in order to ensure compatability as bu
 
 As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models that it hasn't been tested against.  Bumper should be compatible with most wifi-enabled robots that use either the Ecovacs Android/iOS app or the Ecovacs Home Android/iOS app, but has only been reported to work on the below:
 
-| Model | Protocol Used | Bumper Version Tested | EcoVacs App Tested |
-|--|--|--|--|
-| Deebot 900/901 | MQTT | master | Ecovacs/Ecovacs Home |
-| Deebot 600 | MQTT | master | Ecovacs Home |
-| Deebot Ozmo 601 | XMPP | master | Ecovacs |
-| Deebot Ozmo 930 | XMPP | master | Ecovacs |
-| Deebot M81 Pro | XMPP | v0.1.0 | Ecovacs |
+| Model           | Protocol Used | Bumper Version Tested | EcoVacs App Tested   |
+| --------------- | ------------- | --------------------- | -------------------- |
+| Deebot 900/901  | MQTT          | master                | Ecovacs/Ecovacs Home |
+| Deebot 600      | MQTT          | master                | Ecovacs Home         |
+| Deebot Ozmo 601 | XMPP          | master                | Ecovacs              |
+| Deebot Ozmo 930 | XMPP          | master                | Ecovacs              |
+| Deebot M81 Pro  | XMPP          | v0.1.0                | Ecovacs              |
 
 For more information about the protocols and how Bumper works, see the [How does it work?](docs/How_It_Works.md) page in the docs. If you test against another model and it works, please open an issue to report it.
 
@@ -64,13 +64,35 @@ But seriously, there are a several reasons for eliminating the central server:
 
 ### Starting Bumper
 
-- Start Bumper with `pipenv run python start_bumper.py`
+Bumper requires certificates to function.  If certificates aren't found it will prompt to generate them for you.
+
+For more information on generating certificates manually, see the [Creating Certs](docs/Create_Certs.md) doc
+
+- Start Bumper with `pipenv run python -m bumper`
+  - If prompted to generate certificates choose yes or no
 
 - Reboot your robot
 	- **Note:** Some models may require removing and re-inserting the battery pack.
 	- This doesn't seem to be required for models that don't have easily accessible batteries such as the 900/901.
-
 - If your configuration is correct, the robot will connect to Bumper within about 30 seconds. Bumper will output information about the connection status. 
+
+#### Command-Line Usage
+
+`start_bumper.py` is a helper script that starts up Bumper for you.  It has a number of available command-line arguments that can be viewed by adding the `-h` flag.
+
+  ````
+  usage: start_bumper.py [-h] [--listen LISTEN] [--announce ANNOUNCE] [--debug]
+
+  optional arguments:
+    -h, --help           show this help message and exit
+    --listen LISTEN      start serving on address
+    --announce ANNOUNCE  announce address to bots on checkin
+    --debug              enable debug logs
+  ````
+
+#### Environment Variables
+
+Bumper looks for a number of Environment Variables at initialization allowing for customizing a number of settings.  For more information see the [Environment Variables](docs/Env_Var.md) doc.
 
 ## Thanks
 

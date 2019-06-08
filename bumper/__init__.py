@@ -5,27 +5,65 @@ from bumper.mqttserver import MQTTServer, MQTTHelperBot
 from bumper.xmppserver import XMPPServer
 import asyncio
 import json
-import time
 from datetime import datetime, timedelta
-import platform
-import os, sys
+import os
 import logging
 from logging.handlers import RotatingFileHandler
-from base64 import b64decode, b64encode
 from tinydb import TinyDB, Query
-import json
 from tinydb.storages import MemoryStorage
+import socket
+import sys
 
-ca_cert = "./certs/CA/cacert.pem"
-server_cert = "./certs/cert.pem"
-server_key = "./certs/key.pem"
 
+
+def strtobool(strbool):
+    if str(strbool).lower() in ["true", "1", "t", "y", "on", "yes"]:
+        return True
+    else:
+        return False
+
+
+# os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
+
+bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+# Set defaults from environment variables first
+# Certs
+ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs", "ca.crt")
+server_cert = os.environ.get("BUMPER_CERT") or os.path.join(
+    bumper_dir, "certs", "bumper.crt"
+)
+server_key = os.environ.get("BUMPER_KEY") or os.path.join(
+    bumper_dir, "certs", "bumper.key"
+)
+
+# Folders
+logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
+os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
+data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
+os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
+
+# Listeners
+bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
+    socket.gethostname()
+)
+
+
+bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
+
+# Other
+bumper_debug = strtobool(os.environ.get("BUMPER_DEBUG")) or False
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
 db = None
 
-# Logs
-os.makedirs("logs", exist_ok=True)  # Ensure logs directory exists or create
+mqtt_server = None
+mqtt_helperbot = None
+conf_server = None
+conf_server_2 = None
+xmpp_server = None
+
+shutting_down = False
+
 # Set format for all logs
 logformat = logging.Formatter(
     "[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s"
@@ -74,8 +112,120 @@ xmppserverlog.addHandler(xmpp_rotate)
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
 
-
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
+
+mqtt_listen_address = bumper_listen
+mqtt_listen_port = 8883 
+conf1_listen_address = bumper_listen
+conf1_listen_port = 443
+conf2_listen_address = bumper_listen
+conf2_listen_port = 8007
+xmpp_listen_address = bumper_listen 
+xmpp_listen_port = 5223
+
+async def start():
+    
+    try:
+        loop = asyncio.get_event_loop()
+    except:
+        loop = asyncio.new_event_loop()
+
+    if bumper_debug:
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(module)s :: %(funcName)s :: %(lineno)d :: %(message)s",
+        )
+        loop.set_debug(True)  # Set asyncio loop to debug
+        # logging.getLogger("asyncio").setLevel(logging.DEBUG)  # Show debug asyncio logs (disabled in init, uncomment for debugging asyncio)
+    else:
+        logging.basicConfig(
+            level=logging.INFO,
+            format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
+        )
+    
+    if not bumper_listen:
+        logging.log(logging.FATAL, "No listen address configured")
+        return        
+
+    if not (
+        os.path.exists(ca_cert)
+        and os.path.exists(server_cert)
+        and os.path.exists(server_key)
+    ):
+        logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
+        return
+        
+    bumperlog.info("Starting Bumper")
+    global mqtt_server
+    mqtt_server = MQTTServer((mqtt_listen_address, mqtt_listen_port))
+    global mqtt_helperbot
+    mqtt_helperbot = MQTTHelperBot((mqtt_listen_address, mqtt_listen_port))
+    global conf_server
+    conf_server = ConfServer(
+        (conf1_listen_address, conf1_listen_port), usessl=True, helperbot=mqtt_helperbot
+    )
+    global conf_server_2
+    conf_server_2 = ConfServer(
+        (conf2_listen_address, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
+    )
+    global xmpp_server
+    xmpp_server = XMPPServer((xmpp_listen_address, xmpp_listen_port))
+
+    # Start web servers
+    conf_server.confserver_app()
+    asyncio.create_task(conf_server.start_server())
+
+    conf_server_2.confserver_app()
+    asyncio.create_task(conf_server_2.start_server())
+
+    # Start MQTT Server
+    asyncio.create_task(mqtt_server.broker_coro())
+
+    # Start MQTT Helperbot
+    asyncio.create_task(mqtt_helperbot.start_helper_bot())
+
+    # Start XMPP Server
+    asyncio.create_task(xmpp_server.start_async_server())
+
+    # Start maintenance
+    while not shutting_down:
+        asyncio.create_task(maintenance())
+        await asyncio.sleep(5)
+
+
+async def maintenance():
+    revoke_expired_tokens()
+
+
+async def shutdown():
+    try:
+        bumperlog.info("Shutting down")
+
+        await conf_server.stop_server()
+        await conf_server_2.stop_server()
+        if mqtt_server.broker.transitions.state == "started":
+            await mqtt_server.broker.shutdown()
+        elif mqtt_server.broker.transitions.state == "starting":
+            while mqtt_server.broker.transitions.state == "starting":
+                await asyncio.sleep(0.1)
+            if mqtt_server.broker.transitions.state == "started":
+                await mqtt_server.broker.shutdown()
+                await mqtt_helperbot.Client.disconnect()
+        if xmpp_server.server:
+            if xmpp_server.server._serving:
+                xmpp_server.server.close()
+            await xmpp_server.server.wait_closed()
+        global shutting_down
+        shutting_down = True
+
+    except asyncio.CancelledError:
+        bumperlog.info("Coroutine canceled")
+
+    except Exception as e:
+        bumperlog.info("Exception: {}".format(e))
+
+    finally:
+        bumperlog.info("Shutdown complete")
 
 
 def get_milli_time(timetoconvert):
@@ -89,20 +239,8 @@ def db_file():
     return os_db_path()
 
 
-def os_db_path(createdir=True):
-    # createdir - Set to False during tests to not create paths
-    if platform.system() == "Windows":
-        if createdir:
-            os.makedirs(
-                os.getenv("APPDATA"), exist_ok=True
-            )  # Ensure db_path directory exists or create
-        return os.path.join(os.getenv("APPDATA"), "bumper.db")
-    else:
-        if createdir:
-            os.makedirs(
-                os.path.expanduser("~/.config"), exist_ok=True
-            )  # Ensure db_path directory exists or create
-        return os.path.expanduser("~/.config/bumper.db")
+def os_db_path():  # createdir=True):
+    return os.path.join(data_dir, "bumper.db")
 
 
 def db_get():
@@ -299,12 +437,6 @@ class VacBotDevice(object):
             "mqtt_connection": self.mqtt_connection,
             "xmpp_connection": self.xmpp_connection,
         }
-
-    def toJSON(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False
-        )  # , indent=4)
-
 
 class GlobalVacBotDevice(VacBotDevice):  # EcoVacs Home
     UILogicId = ""
@@ -811,3 +943,111 @@ API_ERRORS = {
     ERR_WRONG_EMAIL_ADDRESS: "1008",
     ERR_WRONG_PWD_FROMATE: "1009",
 }
+
+def create_certs():
+    import platform
+    import os
+    import subprocess
+    import sys
+    path = os.path.dirname(sys.modules[__name__].__file__)
+    path = os.path.join(path, "..")
+    sys.path.insert(0, path)
+
+    print("Creating certificates")
+    odir = os.path.realpath(os.curdir)
+    os.chdir("certs")
+    if str(platform.system()).lower() == "windows":
+        # run for win
+        subprocess.run(
+            [os.path.join("..", "create_certs", "create_certs_windows.exe")]
+        )
+    elif str(platform.system()).lower() == "darwin":
+        # run on mac
+        subprocess.run([os.path.join("..", "create_certs", "create_certs_osx")])
+    elif str(platform.system()).lower() == "linux":
+        if "arm" in platform.machine().lower():
+            # run for pi
+            subprocess.run([os.path.join("..", "create_certs", "create_certs_rpi")])
+        else:
+            # run for linux
+            subprocess.run(
+                [os.path.join("..", "create_certs", "create_certs_linux")]
+            )
+    
+    else:
+        logging.log(logging.FATAL, "Can't determine platform. Create certs manually and try again.")
+        return
+
+    print("Certificates created")    
+    os.chdir(odir)
+    print(os.path.realpath(os.curdir))
+    if "__main__.py" in sys.argv[0]:
+        os.execv(
+            sys.executable, ["python", "-m", "bumper"] + sys.argv[1:]
+        )  # Start again
+
+    else:
+        os.execv(sys.executable, ["python"] + sys.argv)  # Start again
+
+def firstrun_input():    
+    return input(
+        "No certificates found, would you like to create them automatically? (y/n): "
+    ).lower()
+
+def first_run():
+    yes = {"yes", "y", "ye", ""}
+    print("")
+    if firstrun_input() in yes:
+        create_certs()    
+
+    else:
+        logging.log(logging.FATAL, "Can't continue without certificates, please create some then try again.")
+
+def main(argv=None):
+    import argparse
+    global bumper_debug
+    global bumper_listen
+    global bumper_announce_ip
+
+    try:
+
+        if not (
+            os.path.exists(ca_cert)
+            and os.path.exists(server_cert)
+            and os.path.exists(server_key)
+        ):
+            first_run()
+            return
+
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--listen", type=str, default=None, help="start serving on address"
+        )
+        parser.add_argument(
+            "--announce", type=str, default=None, help="announce address to bots on checkin"
+        )
+        parser.add_argument("--debug", action="store_true", help="enable debug logs")
+        args = parser.parse_args(args=argv)
+
+        if args.debug:
+            bumper_debug = True
+
+        if args.listen:
+            bumper_listen = args.listen
+
+        if args.announce:
+            bumper_announce_ip = args.announce
+
+        asyncio.run(start())
+
+    except KeyboardInterrupt:
+        bumperlog.info("Keyboard Interrupt!")
+        pass
+
+    except Exception as e:
+        bumperlog.exception(e)
+        pass
+
+    finally:
+        asyncio.run(shutdown())
+

@@ -1,0 +1,6 @@
+ecovacs.com
+*.ecovacs.com
+ecouser.net
+*.ecouser.net
+ecovacs.net
+*.ecovacs.net

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
-from threading import Thread
-import sys, socket, threading, re, time, logging, uuid, xml.etree.ElementTree as ET
+import logging
+import re
+import uuid
+import xml.etree.ElementTree as ET
 import base64
 import ssl
 import bumper
-import asyncio, functools
+import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
 
@@ -22,17 +24,30 @@ class XMPPServer:
         self.xmpp_protocol = lambda: XMPPServer_Protocol()
 
     async def start_async_server(self):
-        xmppserverlog.info(
-            "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
-        )
+        try:
+            xmppserverlog.info(
+                "Starting XMPP Server at {}:{}".format(self.address[0], self.address[1])
+            )
 
-        loop = asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
 
-        self.server = await loop.create_server(
-            self.xmpp_protocol, host=self.address[0], port=self.address[1]
-        )
+            self.server = await loop.create_server(
+                self.xmpp_protocol, host=self.address[0], port=self.address[1]
+            )
 
-        self.server_coro = loop.create_task(self.server.serve_forever())
+            self.server_coro = loop.create_task(self.server.serve_forever())
+
+        except PermissionError as e:
+            xmppserverlog.error(e.strerror)
+            asyncio.create_task(bumper.shutdown())
+            pass
+
+        except asyncio.CancelledError:
+            pass
+
+        except Exception as e:
+            xmppserverlog.exception("{}".format(e))
+            asyncio.create_task(bumper.shutdown())
 
     def disconnect(self):
         try:
@@ -51,10 +66,6 @@ class XMPPServer:
 class XMPPServer_Protocol(asyncio.Protocol):
     client_id = None
     exit_flag = False
-    server_cert = "./certs/cert.pem"
-    server_key = "./certs/key.pem"
-    ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-    ssl_ctx.load_cert_chain(server_cert, server_key)
     aclient = None
 
     def connection_made(self, transport):
@@ -506,7 +517,7 @@ class XMPPAsyncClient:
             if self.devclass:  # if there is a devclass it is a bot
                 bumper.bot_add(self.uid, self.uid, self.devclass, "atom", "eco-legacy")
                 self.type = self.BOT
-                xmppserverlog.debug("bot authenticated {}".format(self.uid))
+                xmppserverlog.info("bot authenticated SN: {}".format(self.uid))
                 # Send response
                 self.send(
                     '<success xmlns="urn:ietf:params:xml:ns:xmpp-sasl"/>'
@@ -525,7 +536,7 @@ class XMPPAsyncClient:
                 if auth:
                     self.type = self.CONTROLLER
                     bumper.client_add(self.uid, "bumper", self.clientresource)
-                    xmppserverlog.debug("client authenticated {}".format(self.uid))
+                    xmppserverlog.info("client authenticated {}".format(self.uid))
 
                     # Client authenticated, move to next state
                     self._set_state("INIT")

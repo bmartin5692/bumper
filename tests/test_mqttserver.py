@@ -18,13 +18,6 @@ async def test_helperbot_message():
         mqtt_address = ("127.0.0.1", 8883)
         mqtt_server = bumper.MQTTServer(mqtt_address)
         await mqtt_server.broker_coro()
-        #broker = mqtt_server.broker
-        #mqtt_address = ("127.0.0.1", 8883)
-        #mqtt_server = bumper.MQTTServer(mqtt_address)
-        #broker = hbmqtt.broker.Broker(
-        #    mqtt_server.default_config, plugin_namespace="hbmqtt.test.plugins"
-        #)
-        #await broker.start()
 
         # Test broadcast message
         mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -140,12 +133,12 @@ async def test_helperbot_expire_message():
         mqtt_address = ("127.0.0.1", 8883)
         mqtt_server = bumper.MQTTServer(mqtt_address)
         await mqtt_server.broker_coro()
-        #mqtt_address = ("127.0.0.1", 8883)
-        #mqtt_server = bumper.MQTTServer(mqtt_address)
-        #broker = hbmqtt.broker.Broker(
+        # mqtt_address = ("127.0.0.1", 8883)
+        # mqtt_server = bumper.MQTTServer(mqtt_address)
+        # broker = hbmqtt.broker.Broker(
         #    mqtt_server.default_config, plugin_namespace="hbmqtt.test.plugins"
-        #)
-        #await broker.start()
+        # )
+        # await broker.start()
 
         # Test broadcast message
         mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -209,12 +202,12 @@ async def test_helperbot_sendcommand():
     mqtt_address = ("127.0.0.1", 8883)
     mqtt_server = bumper.MQTTServer(mqtt_address)
     await mqtt_server.broker_coro()
-    #mqtt_address = ("127.0.0.1", 8883)
-    #mqtt_server = bumper.MQTTServer(mqtt_address)
-    #broker = hbmqtt.broker.Broker(
+    # mqtt_address = ("127.0.0.1", 8883)
+    # mqtt_server = bumper.MQTTServer(mqtt_address)
+    # broker = hbmqtt.broker.Broker(
     #    mqtt_server.default_config, plugin_namespace="hbmqtt.test.plugins"
-    #)
-    #await broker.start()
+    # )
+    # await broker.start()
 
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
     await mqtt_helperbot.start_helper_bot()
@@ -334,7 +327,7 @@ async def test_mqttserver():
         mqtt_helperbot.Client._connected_state._value == True
     )  # Check helperbot is connected
     await mqtt_helperbot.Client.disconnect()
-    
+
     # Test client connect
     bumper.user_add("user_123")  # Add user to db
     bumper.client_add("user_123", "ecouser.net", "resource_123")  # Add client to db
@@ -365,7 +358,7 @@ async def test_mqttserver():
         fake_bot.Client._connected_state._value == True
     )  # Check fake_bot is connected
     await fake_bot.Client.disconnect()
-    
+
     await asyncio.sleep(0.1)
 
     await mqtt_server.broker.shutdown()

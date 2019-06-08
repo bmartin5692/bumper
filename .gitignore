@@ -1,10 +1,25 @@
+# Ignore pycache
 __pycache__
-.DS_Store
-.vscode/
-.coverage
-.noseids
-.pytest_cache
-nosetests.xml
-tests/report
-tests/tmp.db
-logs/
+
+# Ignore .hidden files
+.*
+
+# Except .
+!.github/
+!.gitignore
+
+# Ignore items in test (report, cache, etc), except files starting with test
+tests/* 
+!tests/test*
+!tests/test_certs
+!tests/pytest.ini
+
+# Ignore logs/data/certs
+logs/*
+data/*
+certs/*
+
+# Except README in logs/data/certs
+!logs/README.md
+!data/README.md
+!certs/README.md
