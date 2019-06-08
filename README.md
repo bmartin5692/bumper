@@ -78,10 +78,10 @@ For more information on generating certificates manually, see the [Creating Cert
 
 #### Command-Line Usage
 
-`start_bumper.py` is a helper script that starts up Bumper for you.  It has a number of available command-line arguments that can be viewed by adding the `-h` flag.
+Bumper has a number of available command-line arguments that can be viewed by adding the `-h` flag.
 
   ````
-  usage: start_bumper.py [-h] [--listen LISTEN] [--announce ANNOUNCE] [--debug]
+  usage: bumper [-h] [--listen LISTEN] [--announce ANNOUNCE] [--debug]
 
   optional arguments:
     -h, --help           show this help message and exit
