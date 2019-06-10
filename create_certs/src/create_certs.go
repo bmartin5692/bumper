@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"bufio"
 	"crypto/rand"
 	"crypto/rsa"
@@ -10,47 +9,50 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"flag"
+	"fmt"
 	"log"
 	"math/big"
 	"net"
 	"os"
-	"time"
-	"flag"
 	"path/filepath"
+	"time"
 )
 
+var InBumperSan string
+var OutCertDirectory string
 
-var inBumperSan string
-var outCertDirectory string
-
-func main() {
+func setFlags() {
 
 	exePath, _ := os.Executable()
 	currentDir, _ := os.Getwd()
 
-	//certPath will be current working directory by default
+	//certPath will be current working directory by defaultß
 	certPath, err := filepath.Abs(currentDir)
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
 
 	//sanPath will be exe path /Bumper_SAN.txt by default
-	sanPath, err := filepath.Abs(filepath.Join(exePath,"..","/Bumper_SAN.txt"))
+	sanPath, err := filepath.Abs(filepath.Join(exePath, "..", "/Bumper_SAN.txt"))
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
 
-	var inBumperSan string
-	var outCertDirectory string
-	flag.StringVar(&inBumperSan, "inSAN", sanPath, "Input file containing a list of Subject Alternate Names (line separated)")
-	flag.StringVar(&outCertDirectory, "out", certPath, "Directory to output certificates to")
+	flag.StringVar(&InBumperSan, "inSAN", sanPath, "Input file containing a list of Subject Alternate Names (line separated)")
+	flag.StringVar(&OutCertDirectory, "out", certPath, "Directory to output certificates to")
 
 	flag.Parse()
+
+}
+func main() {
+
+	setFlags()
 
 	fmt.Printf("-------- Create_Certs --------\n")
 
 	//get absolute path
-	outCertDirectory, _ = filepath.Abs(outCertDirectory)
+	outCertDirectory, _ := filepath.Abs(OutCertDirectory)
 	dexists, isdfile := pathExistsType(outCertDirectory)
 	if !dexists {
 		log.Fatalf("Certs directory doesn't exist: %v", outCertDirectory)
@@ -60,7 +62,7 @@ func main() {
 	}
 
 	//get absolute path
-	inBumperSan, _ = filepath.Abs(inBumperSan)
+	inBumperSan, _ := filepath.Abs(InBumperSan)
 	bexists, isbfile := pathExistsType(inBumperSan)
 	if !bexists {
 		log.Printf("Bumper SAN doesn't exist, certificate won't contain Subject Alternate Names: %v\n", inBumperSan)
@@ -108,31 +110,30 @@ func make_CA(outCertDirectory string) {
 		log.Fatalf("Create ca failed: %v", err)
 	}
 
-	
 	// Public key
-	certOut, err := os.Create(filepath.Join(outCertDirectory,"ca.crt"))
+	certOut, err := os.Create(filepath.Join(outCertDirectory, "ca.crt"))
 	if err != nil {
 		log.Fatalf("Create ca.crt failed: %v", err)
 	}
 	pem.Encode(certOut, &pem.Block{Type: "CERTIFICATE", Bytes: ca_b})
 	certOut.Close()
-	log.Printf("ca.crt created at %v\n", filepath.Join(outCertDirectory,"ca.crt"))
+	log.Printf("ca.crt created at %v\n", filepath.Join(outCertDirectory, "ca.crt"))
 
 	// Private key
-	keyOut, err := os.OpenFile(filepath.Join(outCertDirectory,"ca.key"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+	keyOut, err := os.OpenFile(filepath.Join(outCertDirectory, "ca.key"), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		log.Fatalf("Create ca.key failed: %v", err)
 	}
 	pem.Encode(keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
 	keyOut.Close()
-	log.Printf("ca.key created at %v\n",filepath.Join(outCertDirectory,"ca.key") )
+	log.Printf("ca.key created at %v\n", filepath.Join(outCertDirectory, "ca.key"))
 }
 
 func signCert(outCertDirectory string, inBumperSan string) {
 
 	fmt.Printf("-------- Creating Server Cert --------\n")
 	// Load CA
-	catls, err := tls.LoadX509KeyPair(filepath.Join(outCertDirectory,"ca.crt"), filepath.Join(outCertDirectory,"ca.key"))
+	catls, err := tls.LoadX509KeyPair(filepath.Join(outCertDirectory, "ca.crt"), filepath.Join(outCertDirectory, "ca.key"))
 	if err != nil {
 		log.Fatalf("Error loading ca cert: %v", err)
 	}
@@ -170,7 +171,7 @@ func signCert(outCertDirectory string, inBumperSan string) {
 	dnsNames := []string{hostname, "localhost"}
 	//Read SANs from file
 	//get absolute path
-	
+
 	bexists, isbfile := pathExistsType(inBumperSan)
 	if !bexists {
 		log.Print("Bumper SAN doesn't exist, certificate won't contain Subject Alternate Names")
@@ -207,7 +208,7 @@ func signCert(outCertDirectory string, inBumperSan string) {
 	}
 
 	// Sign the certificate
-	cert_b, err := x509.CreateCertificate(rand.Reader, &template, ca, pubKey, catls.PrivateKey)	
+	cert_b, err := x509.CreateCertificate(rand.Reader, &template, ca, pubKey, catls.PrivateKey)
 
 	// Public key
 	certOut, err := os.Create(filepath.Join(outCertDirectory, "bumper.crt"))
