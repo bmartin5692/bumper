@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"bufio"
 	"crypto/rand"
 	"crypto/rsa"
@@ -24,14 +25,21 @@ var outCertDirectory string
 
 func main() {
 
-	certPath, err := filepath.Abs("../../certs")
+	exePath, _ := os.Executable()
+	currentDir, _ := os.Getwd()
+
+	//certPath will be current working directory by default
+	certPath, err := filepath.Abs(currentDir)
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
-	sanPath, err := filepath.Abs("../Bumper_SAN.txt")
+
+	//sanPath will be exe path /Bumper_SAN.txt by default
+	sanPath, err := filepath.Abs(filepath.Join(exePath,"..","/Bumper_SAN.txt"))
 	if err != nil {
 		log.Printf("Error: %v", err)
 	}
+
 	var inBumperSan string
 	var outCertDirectory string
 	flag.StringVar(&inBumperSan, "inSAN", sanPath, "Input file containing a list of Subject Alternate Names (line separated)")
@@ -39,36 +47,42 @@ func main() {
 
 	flag.Parse()
 
+	fmt.Printf("-------- Create_Certs --------\n")
+
 	//get absolute path
 	outCertDirectory, _ = filepath.Abs(outCertDirectory)
 	dexists, isdfile := pathExistsType(outCertDirectory)
 	if !dexists {
-		log.Fatal("Certs directory doesn't exist")
+		log.Fatalf("Certs directory doesn't exist: %v", outCertDirectory)
 	}
 	if isdfile {
-		log.Fatal("Certs directory is a file, not a directory")
+		log.Fatalf("Certs directory is a file, not a directory: %v", outCertDirectory)
 	}
-	
-	
 
 	//get absolute path
 	inBumperSan, _ = filepath.Abs(inBumperSan)
 	bexists, isbfile := pathExistsType(inBumperSan)
 	if !bexists {
-		log.Print("Bumper SAN doesn't exist, certificate won't contain Subject Alternate Names")
+		log.Printf("Bumper SAN doesn't exist, certificate won't contain Subject Alternate Names: %v\n", inBumperSan)
+		inBumperSan = ""
 	}
 	if bexists && !isbfile {
-		log.Print("Bumper SAN is a directory instead of file, certificate won't contain Subject Alternate Names")
+		log.Printf("Bumper SAN is a directory instead of file, certificate won't contain Subject Alternate Names: %v\n", inBumperSan)
+		inBumperSan = ""
 	}
 
+	fmt.Printf("-------- Starting Certificate Creation --------\n")
+	fmt.Printf("Options: \n Output Directory: %v\n Input SAN List: %v\n", outCertDirectory, inBumperSan)
 
 	make_CA(outCertDirectory)
 	signCert(outCertDirectory, inBumperSan)
 
+	fmt.Printf("-------- Certificate Creation Complete --------\n")
 }
 
 func make_CA(outCertDirectory string) {
 
+	fmt.Printf("-------- Creating CA Cert --------\n")
 	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
 	pub := &priv.PublicKey
 
@@ -116,6 +130,7 @@ func make_CA(outCertDirectory string) {
 
 func signCert(outCertDirectory string, inBumperSan string) {
 
+	fmt.Printf("-------- Creating Server Cert --------\n")
 	// Load CA
 	catls, err := tls.LoadX509KeyPair(filepath.Join(outCertDirectory,"ca.crt"), filepath.Join(outCertDirectory,"ca.key"))
 	if err != nil {
