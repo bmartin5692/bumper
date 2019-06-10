@@ -15,7 +15,6 @@ import socket
 import sys
 
 
-
 def strtobool(strbool):
     if str(strbool).lower() in ["true", "1", "t", "y", "on", "yes"]:
         return True
@@ -24,23 +23,29 @@ def strtobool(strbool):
 
 
 # os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
-
 bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-# Set defaults from environment variables first
-# Certs
-ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs", "ca.crt")
-server_cert = os.environ.get("BUMPER_CERT") or os.path.join(
-    bumper_dir, "certs", "bumper.crt"
-)
-server_key = os.environ.get("BUMPER_KEY") or os.path.join(
-    bumper_dir, "certs", "bumper.key"
-)
 
+# Set defaults from environment variables first
+print(bumper_dir)
 # Folders
 logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
 os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
+print(logs_dir)
 data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
 os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
+print(data_dir)
+certs_dir = os.environ.get("BUMPER_CERTS") or os.path.join(bumper_dir, "certs")
+os.makedirs(certs_dir, exist_ok=True)  # Ensure data directory exists or create
+print(certs_dir)
+
+
+# Certs
+ca_cert = os.environ.get("BUMPER_CA") or os.path.join(certs_dir, "ca.crt")
+print(ca_cert)
+server_cert = os.environ.get("BUMPER_CERT") or os.path.join(certs_dir, "bumper.crt")
+print(server_cert)
+server_key = os.environ.get("BUMPER_KEY") or os.path.join(certs_dir, "bumper.key")
+print(server_key)
 
 # Listeners
 bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
@@ -115,16 +120,17 @@ xmppserverlog.addHandler(xmpp_rotate)
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 mqtt_listen_address = bumper_listen
-mqtt_listen_port = 8883 
+mqtt_listen_port = 8883
 conf1_listen_address = bumper_listen
 conf1_listen_port = 443
 conf2_listen_address = bumper_listen
 conf2_listen_port = 8007
-xmpp_listen_address = bumper_listen 
+xmpp_listen_address = bumper_listen
 xmpp_listen_port = 5223
 
+
 async def start():
-    
+
     try:
         loop = asyncio.get_event_loop()
     except:
@@ -142,10 +148,10 @@ async def start():
             level=logging.INFO,
             format="[%(asctime)s] :: %(levelname)s :: %(name)s :: %(message)s",
         )
-    
+
     if not bumper_listen:
         logging.log(logging.FATAL, "No listen address configured")
-        return        
+        return
 
     if not (
         os.path.exists(ca_cert)
@@ -154,7 +160,7 @@ async def start():
     ):
         logging.log(logging.FATAL, "Certificate(s) don't exist at paths specified")
         return
-        
+
     bumperlog.info("Starting Bumper")
     global mqtt_server
     mqtt_server = MQTTServer((mqtt_listen_address, mqtt_listen_port))
@@ -166,7 +172,9 @@ async def start():
     )
     global conf_server_2
     conf_server_2 = ConfServer(
-        (conf2_listen_address, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
+        (conf2_listen_address, conf2_listen_port),
+        usessl=False,
+        helperbot=mqtt_helperbot,
     )
     global xmpp_server
     xmpp_server = XMPPServer((xmpp_listen_address, xmpp_listen_port))
@@ -437,6 +445,7 @@ class VacBotDevice(object):
             "mqtt_connection": self.mqtt_connection,
             "xmpp_connection": self.xmpp_connection,
         }
+
 
 class GlobalVacBotDevice(VacBotDevice):  # EcoVacs Home
     UILogicId = ""
@@ -944,11 +953,13 @@ API_ERRORS = {
     ERR_WRONG_PWD_FROMATE: "1009",
 }
 
+
 def create_certs():
     import platform
     import os
     import subprocess
     import sys
+
     path = os.path.dirname(sys.modules[__name__].__file__)
     path = os.path.join(path, "..")
     sys.path.insert(0, path)
@@ -958,9 +969,7 @@ def create_certs():
     os.chdir("certs")
     if str(platform.system()).lower() == "windows":
         # run for win
-        subprocess.run(
-            [os.path.join("..", "create_certs", "create_certs_windows.exe")]
-        )
+        subprocess.run([os.path.join("..", "create_certs", "create_certs_windows.exe")])
     elif str(platform.system()).lower() == "darwin":
         # run on mac
         subprocess.run([os.path.join("..", "create_certs", "create_certs_osx")])
@@ -970,15 +979,16 @@ def create_certs():
             subprocess.run([os.path.join("..", "create_certs", "create_certs_rpi")])
         else:
             # run for linux
-            subprocess.run(
-                [os.path.join("..", "create_certs", "create_certs_linux")]
-            )
-    
+            subprocess.run([os.path.join("..", "create_certs", "create_certs_linux")])
+
     else:
-        logging.log(logging.FATAL, "Can't determine platform. Create certs manually and try again.")
+        logging.log(
+            logging.FATAL,
+            "Can't determine platform. Create certs manually and try again.",
+        )
         return
 
-    print("Certificates created")    
+    print("Certificates created")
     os.chdir(odir)
     print(os.path.realpath(os.curdir))
     if "__main__.py" in sys.argv[0]:
@@ -989,22 +999,29 @@ def create_certs():
     else:
         os.execv(sys.executable, ["python"] + sys.argv)  # Start again
 
-def firstrun_input():    
+
+def firstrun_input():
     return input(
         "No certificates found, would you like to create them automatically? (y/n): "
     ).lower()
+
 
 def first_run():
     yes = {"yes", "y", "ye", ""}
     print("")
     if firstrun_input() in yes:
-        create_certs()    
+        create_certs()
 
     else:
-        logging.log(logging.FATAL, "Can't continue without certificates, please create some then try again.")
+        logging.log(
+            logging.FATAL,
+            "Can't continue without certificates, please create some then try again.",
+        )
+
 
 def main(argv=None):
     import argparse
+
     global bumper_debug
     global bumper_listen
     global bumper_announce_ip
@@ -1024,7 +1041,10 @@ def main(argv=None):
             "--listen", type=str, default=None, help="start serving on address"
         )
         parser.add_argument(
-            "--announce", type=str, default=None, help="announce address to bots on checkin"
+            "--announce",
+            type=str,
+            default=None,
+            help="announce address to bots on checkin",
         )
         parser.add_argument("--debug", action="store_true", help="enable debug logs")
         args = parser.parse_args(args=argv)
