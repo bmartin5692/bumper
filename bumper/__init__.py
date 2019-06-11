@@ -982,6 +982,7 @@ def create_certs():
             subprocess.run([os.path.join("..", "create_certs", "create_certs_linux")])
 
     else:
+        os.chdir(odir)
         logging.log(
             logging.FATAL,
             "Can't determine platform. Create certs manually and try again.",
@@ -1000,23 +1001,8 @@ def create_certs():
         os.execv(sys.executable, ["python"] + sys.argv)  # Start again
 
 
-def firstrun_input():
-    return input(
-        "No certificates found, would you like to create them automatically? (y/n): "
-    ).lower()
-
-
 def first_run():
-    yes = {"yes", "y", "ye", ""}
-    print("")
-    if firstrun_input() in yes:
-        create_certs()
-
-    else:
-        logging.log(
-            logging.FATAL,
-            "Can't continue without certificates, please create some then try again.",
-        )
+    create_certs()
 
 
 def main(argv=None):

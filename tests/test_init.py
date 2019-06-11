@@ -41,7 +41,7 @@ async def test_start_stop():
         await asyncio.sleep(0.1)
         l.check_present(("bumper", "INFO", "Starting Bumper"))
         l.clear()
-        assert b.shutting_down == False
+        
         asyncio.create_task(b.shutdown())
         await asyncio.sleep(0.1)
         l.check_present(
