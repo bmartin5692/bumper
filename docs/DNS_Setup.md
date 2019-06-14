@@ -48,9 +48,11 @@ Replacement Examples:
 | `portal-{region}.ecouser.net`           | Used for Login and Rest API                    |
 | `portal-ww.ecouser.net`                 | Used for various Rest APIs                     |
 | `msg-{countrycode}.ecouser.net`         | Used for XMPP                                  |
+| `msg-{region}.ecouser.net`              | Used for XMPP                                  |
 | `msg-ww.ecouser.net`                    | Used for XMPP                                  |
-| `mq-ww.ecouser.net`                     | Used for MQTT                                  |
 | `mq-{countrycode}.ecouser.net`          | Used for MQTT                                  |
+| `mq-{region}.ecouser.net`               | Used for MQTT                                  |
+| `mq-ww.ecouser.net`                     | Used for MQTT                                  |
 | `gl-{countrycode}-api.ecovacs.com`      | Used by Ecovacs Home app for API               |
 | `recommender.ecovacs.com`               | Used by Ecovacs Home app                       |
 | `bigdata-international.ecovacs.com`     | Telemetry/tracking                             |
