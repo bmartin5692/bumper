@@ -26,7 +26,14 @@ If overriding DNS for the top-level domains isn't an option, you'll need to conf
 
 Not all domains have been documented at this point, and this list will be updated as more are identified/seen. The preferred way to ensure Bumper works is to override the full domains as above.
 
-  - Example: If you see `eco-{countrycode}-api.ecovacs.com` and you live in the US/North America you would use: `eco-us-api.ecovacs.com`
+Replacement Examples:
+  - {countrycode}
+    - If you see `eco-{countrycode}-api.ecovacs.com` and you live in the US/North America you would use: `eco-us-api.ecovacs.com`
+    - **Note**: {countrycode} may also be generalized regions such as "EU".
+  - {region}
+    - If you see `portal-{region}.ecouser.net` and you live in the US/North America you would use: `portal-na.ecouser.net`
+    - **Note**: {region} may also be generalized regions such as "EU".
+    
 
 | Address                                 | Description                                    |
 | --------------------------------------- | ---------------------------------------------- |
@@ -38,11 +45,14 @@ Not all domains have been documented at this point, and this list will be update
 | `gl-{countrycode}-api.ecovacs.com`      | Used by EcoVacs Home app                       |
 | `gl-{countrycode}-openapi.ecovacs.com`  | Used by EcoVacs Home app                       |
 | `portal-{countrycode}.ecouser.net`      | Used for Login and Rest API                    |
+| `portal-{region}.ecouser.net`           | Used for Login and Rest API                    |
 | `portal-ww.ecouser.net`                 | Used for various Rest APIs                     |
 | `msg-{countrycode}.ecouser.net`         | Used for XMPP                                  |
+| `msg-{region}.ecouser.net`              | Used for XMPP                                  |
 | `msg-ww.ecouser.net`                    | Used for XMPP                                  |
-| `mq-ww.ecouser.net`                     | Used for MQTT                                  |
 | `mq-{countrycode}.ecouser.net`          | Used for MQTT                                  |
+| `mq-{region}.ecouser.net`               | Used for MQTT                                  |
+| `mq-ww.ecouser.net`                     | Used for MQTT                                  |
 | `gl-{countrycode}-api.ecovacs.com`      | Used by Ecovacs Home app for API               |
 | `recommender.ecovacs.com`               | Used by Ecovacs Home app                       |
 | `bigdata-international.ecovacs.com`     | Telemetry/tracking                             |

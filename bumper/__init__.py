@@ -119,13 +119,10 @@ xmppserverlog.addHandler(xmpp_rotate)
 
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
-mqtt_listen_address = bumper_listen
+
 mqtt_listen_port = 8883
-conf1_listen_address = bumper_listen
 conf1_listen_port = 443
-conf2_listen_address = bumper_listen
 conf2_listen_port = 8007
-xmpp_listen_address = bumper_listen
 xmpp_listen_port = 5223
 
 
@@ -163,21 +160,19 @@ async def start():
 
     bumperlog.info("Starting Bumper")
     global mqtt_server
-    mqtt_server = MQTTServer((mqtt_listen_address, mqtt_listen_port))
+    mqtt_server = MQTTServer((bumper_listen, mqtt_listen_port))
     global mqtt_helperbot
-    mqtt_helperbot = MQTTHelperBot((mqtt_listen_address, mqtt_listen_port))
+    mqtt_helperbot = MQTTHelperBot((bumper_listen, mqtt_listen_port))
     global conf_server
     conf_server = ConfServer(
-        (conf1_listen_address, conf1_listen_port), usessl=True, helperbot=mqtt_helperbot
+        (bumper_listen, conf1_listen_port), usessl=True, helperbot=mqtt_helperbot
     )
     global conf_server_2
     conf_server_2 = ConfServer(
-        (conf2_listen_address, conf2_listen_port),
-        usessl=False,
-        helperbot=mqtt_helperbot,
-    )
+        (bumper_listen, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
+    )    
     global xmpp_server
-    xmpp_server = XMPPServer((xmpp_listen_address, xmpp_listen_port))
+    xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
 
     # Start web servers
     conf_server.confserver_app()
@@ -1004,14 +999,14 @@ def create_certs():
 def first_run():
     create_certs()
 
-
 def main(argv=None):
     import argparse
 
     global bumper_debug
     global bumper_listen
     global bumper_announce_ip
-
+    if not argv:
+        argv = sys.argv[1:]  # Set argv to argv[1:] if not passed into main
     try:
 
         if not (
@@ -1033,6 +1028,7 @@ def main(argv=None):
             help="announce address to bots on checkin",
         )
         parser.add_argument("--debug", action="store_true", help="enable debug logs")
+
         args = parser.parse_args(args=argv)
 
         if args.debug:
