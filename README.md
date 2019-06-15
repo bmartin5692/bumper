@@ -97,9 +97,14 @@ Bumper looks for a number of Environment Variables at initialization allowing fo
 
 ## Docker
 
+### Docker Hub
+
+To download the image from Docker Hub you can run the following:
+`docker pull bmartin5692/bumper`
+
 ### Docker build
 
-To build the docker image you can run the following:
+To build the docker image yourself you can run the following:
 `docker build -t bumper .`
 
 This requires Docker 17.09 or newer, but has also been tested with podman.
