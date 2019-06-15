@@ -26,26 +26,18 @@ def strtobool(strbool):
 bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
 # Set defaults from environment variables first
-print(bumper_dir)
 # Folders
 logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
 os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
-print(logs_dir)
 data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
 os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
-print(data_dir)
 certs_dir = os.environ.get("BUMPER_CERTS") or os.path.join(bumper_dir, "certs")
 os.makedirs(certs_dir, exist_ok=True)  # Ensure data directory exists or create
-print(certs_dir)
-
 
 # Certs
 ca_cert = os.environ.get("BUMPER_CA") or os.path.join(certs_dir, "ca.crt")
-print(ca_cert)
 server_cert = os.environ.get("BUMPER_CERT") or os.path.join(certs_dir, "bumper.crt")
-print(server_cert)
 server_key = os.environ.get("BUMPER_KEY") or os.path.join(certs_dir, "bumper.key")
-print(server_key)
 
 # Listeners
 bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
@@ -986,7 +978,7 @@ def create_certs():
 
     print("Certificates created")
     os.chdir(odir)
-    print(os.path.realpath(os.curdir))
+    
     if "__main__.py" in sys.argv[0]:
         os.execv(
             sys.executable, ["python", "-m", "bumper"] + sys.argv[1:]
