@@ -94,6 +94,44 @@ Bumper has a number of available command-line arguments that can be viewed by ad
 
 Bumper looks for a number of Environment Variables at initialization allowing for customizing a number of settings.  For more information see the [Environment Variables](docs/Env_Var.md) doc.
 
+
+## Docker
+
+### Docker build
+
+To build the docker image you can run the following:
+`docker build -t bumper .`
+
+This requires Docker 17.09 or newer, but has also been tested with podman.
+
+### Docker usage
+
+To run the image in docker some environment settings and port mappings are required:
+
+**Ports Required: (-p)**
+- 443 - `-p 443:443`
+- 8007 - `-p 8007:8007`
+- 8883 - `-p 8883:8883`
+- 5223 - `-p 5223:5223`
+
+**Environment Settings: (-e)**
+
+BUMPER_ANNOUNCE_IP should be used so the actual host IP is reported to bots that checkin.
+- BUMPER_ANNOUNCE_IP - `-e "BUMPER_ANNOUNCE_IP=X.X.X.X"`
+
+**Volume Settings: (-v)**
+
+Optionally you can map existing directories for logs, data, and certs.
+
+- data/logs/certs
+- Data - `-v /home/user/bumper/data:/bumper/data`
+
+**Full Example:**
+
+````
+docker run -it -e "BUMPER_ANNOUNCE_IP=X.X.X.X" -p 443:443 -p 8007:8007 -p 8883:8883 -p 5223:5223 -v /home/user/bumper/data:/bumper/data --name bumper bumper
+````
+
 ## Thanks
 
 A big thanks to the original project creator @torbjornaxelsson, without his work this project would have taken much longer to build. 

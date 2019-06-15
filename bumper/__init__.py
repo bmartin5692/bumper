@@ -23,23 +23,29 @@ def strtobool(strbool):
 
 
 # os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
-
 bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-# Set defaults from environment variables first
-# Certs
-ca_cert = os.environ.get("BUMPER_CA") or os.path.join(bumper_dir, "certs", "ca.crt")
-server_cert = os.environ.get("BUMPER_CERT") or os.path.join(
-    bumper_dir, "certs", "bumper.crt"
-)
-server_key = os.environ.get("BUMPER_KEY") or os.path.join(
-    bumper_dir, "certs", "bumper.key"
-)
 
+# Set defaults from environment variables first
+print(bumper_dir)
 # Folders
 logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
 os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
+print(logs_dir)
 data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
 os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
+print(data_dir)
+certs_dir = os.environ.get("BUMPER_CERTS") or os.path.join(bumper_dir, "certs")
+os.makedirs(certs_dir, exist_ok=True)  # Ensure data directory exists or create
+print(certs_dir)
+
+
+# Certs
+ca_cert = os.environ.get("BUMPER_CA") or os.path.join(certs_dir, "ca.crt")
+print(ca_cert)
+server_cert = os.environ.get("BUMPER_CERT") or os.path.join(certs_dir, "bumper.crt")
+print(server_cert)
+server_key = os.environ.get("BUMPER_KEY") or os.path.join(certs_dir, "bumper.key")
+print(server_key)
 
 # Listeners
 bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
@@ -113,6 +119,7 @@ xmppserverlog.addHandler(xmpp_rotate)
 
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
+
 mqtt_listen_port = 8883
 conf1_listen_port = 443
 conf2_listen_port = 8007
@@ -163,7 +170,7 @@ async def start():
     global conf_server_2
     conf_server_2 = ConfServer(
         (bumper_listen, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
-    )
+    )    
     global xmpp_server
     xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
 
@@ -970,6 +977,7 @@ def create_certs():
             subprocess.run([os.path.join("..", "create_certs", "create_certs_linux")])
 
     else:
+        os.chdir(odir)
         logging.log(
             logging.FATAL,
             "Can't determine platform. Create certs manually and try again.",
@@ -988,24 +996,8 @@ def create_certs():
         os.execv(sys.executable, ["python"] + sys.argv)  # Start again
 
 
-def firstrun_input():
-    return input(
-        "No certificates found, would you like to create them automatically? (y/n): "
-    ).lower()
-
-
 def first_run():
-    yes = {"yes", "y", "ye", ""}
-    print("")
-    if firstrun_input() in yes:
-        create_certs()
-
-    else:
-        logging.log(
-            logging.FATAL,
-            "Can't continue without certificates, please create some then try again.",
-        )
-
+    create_certs()
 
 def main(argv=None):
     import argparse
