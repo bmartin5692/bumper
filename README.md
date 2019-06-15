@@ -105,7 +105,7 @@ To download the image from Docker Hub you can run the following:
 ### Docker build
 
 To build the docker image yourself you can run the following:
-`docker build -t bumper .`
+`docker build -t bmartin5692/bumper .`
 
 This requires Docker 17.09 or newer, but has also been tested with podman.
 
@@ -134,7 +134,7 @@ Optionally you can map existing directories for logs, data, and certs.
 **Full Example:**
 
 ````
-docker run -it -e "BUMPER_ANNOUNCE_IP=X.X.X.X" -p 443:443 -p 8007:8007 -p 8883:8883 -p 5223:5223 -v /home/user/bumper/data:/bumper/data --name bumper bumper
+docker run -it -e "BUMPER_ANNOUNCE_IP=X.X.X.X" -p 443:443 -p 8007:8007 -p 8883:8883 -p 5223:5223 -v /home/user/bumper/data:/bumper/data --name bumper bmartin5692/bumper
 ````
 
 ## Thanks
