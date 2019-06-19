@@ -210,9 +210,14 @@ class ConfServer:
     async def handle_base(self, request):
         try:
             # TODO - API Options here for viewing clients, tokens, restarting the server, etc.
-            text = "Bumper!"
-
-            return web.json_response(text)
+            #text = "Bumper!"
+            bots = bumper.db_get().table("bots").all()
+            clients = bumper.db_get().table("clients").all()
+            helperbot = self.helperbot.Client.session.transitions.state
+            all = {'bots':bots, 'clients':clients, 'helperbot': [{'state': helperbot}]}
+            
+            
+            return web.json_response(all)
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
