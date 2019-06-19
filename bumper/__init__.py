@@ -291,54 +291,61 @@ def user_by_deviceid(deviceid):
 
 
 def user_full_upsert(user):
-    users = db_get().table("users")
-    User = Query()
-    users.upsert(user, User.did == user["userid"])
+    opendb = db_get()
+    with opendb:
+        users = opendb.table("users")
+        User = Query()
+        users.upsert(user, User.did == user["userid"])
 
 
 def user_add_device(userid, devid):
-    users = db_get().table("users")
-    User = Query()
-    user = users.get(User.userid == userid)
-    userdevices = list(user["devices"])
-    if not devid in userdevices:
-        userdevices.append(devid)
+    opendb = db_get()
+    with opendb:
+        users = opendb.table("users")
+        User = Query()
+        user = users.get(User.userid == userid)
+        userdevices = list(user["devices"])
+        if not devid in userdevices:
+            userdevices.append(devid)
 
-    users.upsert({"devices": userdevices}, User.userid == userid)
+        users.upsert({"devices": userdevices}, User.userid == userid)
 
 
 def user_remove_device(userid, devid):
-    users = db_get().table("users")
-    User = Query()
-    user = users.get(User.userid == userid)
-    userdevices = list(user["devices"])
-    if devid in userdevices:
-        userdevices.remove(devid)
+    opendb = db_get()
+    with opendb:
+        users = opendb.table("users")
+        User = Query()
+        user = users.get(User.userid == userid)
+        userdevices = list(user["devices"])
+        if devid in userdevices:
+            userdevices.remove(devid)
 
-    users.upsert({"devices": userdevices}, User.userid == userid)
-
+        users.upsert({"devices": userdevices}, User.userid == userid)
 
 def user_add_bot(userid, did):
-    users = db_get().table("users")
-    User = Query()
-    user = users.get(User.userid == userid)
-    userbots = list(user["bots"])
-    if not did in userbots:
-        userbots.append(did)
+    opendb = db_get()
+    with opendb:
+        users = opendb.table("users")
+        User = Query()
+        user = users.get(User.userid == userid)
+        userbots = list(user["bots"])
+        if not did in userbots:
+            userbots.append(did)
 
-    users.upsert({"bots": userbots}, User.userid == userid)
-
+        users.upsert({"bots": userbots}, User.userid == userid)
 
 def user_remove_bot(userid, did):
-    users = db_get().table("users")
-    User = Query()
-    user = users.get(User.userid == userid)
-    userbots = list(user["bots"])
-    if did in userbots:
-        userbots.remove(did)
+    opendb = db_get()
+    with opendb:
+        users = opendb.table("users")
+        User = Query()
+        user = users.get(User.userid == userid)
+        userbots = list(user["bots"])
+        if did in userbots:
+            userbots.remove(did)
 
-    users.upsert({"bots": userbots}, User.userid == userid)
-
+        users.upsert({"bots": userbots}, User.userid == userid)
 
 def user_get_tokens(userid):
     tokens = db_get().table("tokens")
@@ -351,61 +358,69 @@ def user_get_token(userid, token):
 
 
 def user_add_token(userid, token):
-    tokens = db_get().table("tokens")
-    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-    if not tmptoken:
-        bumperlog.debug("Adding token {} for userid {}".format(token, userid))
-        tokens.insert(
-            {
-                "userid": userid,
-                "token": token,
-                "expiration": "{}".format(
-                    datetime.now() + timedelta(seconds=token_validity_seconds)
-                ),
-            }
-        )
-
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+        if not tmptoken:
+            bumperlog.debug("Adding token {} for userid {}".format(token, userid))
+            tokens.insert(
+                {
+                    "userid": userid,
+                    "token": token,
+                    "expiration": "{}".format(
+                        datetime.now() + timedelta(seconds=token_validity_seconds)
+                    ),
+                }
+            )
 
 def user_revoke_all_tokens(userid):
-    tokens = db_get().table("tokens")
-    tsearch = tokens.search(Query().userid == userid)
-    for i in tsearch:
-        tokens.remove(doc_ids=[i.doc_id])
-
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tsearch = tokens.search(Query().userid == userid)
+        for i in tsearch:
+            tokens.remove(doc_ids=[i.doc_id])        
 
 def user_revoke_expired_tokens(userid):
-    tokens = db_get().table("tokens")
-    tsearch = tokens.search(Query().userid == userid)
-    for i in tsearch:
-        if datetime.now() >= datetime.fromisoformat(i["expiration"]):
-            bumperlog.debug("Removing token {} due to expiration".format(i["token"]))
-            tokens.remove(doc_ids=[i.doc_id])
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tsearch = tokens.search(Query().userid == userid)
+        for i in tsearch:
+            if datetime.now() >= datetime.fromisoformat(i["expiration"]):
+                bumperlog.debug("Removing token {} due to expiration".format(i["token"]))
+                tokens.remove(doc_ids=[i.doc_id])
 
 
 def user_revoke_token(userid, token):
-    tokens = db_get().table("tokens")
-    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-    if tmptoken:
-        tokens.remove(doc_ids=[tmptoken.doc_id])
-
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+        if tmptoken:
+            tokens.remove(doc_ids=[tmptoken.doc_id])
 
 def user_add_authcode(userid, token, authcode):
-    tokens = db_get().table("tokens")
-    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-    if tmptoken:
-        tokens.upsert(
-            {"authcode": authcode},
-            ((Query().userid == userid) & (Query().token == token)),
-        )
-
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+        if tmptoken:
+            tokens.upsert(
+                {"authcode": authcode},
+                ((Query().userid == userid) & (Query().token == token)),
+            )
 
 def user_revoke_authcode(userid, token, authcode):
-    tokens = db_get().table("tokens")
-    tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
-    if tmptoken:
-        tokens.upsert(
-            {"authcode": ""}, ((Query().userid == userid) & (Query().token == token))
-        )
+    opendb = db_get()
+    with opendb:
+        tokens = opendb.table("tokens")
+        tmptoken = tokens.get((Query().userid == userid) & (Query().token == token))
+        if tmptoken:
+            tokens.upsert(
+                {"authcode": ""}, ((Query().userid == userid) & (Query().token == token))
+            )
 
 
 class VacBotDevice(object):
