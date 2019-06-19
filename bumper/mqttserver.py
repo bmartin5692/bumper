@@ -103,17 +103,19 @@ class MQTTHelperBot:
                 )
             elif str(message.topic).split("/")[1] == "atr":
                 # Broadcast message received on atr
-                helperbotlog.debug(
-                    "Received Broadcast - Topic: {} - Message: {}".format(
-                        message.topic, str(message.data.decode("utf-8"))
-                    )
-                )
                 if str(message.topic).split("/")[2] == "errors":
                     boterrorlog.error(
                         "Received Error - Topic: {} - Message: {}".format(
                             message.topic, str(message.data.decode("utf-8"))
                         )
                     )
+                else:
+                    helperbotlog.debug(
+                        "Received Broadcast - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
+                    )
+
             else:
                 helperbotlog.debug(
                     "Received Message - Topic: {} - Message: {}".format(

@@ -7,6 +7,7 @@ import json
 import tinydb
 import pytest_aiohttp
 import pytest_asyncio
+import datetime, time
 from aiohttp import web
 
 
@@ -41,6 +42,19 @@ async def test_confserver_no_ssl():
     conf_server = bumper.ConfServer(("127.0.0.1", 111111), usessl=False, helperbot=None)
     conf_server.confserver_app()
     asyncio.create_task(conf_server.start_server())
+
+
+def test_get_milli_time():
+    cserv = create_confserver()
+    assert (
+        cserv.get_milli_time(
+            datetime.datetime(
+                2018, 1, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc
+            ).timestamp()
+        )
+        == 1514768400000
+    )
+
 
 # Comment out test_base until api changes are complete
 """ async def test_base(aiohttp_client):

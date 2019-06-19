@@ -100,4 +100,3 @@ def test_main(mock_firstrun):
     bumper.main()
     assert mock_firstrun.called == True
     bumper.ca_cert = "tests/test_certs/ca.crt"
-
