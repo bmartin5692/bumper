@@ -722,7 +722,7 @@ class XMPPAsyncClient:
                                     ).replace("ns0:", ""),
                                 )
                             )
-                            if 'td="error"' in newdata or 'errs=' in newdata:
+                            if 'td="error"' in newdata or 'errs=' in newdata or 'k="DeviceAlert' in newdata:
                                 boterrorlog.error(
                                     "Received Error from ({}:{} | {}) - {}".format(
                                         self.address[0],
