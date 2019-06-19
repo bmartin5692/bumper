@@ -10,6 +10,7 @@ import bumper
 import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
+boterrorlog = logging.getLogger("boterror")
 
 
 class XMPPServer:
@@ -721,6 +722,15 @@ class XMPPAsyncClient:
                                     ).replace("ns0:", ""),
                                 )
                             )
+                            if 'td="error"' in newdata or 'errs=' in newdata:
+                                boterrorlog.error(
+                                    "Received Error from ({}:{} | {}) - {}".format(
+                                        self.address[0],
+                                        self.address[1],
+                                        self.bumper_jid,
+                                        newdata,
+                                    )
+                                )
                         self._handle_iq(item, newdata)
                         item.clear()
 

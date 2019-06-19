@@ -1093,7 +1093,7 @@ class ConfServer:
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
+                if bot["company"] == "eco-ng":
                     body = ""
                     retcmd = await self.helperbot.send_command(json_body, randomid)
                     confserverlog.debug("Send Bot - {}".format(json_body))

@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 import bumper
 
 helperbotlog = logging.getLogger("helperbot")
+boterrorlog = logging.getLogger("boterror")
 mqttserverlog = logging.getLogger("mqttserver")
 
 logging.getLogger("transitions").setLevel(logging.CRITICAL + 1)  # Ignore this logger
@@ -107,6 +108,12 @@ class MQTTHelperBot:
                         message.topic, str(message.data.decode("utf-8"))
                     )
                 )
+                if str(message.topic).split("/")[2] == "errors":
+                    boterrorlog.error(
+                        "Received Error - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
+                    )
             else:
                 helperbotlog.debug(
                     "Received Message - Topic: {} - Message: {}".format(

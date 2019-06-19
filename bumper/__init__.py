@@ -100,6 +100,15 @@ helperbotlog.addHandler(helperbot_rotate)
 # Override the logging level
 # helperbotlog.setLevel(logging.INFO)
 
+boterrorlog = logging.getLogger("boterror")
+boterrorlog_rotate = RotatingFileHandler(
+    "logs/boterror.log", maxBytes=5000000, backupCount=5
+)
+boterrorlog_rotate.setFormatter(logformat)
+boterrorlog.addHandler(boterrorlog_rotate)
+# Override the logging level
+# boterrorlog.setLevel(logging.INFO)
+
 xmppserverlog = logging.getLogger("xmppserver")
 xmpp_rotate = RotatingFileHandler(
     "logs/xmppserver.log", maxBytes=5000000, backupCount=5
