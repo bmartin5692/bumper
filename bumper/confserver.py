@@ -1105,9 +1105,6 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_lg_log(self, request):  # EcoVacs Home
-        if (
-            not bumper.mqtt_helperbot.Client._handler.writer is None
-        ):  # Ignore if the Helperbot writer is none
             try:
                 json_body = json.loads(await request.text())
 
@@ -1187,9 +1184,6 @@ class ConfServer:
                 confserverlog.exception("{}".format(e))
 
     async def handle_devmanager_botcommand(self, request):
-        if (
-            not bumper.mqtt_helperbot.Client._handler.writer is None
-        ):  # Ignore if the helperbot object isn't set
             try:
                 json_body = json.loads(await request.text())
 
