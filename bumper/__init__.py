@@ -163,22 +163,11 @@ async def start():
     global mqtt_helperbot
     mqtt_helperbot = MQTTHelperBot((bumper_listen, mqtt_listen_port))
     global conf_server
-    conf_server = ConfServer(
-        (bumper_listen, conf1_listen_port), usessl=True, helperbot=mqtt_helperbot
-    )
+    conf_server = ConfServer((bumper_listen, conf1_listen_port), usessl=True)
     global conf_server_2
-    conf_server_2 = ConfServer(
-        (bumper_listen, conf2_listen_port), usessl=False, helperbot=mqtt_helperbot
-    )
+    conf_server_2 = ConfServer((bumper_listen, conf2_listen_port), usessl=False)
     global xmpp_server
     xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
-
-    # Start web servers
-    conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_server())
-
-    conf_server_2.confserver_app()
-    asyncio.create_task(conf_server_2.start_server())
 
     # Start MQTT Server
     asyncio.create_task(mqtt_server.broker_coro())
@@ -188,6 +177,20 @@ async def start():
 
     # Start XMPP Server
     asyncio.create_task(xmpp_server.start_async_server())
+
+    # Wait for helperbot to connect first
+    while mqtt_helperbot.Client is None:
+        await asyncio.sleep(0.1)
+
+    while not mqtt_helperbot.Client.session.transitions.state == "connected":
+        await asyncio.sleep(0.1)
+
+    # Start web servers
+    conf_server.confserver_app()
+    asyncio.create_task(conf_server.start_server())
+
+    conf_server_2.confserver_app()
+    asyncio.create_task(conf_server_2.start_server())
 
     # Start maintenance
     while not shutting_down:
