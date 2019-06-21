@@ -6,6 +6,7 @@ import ssl
 import string
 import random
 import bumper
+from bumper.models import *
 from datetime import datetime, timedelta
 import asyncio
 from aiohttp import web
@@ -36,35 +37,16 @@ logging.getLogger("aiohttp.access").addFilter(
 )  # Add logging filter above to aiohttp.access
 
 
-class EcoVacs_Login:
-    accessToken = ""
-    country = ""
-    email = ""
-    uid = ""
-    username = ""
-
-    def toJSON(self):
-        return json.dumps(
-            self, default=lambda o: o.__dict__, sort_keys=False
-        )  # , indent=4)
-
-
-class EcoVacsHome_Login(EcoVacs_Login):
-    loginName = ""
-    mobile = ""
-    ucUid = ""
-
-
 class ConfServer:
-    def __init__(self, address, usessl=False, helperbot=None):
-        self.helperbot = helperbot
+    def __init__(self, address, usessl=False):
         self.usessl = usessl
         self.address = address
-        self.confthread = None
-        self.run_async = False
         self.app = None
         self.site = None
         self.runner = None
+
+    def get_milli_time(self, timetoconvert):
+        return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
         self.app = web.Application(loop=asyncio.get_event_loop())
@@ -72,6 +54,7 @@ class ConfServer:
         self.app.add_routes(
             [
                 web.get("", self.handle_base),
+                web.get("/restart_{service}", self.handle_RestartService),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
                     self.handle_login,
@@ -190,9 +173,9 @@ class ConfServer:
             await self.site.start()
 
         except PermissionError as e:
-            confserverlog.error(e.strerror)            
+            confserverlog.error(e.strerror)
             asyncio.create_task(bumper.shutdown())
-            
+
         except asyncio.CancelledError:
             pass
 
@@ -202,7 +185,7 @@ class ConfServer:
 
     async def stop_server(self):
         try:
-            await self.runner.shutdown()            
+            await self.runner.shutdown()
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
@@ -210,9 +193,82 @@ class ConfServer:
     async def handle_base(self, request):
         try:
             # TODO - API Options here for viewing clients, tokens, restarting the server, etc.
-            text = "Bumper!"
+            # text = "Bumper!"
+            bots = bumper.db_get().table("bots").all()
+            clients = bumper.db_get().table("clients").all()
+            helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
+            mqttserver = bumper.mqtt_server.broker
+            mq_sessions = []
+            for sess in mqttserver._sessions:
+                tmpsess = []
+                tmpsess.append({"client_id": mqttserver._sessions[sess][0].client_id})
+                tmpsess.append(
+                    {"state": mqttserver._sessions[sess][0].transitions.state}
+                )
+                mq_sessions.append(tmpsess)
+            all = {
+                "bots": bots,
+                "clients": clients,
+                "helperbot": [{"state": helperbot}],
+                "mqtt_server": [
+                    {"state": mqttserver.transitions.state},
+                    {
+                        "sessions": [
+                            {"count": len(mqttserver._sessions)},
+                            {"clients": mq_sessions},
+                        ]
+                    },
+                ],
+            }
 
-            return web.json_response(text)
+            return web.json_response(all)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+
+    async def restart_Helper(self):
+
+        await bumper.mqtt_helperbot.Client.disconnect()
+        await bumper.mqtt_helperbot.start_helper_bot()
+
+    async def restart_MQTT(self):
+        mqttserver = bumper.mqtt_server.broker
+
+        for sess in list(mqttserver._sessions):
+            sessobj = mqttserver._sessions[sess][1]
+            await sessobj.writer.close()
+            mqttserver.delete_session(sess)
+
+        await bumper.mqtt_server.broker.shutdown()
+        while not bumper.mqtt_server.broker.transitions.state == "stopped":
+            await asyncio.sleep(0.1)
+
+        await bumper.mqtt_server.broker_coro()
+        while not bumper.mqtt_server.broker.transitions.state == "started":
+            await asyncio.sleep(0.1)
+
+    async def restart_XMPP(self):
+        bumper.xmpp_server.disconnect()
+        await bumper.xmpp_server.start_async_server()
+
+    async def handle_RestartService(self, request):
+        try:
+            service = request.match_info.get("service", "")
+            if service == "Helperbot":
+                await self.restart_Helper()
+                return web.json_response({"status": "complete"})
+            elif service == "MQTTServer":
+                await self.restart_MQTT()
+                aloop = asyncio.get_event_loop()
+                aloop.call_later(
+                    2, lambda: asyncio.create_task(self.restart_Helper())
+                )  # In 2 seconds restart Helperbot
+                return web.json_response({"status": "complete"})
+            elif service == "XMPPServer":
+                await self.restart_XMPP()
+                return web.json_response({"status": "complete"})
+            else:
+                return web.json_response({"status": "invalid service"})
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
@@ -256,7 +312,7 @@ class ConfServer:
                         login_details.email = "null@null.com"
 
                         body = {
-                            "code": bumper.RETURN_API_SUCCESS,
+                            "code": API_ERRORS[RETURN_API_SUCCESS],
                             "data": json.loads(login_details.toJSON()),
                             # {
                             #    "accessToken": self.generate_token(tmpuser),  # Generate a token
@@ -266,9 +322,7 @@ class ConfServer:
                             #    "username": "fusername_{}".format(tmpuser["userid"]),
                             # },
                             "msg": "操作成功",
-                            "time": bumper.get_milli_time(
-                                datetime.utcnow().timestamp()
-                            ),
+                            "time": self.get_milli_time(datetime.utcnow().timestamp()),
                         }
 
                         return web.json_response(body)
@@ -277,7 +331,7 @@ class ConfServer:
                     "code": bumper.ERR_USER_NOT_ACTIVATED,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
 
                 return web.json_response(body)
@@ -323,7 +377,7 @@ class ConfServer:
                     "loginName": login_details.loginName,
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
             return web.json_response(body)
 
@@ -359,7 +413,7 @@ class ConfServer:
                     #    "username": "fusername_{}".format(tmpuser["userid"]),
                     # },
                     "msg": "操作成功",
-                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
                 return web.json_response(body)
 
@@ -368,7 +422,7 @@ class ConfServer:
                     "code": bumper.ERR_TOKEN_INVALID,
                     "data": None,
                     "msg": "当前密码错误",
-                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
                 return web.json_response(body)
 
@@ -459,7 +513,7 @@ class ConfServer:
                 #    "username": "fusername_{}".format(tmpuser["userid"]),
                 # },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return body
@@ -483,7 +537,7 @@ class ConfServer:
                 "code": bumper.RETURN_API_SUCCESS,
                 "data": None,
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -525,7 +579,7 @@ class ConfServer:
                                 },
                                 "msg": "操作成功",
                                 "success": True,
-                                "time": bumper.get_milli_time(
+                                "time": self.get_milli_time(
                                     datetime.utcnow().timestamp()
                                 ),
                             }
@@ -537,7 +591,7 @@ class ConfServer:
                                     "ecovacsUid": request.query["uid"],
                                 },
                                 "msg": "操作成功",
-                                "time": bumper.get_milli_time(
+                                "time": self.get_milli_time(
                                     datetime.utcnow().timestamp()
                                 ),
                             }
@@ -547,7 +601,7 @@ class ConfServer:
                 "code": bumper.ERR_TOKEN_INVALID,
                 "data": None,
                 "msg": "当前密码错误",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -569,7 +623,7 @@ class ConfServer:
                     "v": None,
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -594,7 +648,7 @@ class ConfServer:
                 },
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -609,7 +663,7 @@ class ConfServer:
                 "data": None,
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -624,7 +678,7 @@ class ConfServer:
                 "data": None,
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -639,7 +693,7 @@ class ConfServer:
                 "data": None,
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -654,7 +708,7 @@ class ConfServer:
                 "data": "N",
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -678,7 +732,7 @@ class ConfServer:
                 "data": {"hasNextPage": 0, "items": []},
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -698,7 +752,7 @@ class ConfServer:
                 },
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -720,7 +774,7 @@ class ConfServer:
                 },
                 "msg": "操作成功",
                 "success": True,
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -752,14 +806,14 @@ class ConfServer:
                     ],
                     "msg": "操作成功",
                     "success": True,
-                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
             else:
                 body = {
                     "code": bumper.RETURN_API_SUCCESS,
                     "data": [],
                     "msg": "操作成功",
-                    "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
 
             return web.json_response(body)
@@ -769,7 +823,7 @@ class ConfServer:
 
     async def handle_homePageAlert(self, request):
         try:
-            nextAlert = bumper.get_milli_time(
+            nextAlert = self.get_milli_time(
                 (datetime.now() + timedelta(hours=12)).timestamp()
             )
 
@@ -781,10 +835,10 @@ class ConfServer:
                     "hasCampaign": "N",
                     "imageUrl": None,
                     "nextAlertTime": nextAlert,
-                    "serverTime": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                    "serverTime": self.get_milli_time(datetime.utcnow().timestamp()),
                 },
                 "msg": "操作成功",
-                "time": bumper.get_milli_time(datetime.utcnow().timestamp()),
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
             }
 
             return web.json_response(body)
@@ -1088,9 +1142,11 @@ class ConfServer:
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
+                if bot["company"] == "eco-ng":
                     body = ""
-                    retcmd = await self.helperbot.send_command(json_body, randomid)
+                    retcmd = await bumper.mqtt_helperbot.send_command(
+                        json_body, randomid
+                    )
                     confserverlog.debug("Send Bot - {}".format(json_body))
                     confserverlog.debug("Bot Response - {}".format(body))
                     logs = []
@@ -1138,8 +1194,10 @@ class ConfServer:
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
-                    retcmd = await self.helperbot.send_command(json_body, randomid)
+                if bot["company"] == "eco-ng":
+                    retcmd = await bumper.mqtt_helperbot.send_command(
+                        json_body, randomid
+                    )
                     body = retcmd
                     confserverlog.debug("Send Bot - {}".format(json_body))
                     confserverlog.debug("Bot Response - {}".format(body))
@@ -1184,7 +1242,9 @@ class ConfServer:
             if did != "":
                 bot = bumper.bot_get(did)
                 if bot["company"] == "eco-ng" and bot["mqtt_connection"] == True:
-                    retcmd = await self.helperbot.send_command(json_body, randomid)
+                    retcmd = await bumper.mqtt_helperbot.send_command(
+                        json_body, randomid
+                    )
                     body = retcmd
                     confserverlog.debug("Send Bot - {}".format(json_body))
                     confserverlog.debug("Bot Response - {}".format(body))
@@ -1215,10 +1275,7 @@ class ConfServer:
     async def disconnect(self):
         try:
             confserverlog.info("shutting down")
-            if self.run_async:
-                self.confthread.join()
-            else:
-                await self.app.shutdown()
+            await self.app.shutdown()
 
         except Exception as e:
             confserverlog.exception("{}".format(e))

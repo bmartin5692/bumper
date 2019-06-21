@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 import bumper
 
 helperbotlog = logging.getLogger("helperbot")
+boterrorlog = logging.getLogger("boterror")
 mqttserverlog = logging.getLogger("mqttserver")
 
 logging.getLogger("transitions").setLevel(logging.CRITICAL + 1)  # Ignore this logger
@@ -30,7 +31,7 @@ logging.getLogger("hbmqtt.client").setLevel(logging.CRITICAL + 1)  # Ignore this
 
 class MQTTHelperBot:
 
-    Client = MQTTClient()
+    Client = None
     wait_resp_timeout_seconds = 10
     expire_msg_seconds = 10
 
@@ -38,14 +39,14 @@ class MQTTHelperBot:
         self.address = address
         self.client_id = "helper1@bumper/helper1"
         self.command_responses = []
-        self.helperthread = None
 
     async def start_helper_bot(self):
 
         try:
-            self.Client = MQTTClient(
-                client_id=self.client_id, config={"check_hostname": False}
-            )
+            if self.Client is None:
+                self.Client = MQTTClient(
+                    client_id=self.client_id, config={"check_hostname": False}
+                )
 
             await self.Client.connect(
                 "mqtts://{}:{}/".format(self.address[0], self.address[1]),
@@ -102,11 +103,19 @@ class MQTTHelperBot:
                 )
             elif str(message.topic).split("/")[1] == "atr":
                 # Broadcast message received on atr
-                helperbotlog.debug(
-                    "Received Broadcast - Topic: {} - Message: {}".format(
-                        message.topic, str(message.data.decode("utf-8"))
+                if str(message.topic).split("/")[2] == "errors":
+                    boterrorlog.error(
+                        "Received Error - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
                     )
-                )
+                else:
+                    helperbotlog.debug(
+                        "Received Broadcast - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
+                    )
+
             else:
                 helperbotlog.debug(
                     "Received Message - Topic: {} - Message: {}".format(
@@ -174,29 +183,30 @@ class MQTTHelperBot:
             }
 
     async def send_command(self, cmdjson, requestid):
-        try:
-            ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(
-                cmdjson["cmdName"],
-                cmdjson["toId"],
-                cmdjson["toType"],
-                cmdjson["toRes"],
-                requestid,
-                cmdjson["payloadType"],
-            )
+        if not self.Client._handler.writer is None:
             try:
-                await self.Client.publish(
-                    ttopic, str(cmdjson["payload"]).encode(), QOS_0
+                ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(
+                    cmdjson["cmdName"],
+                    cmdjson["toId"],
+                    cmdjson["toType"],
+                    cmdjson["toRes"],
+                    requestid,
+                    cmdjson["payloadType"],
                 )
+                try:
+                    await self.Client.publish(
+                        ttopic, str(cmdjson["payload"]).encode(), QOS_0
+                    )
+                except Exception as e:
+                    helperbotlog.exception("{}".format(e))
+
+                resp = await self.wait_for_resp(requestid)
+
+                return resp
+
             except Exception as e:
                 helperbotlog.exception("{}".format(e))
-
-            resp = await self.wait_for_resp(requestid)
-
-            return resp
-
-        except Exception as e:
-            helperbotlog.exception("{}".format(e))
-            return {}
+                return {}
 
 
 class MQTTServer:
@@ -224,7 +234,6 @@ class MQTTServer:
 
     def __init__(self, address):
         try:
-            self.mqttserverthread = None
             self.address = address
 
             # The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
@@ -345,40 +354,33 @@ class BumperMQTTServer_Plugin:
         return authenticated
 
     async def on_broker_client_connected(self, client_id):
-        try:
-            didsplit = str(client_id).split("@")
 
-            bot = bumper.bot_get(didsplit[0])
-            if bot:
-                bumper.bot_set_mqtt(bot["did"], True)
-                return
+        didsplit = str(client_id).split("@")
 
-            # clientuserid = didsplit[0]
-            clientresource = didsplit[1].split("/")[1]
-            client = bumper.client_get(clientresource)
-            if client:
-                bumper.client_set_mqtt(client["resource"], True)
-                return
+        bot = bumper.bot_get(didsplit[0])
+        if bot:
+            bumper.bot_set_mqtt(bot["did"], True)
+            return
 
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
+        # clientuserid = didsplit[0]
+        clientresource = didsplit[1].split("/")[1]
+        client = bumper.client_get(clientresource)
+        if client:
+            bumper.client_set_mqtt(client["resource"], True)
+            return
 
     async def on_broker_client_disconnected(self, client_id):
-        try:
-            didsplit = str(client_id).split("@")
 
-            bot = bumper.bot_get(didsplit[0])
-            if bot:
-                bumper.bot_set_mqtt(bot["did"], False)
-                return
+        didsplit = str(client_id).split("@")
 
-            # clientuserid = didsplit[0]
-            clientresource = didsplit[1].split("/")[1]
-            client = bumper.client_get(clientresource)
-            if client:
-                bumper.client_set_mqtt(client["resource"], False)
-                return
+        bot = bumper.bot_get(didsplit[0])
+        if bot:
+            bumper.bot_set_mqtt(bot["did"], False)
+            return
 
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
-
+        # clientuserid = didsplit[0]
+        clientresource = didsplit[1].split("/")[1]
+        client = bumper.client_get(clientresource)
+        if client:
+            bumper.client_set_mqtt(client["resource"], False)
+            return

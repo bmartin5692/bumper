@@ -21,10 +21,11 @@ def mock_transport_extra_info(*args, **kwargs):
 
 
 async def test_xmpp_server():
+    xmpp_address = ("127.0.0.1", 5223)
+    xmpp_server = bumper.XMPPServer(xmpp_address)
+    await xmpp_server.start_async_server()
+
     with LogCapture("xmppserver") as l:
-        xmpp_address = ("127.0.0.1", 5223)
-        xmpp_server = bumper.XMPPServer(xmpp_address)
-        await xmpp_server.start_async_server()
 
         reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
 
@@ -52,10 +53,8 @@ async def test_xmpp_server():
         await writer.drain()
 
         await asyncio.sleep(0.1)
-        xmpp_server.disconnect()
-        await asyncio.sleep(0.1)
-        assert len(xmpp_server.clients) == 0  # Client count decreased
-        print(l)
+
+    xmpp_server.disconnect()
 
 
 async def test_client_connect_no_starttls(*args, **kwargs):
@@ -209,6 +208,11 @@ async def test_client_connect_starttls_called(*args, **kwargs):
 
 
 async def test_xmpp_server_client_tls():
+
+    xmpp_address = ("127.0.0.1", 5223)
+    xmpp_server = bumper.XMPPServer(xmpp_address)
+    await xmpp_server.start_async_server()
+
     with LogCapture("xmppserver") as l:
 
         async def do_stuff_after_start_tls(
@@ -226,10 +230,6 @@ async def test_xmpp_server_client_tls():
             )  # Send Auth
 
             await writer.drain()
-
-    xmpp_address = ("127.0.0.1", 5223)
-    xmpp_server = bumper.XMPPServer(xmpp_address)
-    await xmpp_server.start_async_server()
 
     reader, writer = await asyncio.open_connection("127.0.0.1", 5223)
 
@@ -611,6 +611,33 @@ async def test_client_send_iq(*args, **kwargs):
     assert (
         mock_send.mock_calls[0].args[0]
         == '<iq from="E0000000000000001234@159.ecorobot.net/atom" id="2700" to="fuid_tmpuser@ecouser.net/IOSF53D07BA" type="set"><query xmlns="com:ctl"><ctl td="BatteryInfo"><battery power="100" /></ctl></query></iq>'
+    )  # result sent to ecouser.net
+
+    # Reset mock calls
+    mock_send.reset_mock()
+
+    # Bot error report
+    test_data = "<iq to='fuid_tmpuser@ecouser.net/IOSF53D07BA' type='set' id='631'><query xmlns='com:ctl'><ctl td='error' errs='102'/></query></iq>".encode(
+        "utf-8"
+    )
+    xmppclient2._parse_data(test_data)
+
+    assert (
+        mock_send.mock_calls[0].args[0]
+        == '<iq from="E0000000000000001234@159.ecorobot.net/atom" id="631" to="fuid_tmpuser@ecouser.net/IOSF53D07BA" type="set"><query xmlns="com:ctl"><ctl errs="102" td="error" /></query></iq>'
+    )  # result sent to ecouser.net
+
+    # Reset mock calls
+    mock_send.reset_mock()
+
+    # Bot "DorpError" to all
+    test_data = "<iq to='rl.ecorobot.net' type='set' id='1234'><query xmlns='com:sf'><sf td='pub' t='log' ts='1559893796000' tp='p' k='DeviceAlert' v='DorpError' f='E0000000000000001234@159.ecorobot.net' g='fuid_tmpuser@ecouser.net'/></query></iq>".encode(
+        "utf-8"
+    )
+    xmppclient2._parse_data(test_data)
+    assert (
+        mock_send.mock_calls[0].args[0]
+        == '<iq xmlns="com:sf" from="E0000000000000001234@159.ecorobot.net/atom" id="1234" to="rl.ecorobot.net" type="set"><query xmlns="com:ctl"><sf f="E0000000000000001234@159.ecorobot.net" g="fuid_tmpuser@ecouser.net" k="DeviceAlert" t="log" td="pub" tp="p" ts="1559893796000" v="DorpError" /></query></iq>'
     )  # result sent to ecouser.net
 
     # Reset mock calls

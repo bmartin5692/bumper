@@ -10,6 +10,7 @@ import bumper
 import asyncio
 
 xmppserverlog = logging.getLogger("xmppserver")
+boterrorlog = logging.getLogger("boterror")
 
 
 class XMPPServer:
@@ -50,17 +51,14 @@ class XMPPServer:
             asyncio.create_task(bumper.shutdown())
 
     def disconnect(self):
-        try:
-            xmppserverlog.debug("waiting for all client threads to exit")
-            for client in self.clients:
-                client._disconnect()
 
-            self.exit_flag = True
-            xmppserverlog.debug("shutting down")
-            self.server_coro.cancel()
+        xmppserverlog.debug("waiting for all clients to disconnect")
+        for client in self.clients:
+            client._disconnect()
 
-        except Exception as e:
-            xmppserverlog.error("{}".format(e))
+        self.exit_flag = True
+        xmppserverlog.debug("shutting down")
+        self.server_coro.cancel()
 
 
 class XMPPServer_Protocol(asyncio.Protocol):
@@ -614,80 +612,70 @@ class XMPPAsyncClient:
             xmppserverlog.exception("{}".format(e))
 
     def _handle_session(self, xml):
-        try:
-            res = '<iq type="result" id="{}" />'.format(xml.get("id"))
-            self._set_state("READY")
-            self.send(res)
-            asyncio.Task(self.schedule_ping(30))
-
-        except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+        res = '<iq type="result" id="{}" />'.format(xml.get("id"))
+        self._set_state("READY")
+        self.send(res)
+        asyncio.Task(self.schedule_ping(30))
 
     def _handle_presence(self, xml):
-        try:
 
-            if len(xml) and xml[0].tag == "status":
+        if len(xml) and xml[0].tag == "status":
+            xmppserverlog.debug(
+                "bot presence {} ".format(
+                    ET.tostring(xml, encoding="utf-8").decode("utf-8")
+                )
+            )
+            # Most likely a bot, possibly hello world in text
+
+            # Send dummy return
+            self.send('<presence to="{}"> dummy </presence>'.format(self.bumper_jid))
+
+            # If it is a BOT, send extras
+            if self.type == self.BOT:
+                # get device info
+                self.send(
+                    '<iq type="set" id="14" to="{}" from="{}"><query xmlns="com:ctl"><ctl td="GetDeviceInfo"/></query></iq>'.format(
+                        self.bumper_jid, XMPPServer.server_id
+                    )
+                )
+
+        else:
+            xmppserverlog.debug(
+                "client presence - {} ".format(
+                    ET.tostring(xml, encoding="utf-8").decode("utf-8")
+                )
+            )
+
+            if xml.get("type") == "available":
                 xmppserverlog.debug(
-                    "bot presence {} ".format(
+                    "client presence available - {} ".format(
                         ET.tostring(xml, encoding="utf-8").decode("utf-8")
                     )
                 )
-                # Most likely a bot, possibly hello world in text
 
                 # Send dummy return
                 self.send(
                     '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
                 )
-
-                # If it is a BOT, send extras
-                if self.type == self.BOT:
-                    # get device info
-                    self.send(
-                        '<iq type="set" id="14" to="{}" from="{}"><query xmlns="com:ctl"><ctl td="GetDeviceInfo"/></query></iq>'.format(
-                            self.bumper_jid, XMPPServer.server_id
-                        )
-                    )
-
-            else:
+            elif xml.get("type") == "unavailable":
                 xmppserverlog.debug(
-                    "client presence - {} ".format(
+                    "client presence unavailable (DISCONNECT) - {} ".format(
                         ET.tostring(xml, encoding="utf-8").decode("utf-8")
                     )
                 )
 
-                if xml.get("type") == "available":
-                    xmppserverlog.debug(
-                        "client presence available - {} ".format(
-                            ET.tostring(xml, encoding="utf-8").decode("utf-8")
-                        )
+                self._set_state("DISCONNECT")
+            else:
+                # Sometimes the android app sends these
+                xmppserverlog.debug(
+                    "client presence (UNKNOWN) - {} ".format(
+                        ET.tostring(xml, encoding="utf-8")
                     )
-
-                    # Send dummy return
-                    self.send(
-                        '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
-                    )
-                elif xml.get("type") == "unavailable":
-                    xmppserverlog.debug(
-                        "client presence unavailable (DISCONNECT) - {} ".format(
-                            ET.tostring(xml, encoding="utf-8").decode("utf-8")
-                        )
-                    )
-
-                    self._set_state("DISCONNECT")
-                else:
-                    # Sometimes the android app sends these
-                    xmppserverlog.debug(
-                        "client presence (UNKNOWN) - {} ".format(
-                            ET.tostring(xml, encoding="utf-8")
-                        )
-                    )
-                    # Send dummy return
-                    self.send(
-                        '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
-                    )
-
-        except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+                )
+                # Send dummy return
+                self.send(
+                    '<presence to="{}"> dummy </presence>'.format(self.bumper_jid)
+                )
 
     def _parse_data(self, data):
 
@@ -721,6 +709,19 @@ class XMPPAsyncClient:
                                     ).replace("ns0:", ""),
                                 )
                             )
+                            if (
+                                'td="error"' in newdata
+                                or "errs=" in newdata
+                                or 'k="DeviceAlert' in newdata
+                            ):
+                                boterrorlog.error(
+                                    "Received Error from ({}:{} | {}) - {}".format(
+                                        self.address[0],
+                                        self.address[1],
+                                        self.bumper_jid,
+                                        newdata,
+                                    )
+                                )
                         self._handle_iq(item, newdata)
                         item.clear()
 
@@ -790,34 +791,31 @@ class XMPPAsyncClient:
             xmppserverlog.exception("{}".format(e))
 
     def _handle_iq(self, xml, data):
-        try:
-            if len(xml):
-                child = self._tag_strip_uri(xml[0].tag)
-            else:
-                child = None
 
-            if xml.tag == "iq":
-                if child == "bind":
-                    self._handle_bind(xml)
-                elif child == "session":
-                    self._handle_session(xml)
-                elif child == "ping":
-                    self._handle_ping(xml, data)
-                elif child == "query":
-                    if self.type == self.BOT:
-                        self._handle_result(xml, data)
-                    else:
-                        self._handle_ctl(xml, data)
-                elif xml.get("type") == "result":
-                    if self.type == self.BOT:
-                        self._handle_result(xml, data)
-                    else:
-                        self._handle_result(xml, data)
-                elif xml.get("type") == "set":
-                    if self.type == self.BOT:
-                        self._handle_result(xml, data)
-                    else:
-                        self._handle_result(xml, data)
+        if len(xml):
+            child = self._tag_strip_uri(xml[0].tag)
+        else:
+            child = None
 
-        except Exception as e:
-            xmppserverlog.exception("{}".format(e))
+        if xml.tag == "iq":
+            if child == "bind":
+                self._handle_bind(xml)
+            elif child == "session":
+                self._handle_session(xml)
+            elif child == "ping":
+                self._handle_ping(xml, data)
+            elif child == "query":
+                if self.type == self.BOT:
+                    self._handle_result(xml, data)
+                else:
+                    self._handle_ctl(xml, data)
+            elif xml.get("type") == "result":
+                if self.type == self.BOT:
+                    self._handle_result(xml, data)
+                else:
+                    self._handle_result(xml, data)
+            elif xml.get("type") == "set":
+                if self.type == self.BOT:
+                    self._handle_result(xml, data)
+                else:
+                    self._handle_result(xml, data)

@@ -14,10 +14,11 @@ import time
 
 
 async def test_helperbot_message():
-    with LogCapture("helperbot") as l:
-        mqtt_address = ("127.0.0.1", 8883)
-        mqtt_server = bumper.MQTTServer(mqtt_address)
-        await mqtt_server.broker_coro()
+    mqtt_address = ("127.0.0.1", 8883)
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+    await mqtt_server.broker_coro()
+
+    with LogCapture() as l:
 
         # Test broadcast message
         mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -125,20 +126,42 @@ async def test_helperbot_message():
         )  # Check received message was logged
         l.clear()
         mqtt_helperbot.Client.disconnect()
-        await mqtt_server.broker.shutdown()
+
+        # Received error message
+        mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
+        await mqtt_helperbot.start_helper_bot()
+        assert (
+            mqtt_helperbot.Client._connected_state._value == True
+        )  # Check helperbot is connected
+        msg_payload = "<ctl ts='1560904925396' td='errors' old='' new='110'/>"
+        msg_topic_name = "iot/atr/errors/bot_serial/ls1ok3/wC3g/x"
+        await mqtt_helperbot.Client.publish(
+            msg_topic_name, msg_payload.encode(), hbmqtt.client.QOS_0
+        )
+        try:
+            await asyncio.wait_for(mqtt_helperbot.Client.deliver_message(), timeout=0.1)
+        except asyncio.TimeoutError:
+            pass
+
+        l.check_present(
+            (
+                "boterror",
+                "ERROR",
+                "Received Error - Topic: iot/atr/errors/bot_serial/ls1ok3/wC3g/x - Message: <ctl ts='1560904925396' td='errors' old='' new='110'/>",
+            )
+        )  # Check received message was logged
+        l.clear()
+        mqtt_helperbot.Client.disconnect()
+
+    await mqtt_server.broker.shutdown()
 
 
 async def test_helperbot_expire_message():
+    mqtt_address = ("127.0.0.1", 8883)
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+    await mqtt_server.broker_coro()
+
     with LogCapture("helperbot") as l:
-        mqtt_address = ("127.0.0.1", 8883)
-        mqtt_server = bumper.MQTTServer(mqtt_address)
-        await mqtt_server.broker_coro()
-        # mqtt_address = ("127.0.0.1", 8883)
-        # mqtt_server = bumper.MQTTServer(mqtt_address)
-        # broker = hbmqtt.broker.Broker(
-        #    mqtt_server.default_config, plugin_namespace="hbmqtt.test.plugins"
-        # )
-        # await broker.start()
 
         # Test broadcast message
         mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -195,19 +218,14 @@ async def test_helperbot_expire_message():
             )
         )  # Check received message was logged
         mqtt_helperbot.Client.disconnect()
-        await mqtt_server.broker.shutdown()
+
+    await mqtt_server.broker.shutdown()
 
 
 async def test_helperbot_sendcommand():
     mqtt_address = ("127.0.0.1", 8883)
     mqtt_server = bumper.MQTTServer(mqtt_address)
     await mqtt_server.broker_coro()
-    # mqtt_address = ("127.0.0.1", 8883)
-    # mqtt_server = bumper.MQTTServer(mqtt_address)
-    # broker = hbmqtt.broker.Broker(
-    #    mqtt_server.default_config, plugin_namespace="hbmqtt.test.plugins"
-    # )
-    # await broker.start()
 
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
     await mqtt_helperbot.start_helper_bot()
