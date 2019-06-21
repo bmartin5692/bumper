@@ -1,34 +1,22 @@
+![License GPLv3](https://img.shields.io/github/license/bmartin5692/bumper.svg?color=brightgreen)
+
 # Bumper 
 
 Bumper is a standalone and self-hosted implementation of the central server used by Ecovacs vacuum robots.  Bumper allows you to have full control of your Ecovacs robots, without the robots or app talking to the Ecovacs servers and transmitting data outside of your home.
 
 **Note:** The current master branch is unstable, and in active development.
 
-| Master Build Status | Status                                                                 |
+| Master Branch | Status                                                                 |
 | ------------------- | ---------------------------------------------------------------------- |
-| AppVeyor (Win32)    | ![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg) |
-| TravisCI (Linux)    | ![Travis (.org)](https://img.shields.io/travis/bmartin5692/bumper.svg) |
-
-Code Test Coverage: ![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg)
+| AppVeyor (Win32)    | [![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg?logo=appveyor)](https://ci.appveyor.com/project/bmartin5692/bumper) |
+| TravisCI (Linux)    | [![Build Status](https://img.shields.io/travis/com/bmartin5692/bumper.svg?logo=travis)](https://travis-ci.com/bmartin5692/bumper) |
+| Docker Hub	      | [![Docker Build](https://img.shields.io/docker/cloud/build/bmartin5692/bumper.svg?logo=docker)](https://hub.docker.com/r/bmartin5692/bumper) |
+| CodeCov Coverage    | [![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg?logo=codecov)](https://codecov.io/gh/bmartin5692/bumper) |
 
 ***Testing needed***
 Bumper needs users to assist with testing in order to ensure compatability as bumper moves forward!  If you've tested Bumper with your bot, please open an issue with details on success or issues.
 
 ***Please note**: this software is experimental and not ready for production use. Use at your own risk.* 
-
-## Compatibility
-
-As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models that it hasn't been tested against.  Bumper should be compatible with most wifi-enabled robots that use either the Ecovacs Android/iOS app or the Ecovacs Home Android/iOS app, but has only been reported to work on the below:
-
-| Model           | Protocol Used | Bumper Version Tested | EcoVacs App Tested   |
-| --------------- | ------------- | --------------------- | -------------------- |
-| Deebot 900/901  | MQTT          | master                | Ecovacs/Ecovacs Home |
-| Deebot 600      | MQTT          | master                | Ecovacs Home         |
-| Deebot Ozmo 601 | XMPP          | master                | Ecovacs              |
-| Deebot Ozmo 930 | XMPP          | master                | Ecovacs              |
-| Deebot M81 Pro  | XMPP          | v0.1.0                | Ecovacs              |
-
-For more information about the protocols and how Bumper works, see the [How does it work?](docs/How_It_Works.md) page in the docs. If you test against another model and it works, please open an issue to report it.
 
 ## Why?
 
@@ -44,7 +32,7 @@ But seriously, there are a several reasons for eliminating the central server:
 
 - An Ecovacs wifi-enabled robot
 - A computer on your local network to run the Bumper server
-- Python 3.7 and pipenv
+- Python 3.7 and pipenv OR Docker
 - A network router that has functionality for overriding DNS queries
 - A client that can connect to Bumper and talk to the robot over the Ecovacs protocol.
   - The "Ecovacs" or "Ecovacs Home" Android or iOS apps can be used if configured properly. 
@@ -54,13 +42,18 @@ But seriously, there are a several reasons for eliminating the central server:
 
 ## Quick Start Usage
 
- - Download bumper then run `pipenv install` to install dependencies
  - Configure your Ecovacs vacuum using the official mobile app (if you haven't done this already)
  - Configure your DNS server as described in the [DNS Setup](docs/DNS_Setup.md) doc. 
- - Start bumper - see the [Starting Bumper](#starting-bumper) section.
- - Control your robots like normal
-   - [Using Bumper with the official Android/iOS App](docs/Use_With_App.md)
-   - [Using Bumper with Sucks](docs/Use_With_Sucks.md)
+ 
+**Choose Install:**
+ - Docker - [See Docker Section](#docker)
+ - Manual/Python
+ 	- Download bumper then run `pipenv install` to install dependencies
+	- Start bumper - see the [Starting Bumper](#starting-bumper) section.
+
+  - Control your robots like normal
+  	- [Using Bumper with the official Android/iOS App](docs/Use_With_App.md)
+	- [Using Bumper with Sucks](docs/Use_With_Sucks.md)
 
 ### Starting Bumper
 
@@ -102,6 +95,8 @@ Bumper looks for a number of Environment Variables at initialization allowing fo
 To download the image from Docker Hub you can run the following:
 `docker pull bmartin5692/bumper`
 
+[View Bumper on Docker Hub](https://hub.docker.com/r/bmartin5692/bumper)
+
 ### Docker build
 
 To build the docker image yourself you can run the following:
@@ -136,6 +131,20 @@ Optionally you can map existing directories for logs, data, and certs.
 ````
 docker run -it -e "BUMPER_ANNOUNCE_IP=X.X.X.X" -p 443:443 -p 8007:8007 -p 8883:8883 -p 5223:5223 -v /home/user/bumper/data:/bumper/data --name bumper bmartin5692/bumper
 ````
+
+## Compatibility
+
+As work to reverse the protocols and provide a self-hosted central server is still in progress, Bumper has had limited testing.  There are a number of EcoVacs models that it hasn't been tested against.  Bumper should be compatible with most wifi-enabled robots that use either the Ecovacs Android/iOS app or the Ecovacs Home Android/iOS app, but has only been reported to work on the below:
+
+| Model           | Protocol Used | Bumper Version Tested | EcoVacs App Tested   |
+| --------------- | ------------- | --------------------- | -------------------- |
+| Deebot 900/901  | MQTT          | master                | Ecovacs/Ecovacs Home |
+| Deebot 600      | MQTT          | master                | Ecovacs Home         |
+| Deebot Ozmo 601 | XMPP          | master                | Ecovacs              |
+| Deebot Ozmo 930 | XMPP          | master                | Ecovacs              |
+| Deebot M81 Pro  | XMPP          | v0.1.0                | Ecovacs              |
+
+For more information about the protocols and how Bumper works, see the [How does it work?](docs/How_It_Works.md) page in the docs. If you test against another model and it works, please open an issue to report it.
 
 ## Thanks
 
