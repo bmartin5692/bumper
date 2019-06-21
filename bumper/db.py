@@ -24,23 +24,16 @@ def os_db_path():  # createdir=True):
 
 
 def db_get():
-    try:
-        # Will create the database if it doesn't exist
-        db = TinyDB(db_file())
+    # Will create the database if it doesn't exist
+    db = TinyDB(db_file())
 
-        # Will create the tables if they don't exist
-        db.table("users", cache_size=0)
-        db.table("clients", cache_size=0)
-        db.table("bots", cache_size=0)
-        db.table("tokens", cache_size=0)
+    # Will create the tables if they don't exist
+    db.table("users", cache_size=0)
+    db.table("clients", cache_size=0)
+    db.table("bots", cache_size=0)
+    db.table("tokens", cache_size=0)
 
-        return db
-
-    except json.decoder.JSONDecodeError as jerr:
-        bumperlog.error("JsonErr: {} - Doc: {}".format(jerr.msg, jerr.doc))
-
-    except Exception as ex:
-        bumperlog.error(ex)
+    return db
 
 
 def user_add(userid):

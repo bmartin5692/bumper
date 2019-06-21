@@ -354,41 +354,33 @@ class BumperMQTTServer_Plugin:
         return authenticated
 
     async def on_broker_client_connected(self, client_id):
-        try:
 
-            didsplit = str(client_id).split("@")
+        didsplit = str(client_id).split("@")
 
-            bot = bumper.bot_get(didsplit[0])
-            if bot:
-                bumper.bot_set_mqtt(bot["did"], True)
-                return
+        bot = bumper.bot_get(didsplit[0])
+        if bot:
+            bumper.bot_set_mqtt(bot["did"], True)
+            return
 
-            # clientuserid = didsplit[0]
-            clientresource = didsplit[1].split("/")[1]
-            client = bumper.client_get(clientresource)
-            if client:
-                bumper.client_set_mqtt(client["resource"], True)
-                return
-
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
+        # clientuserid = didsplit[0]
+        clientresource = didsplit[1].split("/")[1]
+        client = bumper.client_get(clientresource)
+        if client:
+            bumper.client_set_mqtt(client["resource"], True)
+            return
 
     async def on_broker_client_disconnected(self, client_id):
-        try:
-            didsplit = str(client_id).split("@")
 
-            bot = bumper.bot_get(didsplit[0])
-            if bot:
-                bumper.bot_set_mqtt(bot["did"], False)
-                return
+        didsplit = str(client_id).split("@")
 
-            # clientuserid = didsplit[0]
-            clientresource = didsplit[1].split("/")[1]
-            client = bumper.client_get(clientresource)
-            if client:
-                bumper.client_set_mqtt(client["resource"], False)
-                return
+        bot = bumper.bot_get(didsplit[0])
+        if bot:
+            bumper.bot_set_mqtt(bot["did"], False)
+            return
 
-        except Exception as e:
-            mqttserverlog.exception("{}".format(e))
-
+        # clientuserid = didsplit[0]
+        clientresource = didsplit[1].split("/")[1]
+        client = bumper.client_get(clientresource)
+        if client:
+            bumper.client_set_mqtt(client["resource"], False)
+            return
