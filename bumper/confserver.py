@@ -231,8 +231,6 @@ class ConfServer:
         await bumper.mqtt_helperbot.Client.disconnect()
         await bumper.mqtt_helperbot.start_helper_bot()
 
-    
-
     async def restart_MQTT(self):
         mqttserver = bumper.mqtt_server.broker
 
@@ -249,6 +247,10 @@ class ConfServer:
         while not bumper.mqtt_server.broker.transitions.state == "started":
             await asyncio.sleep(0.1)
 
+    async def restart_XMPP(self):
+        bumper.xmpp_server.disconnect()
+        await bumper.xmpp_server.start_async_server()
+
     async def handle_RestartService(self, request):
         try:
             service = request.match_info.get("service", "")
@@ -261,7 +263,9 @@ class ConfServer:
                 aloop.call_later(
                     2, lambda: asyncio.create_task(self.restart_Helper())
                 )  # In 2 seconds restart Helperbot
-
+                return web.json_response({"status": "complete"})
+            elif service == "XMPPServer":
+                await self.restart_XMPP()
                 return web.json_response({"status": "complete"})
             else:
                 return web.json_response({"status": "invalid service"})
@@ -1105,130 +1109,126 @@ class ConfServer:
             confserverlog.exception("{}".format(e))
 
     async def handle_lg_log(self, request):  # EcoVacs Home
-            try:
-                json_body = json.loads(await request.text())
+        try:
+            json_body = json.loads(await request.text())
 
-                randomid = "".join(random.sample(string.ascii_letters, 6))
-                did = json_body["did"]
+            randomid = "".join(random.sample(string.ascii_letters, 6))
+            did = json_body["did"]
 
-                botdetails = bumper.bot_get(did)
-                if botdetails:
-                    if not "cmdName" in json_body:
-                        if "td" in json_body:
-                            json_body["cmdName"] = json_body["td"]
-                            # json_body["td"] = "q"
+            botdetails = bumper.bot_get(did)
+            if botdetails:
+                if not "cmdName" in json_body:
+                    if "td" in json_body:
+                        json_body["cmdName"] = json_body["td"]
+                        # json_body["td"] = "q"
 
-                    if not "toId" in json_body:
-                        json_body["toId"] = did
+                if not "toId" in json_body:
+                    json_body["toId"] = did
 
-                    if not "toType" in json_body:
-                        json_body["toType"] = botdetails["class"]
+                if not "toType" in json_body:
+                    json_body["toType"] = botdetails["class"]
 
-                    if not "toRes" in json_body:
-                        json_body["toRes"] = botdetails["resource"]
+                if not "toRes" in json_body:
+                    json_body["toRes"] = botdetails["resource"]
 
-                    if not "payloadType" in json_body:
-                        json_body["payloadType"] = "x"
+                if not "payloadType" in json_body:
+                    json_body["payloadType"] = "x"
 
-                    if not "payload" in json_body:
-                        json_body["payload"] = ""
-                        if json_body["td"] == "GetCleanLogs":
-                            json_body["td"] = "q"
-                            json_body["payload"] = '<ctl count="30"/>'  # <ctl />"
+                if not "payload" in json_body:
+                    json_body["payload"] = ""
+                    if json_body["td"] == "GetCleanLogs":
+                        json_body["td"] = "q"
+                        json_body["payload"] = '<ctl count="30"/>'  # <ctl />"
 
-                if did != "":
-                    bot = bumper.bot_get(did)
-                    if bot["company"] == "eco-ng":
-                        body = ""
-                        retcmd = await bumper.mqtt_helperbot.send_command(
-                            json_body, randomid
-                        )
-                        confserverlog.debug("Send Bot - {}".format(json_body))
-                        confserverlog.debug("Bot Response - {}".format(body))
-                        logs = []
-                        logsroot = ET.fromstring(retcmd["resp"])
-                        if logsroot.attrib["ret"] == "ok":
-                            cleanlogs = logsroot.getchildren()
-                            for l in cleanlogs:
-                                logs.append(l.attrib)
+            if did != "":
+                bot = bumper.bot_get(did)
+                if bot["company"] == "eco-ng":
+                    body = ""
+                    retcmd = await bumper.mqtt_helperbot.send_command(
+                        json_body, randomid
+                    )
+                    confserverlog.debug("Send Bot - {}".format(json_body))
+                    confserverlog.debug("Bot Response - {}".format(body))
+                    logs = []
+                    logsroot = ET.fromstring(retcmd["resp"])
+                    if logsroot.attrib["ret"] == "ok":
+                        cleanlogs = logsroot.getchildren()
+                        for l in cleanlogs:
+                            logs.append(l.attrib)
 
-                            body = {
-                                "ret": "ok",
-                                # "logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
-                                "logs": [],
-                            }
-
-                        else:
-                            body = {"ret": "ok", "logs": []}
-
-                        confserverlog.debug(
-                            "POST: {} - Response: {}".format(json_body, body)
-                        )
-
-                        return web.json_response(body)
-                    else:
-                        # No response, send error back
-                        confserverlog.error(
-                            "No bots with DID: {} connected to MQTT".format(
-                                json_body["toId"]
-                            )
-                        )
                         body = {
-                            "id": randomid,
-                            "errno": bumper.ERR_COMMON,
-                            "ret": "fail",
+                            "ret": "ok",
+                            # "logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
+                            "logs": [],
                         }
-                        return web.json_response(body)
 
-            except Exception as e:
-                confserverlog.exception("{}".format(e))
+                    else:
+                        body = {"ret": "ok", "logs": []}
+
+                    confserverlog.debug(
+                        "POST: {} - Response: {}".format(json_body, body)
+                    )
+
+                    return web.json_response(body)
+                else:
+                    # No response, send error back
+                    confserverlog.error(
+                        "No bots with DID: {} connected to MQTT".format(
+                            json_body["toId"]
+                        )
+                    )
+                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+                    return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
 
     async def handle_devmanager_botcommand(self, request):
-            try:
-                json_body = json.loads(await request.text())
+        try:
+            json_body = json.loads(await request.text())
 
-                randomid = "".join(random.sample(string.ascii_letters, 6))
-                did = ""
-                if "toId" in json_body:  # Its a command
-                    did = json_body["toId"]
+            randomid = "".join(random.sample(string.ascii_letters, 6))
+            did = ""
+            if "toId" in json_body:  # Its a command
+                did = json_body["toId"]
 
-                if did != "":
-                    bot = bumper.bot_get(did)
-                    if bot["company"] == "eco-ng":
-                        retcmd = await bumper.mqtt_helperbot.send_command(
-                            json_body, randomid
-                        )
-                        body = retcmd
-                        confserverlog.debug("Send Bot - {}".format(json_body))
-                        confserverlog.debug("Bot Response - {}".format(body))
-                        return web.json_response(body)
-                    else:
-                        # No response, send error back
-                        confserverlog.error(
-                            "No bots with DID: {} connected to MQTT".format(
-                                json_body["toId"]
-                            )
-                        )
-                        body = {
-                            "id": randomid,
-                            "errno": 500,
-                            "ret": "fail",
-                            "debug": "wait for response timed out",
-                        }
-                        return web.json_response(body)
-
+            if did != "":
+                bot = bumper.bot_get(did)
+                if bot["company"] == "eco-ng":
+                    retcmd = await bumper.mqtt_helperbot.send_command(
+                        json_body, randomid
+                    )
+                    body = retcmd
+                    confserverlog.debug("Send Bot - {}".format(json_body))
+                    confserverlog.debug("Bot Response - {}".format(body))
+                    return web.json_response(body)
                 else:
-                    if "td" in json_body:  # Seen when doing initial wifi config
-                        if json_body["td"] == "PollSCResult":
-                            body = {"ret": "ok"}
-                            return web.json_response(body)
+                    # No response, send error back
+                    confserverlog.error(
+                        "No bots with DID: {} connected to MQTT".format(
+                            json_body["toId"]
+                        )
+                    )
+                    body = {
+                        "id": randomid,
+                        "errno": 500,
+                        "ret": "fail",
+                        "debug": "wait for response timed out",
+                    }
+                    return web.json_response(body)
 
-                        if json_body["td"] == "HasUnreadMsg":  # EcoVacs Home
-                            body = {"ret": "ok", "unRead": False}
-                            return web.json_response(body)
+            else:
+                if "td" in json_body:  # Seen when doing initial wifi config
+                    if json_body["td"] == "PollSCResult":
+                        body = {"ret": "ok"}
+                        return web.json_response(body)
 
-            except Exception as e:
-                confserverlog.exception("{}".format(e))
+                    if json_body["td"] == "HasUnreadMsg":  # EcoVacs Home
+                        body = {"ret": "ok", "unRead": False}
+                        return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
 
     async def handle_dim_devmanager(self, request):  # Used in EcoVacs Home App
         try:
