@@ -89,6 +89,25 @@ mqttserverlog.addHandler(mqtt_rotate)
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
 
+### Additional MQTT Logs
+translog = logging.getLogger("transitions")
+translog.addHandler(mqtt_rotate)
+translog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
+logging.getLogger("passlib").setLevel(logging.CRITICAL + 1)  # Ignore this logger
+brokerlog = logging.getLogger("hbmqtt.broker")
+#brokerlog.setLevel(
+#    logging.CRITICAL + 1
+#)  # Ignore this logger #There are some sublogs that could be set if needed (.plugins)
+brokerlog.addHandler(mqtt_rotate)
+protolog = logging.getLogger("hbmqtt.mqtt.protocol")
+#protolog.setLevel(
+#    logging.CRITICAL + 1
+#)  # Ignore this logger
+protolog.addHandler(mqtt_rotate)
+clientlog = logging.getLogger("hbmqtt.client")
+#clientlog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
+clientlog.addHandler(mqtt_rotate)
+
 helperbotlog = logging.getLogger("helperbot")
 helperbot_rotate = RotatingFileHandler(
     "logs/helperbot.log", maxBytes=5000000, backupCount=5
