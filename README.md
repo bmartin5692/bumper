@@ -4,6 +4,8 @@
 
 Bumper is a standalone and self-hosted implementation of the central server used by Ecovacs vacuum robots.  Bumper allows you to have full control of your Ecovacs robots, without the robots or app talking to the Ecovacs servers and transmitting data outside of your home.
 
+![Bumper Diagram](./docs/images/BumperDiagram.png "Bumper Diagram")
+
 **Note:** The current master branch is unstable, and in active development.
 
 | Master Branch | Status                                                                 |
