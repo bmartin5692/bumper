@@ -1,5 +1,7 @@
 # How does Bumper work? 
 
+![Bumper Diagram](./images/BumperDiagram.png "Bumper Diagram")
+
 Bumper runs multiple services to re-create what the central EcoVacs servers provide the bots and users. At this point two different protocols have been seen, **XMPP** and **MQTT**.
 
 **Services**
