@@ -15,6 +15,11 @@ Bumper is a standalone and self-hosted implementation of the central server used
 | Docker Hub	      | [![Docker Build](https://img.shields.io/docker/cloud/build/bmartin5692/bumper.svg?logo=docker)](https://hub.docker.com/r/bmartin5692/bumper) |
 | CodeCov Coverage    | [![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg?logo=codecov)](https://codecov.io/gh/bmartin5692/bumper) |
 
+
+**Community**:
+A Gitter community has been created for Bumper so users can chat and dig into issues outside of Github, join us here:
+[Ecovacs-Bumper on Gitter](https://gitter.im/ecovacs-bumper/community)
+
 ***Testing needed***
 Bumper needs users to assist with testing in order to ensure compatability as bumper moves forward!  If you've tested Bumper with your bot, please open an issue with details on success or issues.
 
