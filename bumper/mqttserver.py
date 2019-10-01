@@ -183,9 +183,16 @@ class MQTTHelperBot:
                     cmdjson["payloadType"],
                 )
                 try:
-                    await self.Client.publish(
-                        ttopic, str(cmdjson["payload"]).encode(), QOS_0
-                    )
+                    if cmdjson["toType"] == "x":
+                        await self.Client.publish(
+                            ttopic, str(cmdjson["payload"]).encode(), QOS_0
+                        )
+
+                    if cmdjson["toType"] == "j":
+                        await self.Client.publish(
+                            ttopic, json.dumps(cmdjson["payload"]).encode(), QOS_0
+                        )
+
                 except Exception as e:
                     helperbotlog.exception("{}".format(e))
 
