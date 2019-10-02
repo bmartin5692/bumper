@@ -348,9 +348,8 @@ async def test_helperbot_sendcommand():
         0.2
     )  # Override wait_resp_timeout (so we don't wait 10 seconds for timeout)
     # Send response beforehand
-    msg_payload = (
-        '{"body":{"code":0,"data":{"area":0,"cid":"111","start":"1569378657","time":6,"type":"auto"},"msg":"ok"},"header":{"fwVer":"1.6.4","hwVer":"0.1.1","pri":1,"ts":"1569380074036","tzm":480,"ver":"0.0.1"}}'
-    )
+    msg_payload = '{"body":{"code":0,"data":{"area":0,"cid":"111","start":"1569378657","time":6,"type":"auto"},"msg":"ok"},"header":{"fwVer":"1.6.4","hwVer":"0.1.1","pri":1,"ts":"1569380074036","tzm":480,"ver":"0.0.1"}}'
+    
     msg_topic_name = (
         "iot/p2p/getStats/bot_serial/ls1ok3/wC3g/helper1/bumper/helper1/p/testj/j"
     )

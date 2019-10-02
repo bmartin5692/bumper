@@ -183,12 +183,12 @@ class MQTTHelperBot:
                     cmdjson["payloadType"],
                 )
                 try:
-                    if cmdjson["toType"] == "x":
+                    if cmdjson["payloadType"] == "x":
                         await self.Client.publish(
                             ttopic, str(cmdjson["payload"]).encode(), QOS_0
                         )
 
-                    if cmdjson["toType"] == "j":
+                    if cmdjson["payloadType"] == "j":
                         await self.Client.publish(
                             ttopic, json.dumps(cmdjson["payload"]).encode(), QOS_0
                         )
