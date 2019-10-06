@@ -18,17 +18,6 @@ helperbotlog = logging.getLogger("helperbot")
 boterrorlog = logging.getLogger("boterror")
 mqttserverlog = logging.getLogger("mqttserver")
 
-logging.getLogger("transitions").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-logging.getLogger("passlib").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-logging.getLogger("hbmqtt.broker").setLevel(
-    logging.CRITICAL + 1
-)  # Ignore this logger #There are some sublogs that could be set if needed (.plugins)
-logging.getLogger("hbmqtt.mqtt.protocol").setLevel(
-    logging.CRITICAL + 1
-)  # Ignore this logger
-logging.getLogger("hbmqtt.client").setLevel(logging.CRITICAL + 1)  # Ignore this logger
-
-
 class MQTTHelperBot:
 
     Client = None
@@ -194,9 +183,16 @@ class MQTTHelperBot:
                     cmdjson["payloadType"],
                 )
                 try:
-                    await self.Client.publish(
-                        ttopic, str(cmdjson["payload"]).encode(), QOS_0
-                    )
+                    if cmdjson["payloadType"] == "x":
+                        await self.Client.publish(
+                            ttopic, str(cmdjson["payload"]).encode(), QOS_0
+                        )
+
+                    if cmdjson["payloadType"] == "j":
+                        await self.Client.publish(
+                            ttopic, json.dumps(cmdjson["payload"]).encode(), QOS_0
+                        )
+
                 except Exception as e:
                     helperbotlog.exception("{}".format(e))
 

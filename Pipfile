@@ -15,13 +15,14 @@ coverage = "*"
 mock = "*"
 pylint = "*"
 pbr = "*"
-pytest-asyncio = "*"
 pytest-aiohttp = "*"
 pytest-cov = "*"
 testfixtures = "*"
 codecov = "*"
 autoflake = "*"
 pytest-env = "*"
+pytest = "==5.0.1"
+pytest-asyncio = "*"
 
 [pipenv]
 allow_prereleases = true

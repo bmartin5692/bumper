@@ -280,8 +280,9 @@ async def test_helperbot_sendcommand():
         "ret": "ok",
     }
 
-    mqtt_helperbot.Client.disconnect()
+    #mqtt_helperbot.Client.disconnect()
 
+    # Test GetLifeSpan (xml command)
     cmdjson = {
         "toType": "ls1ok3",
         "payloadType": "x",
@@ -303,11 +304,7 @@ async def test_helperbot_sendcommand():
         0.2
     )  # Override wait_resp_timeout (so we don't wait 10 seconds for timeout)
     # Send response beforehand
-    msg_payload = (
-        "{'id': 'testx', 'ret': 'ok', 'resp': "
-        "<ctl ret='ok' type='Brush' left='4142' total='18000'/>"
-        "}"
-    )
+    msg_payload = "<ctl ret='ok' type='Brush' left='4142' total='18000'/>"
     msg_topic_name = (
         "iot/p2p/GetLifeSpan/bot_serial/ls1ok3/wC3g/helper1/bumper/helper1/p/testx/q"
     )
@@ -318,7 +315,53 @@ async def test_helperbot_sendcommand():
     commandresult = await mqtt_helperbot.send_command(cmdjson, "testx")
     assert commandresult == {
         "id": "testx",
-        "resp": "{'id': 'testx', 'ret': 'ok', 'resp': <ctl ret='ok' type='Brush' left='4142' total='18000'/>}",
+        "resp": "<ctl ret='ok' type='Brush' left='4142' total='18000'/>",
+        "ret": "ok",
+    }
+
+    # Test json payload (OZMO950)
+    cmdjson = {
+        "toType": "ls1ok3",
+        "payloadType": "j",
+        "toRes": "wC3g",
+        "payload": {
+            "header": {
+            "pri": 1,
+            "ts": "1569380075887",
+            "tzm": -240,
+            "ver": "0.0.50"
+        }
+        },
+        "td": "q",
+        "toId": "bot_serial",
+        "cmdName": "getStats",
+        "auth": {
+            "token": "us_52cb21fef8e547f38f4ec9a699a5d77e",
+            "resource": "IOSF53D07BA",
+            "userid": "fuid_tmpuser",
+            "with": "users",
+            "realm": "ecouser.net",
+        },
+    }
+
+    mqtt_helperbot.wait_resp_timeout_seconds = (
+        0.2
+    )  # Override wait_resp_timeout (so we don't wait 10 seconds for timeout)
+    # Send response beforehand
+    msg_payload = '{"body":{"code":0,"data":{"area":0,"cid":"111","start":"1569378657","time":6,"type":"auto"},"msg":"ok"},"header":{"fwVer":"1.6.4","hwVer":"0.1.1","pri":1,"ts":"1569380074036","tzm":480,"ver":"0.0.1"}}'
+    
+    msg_topic_name = (
+        "iot/p2p/getStats/bot_serial/ls1ok3/wC3g/helper1/bumper/helper1/p/testj/j"
+    )
+    await mqtt_helperbot.Client.publish(
+        msg_topic_name, msg_payload.encode(), hbmqtt.client.QOS_0
+    )
+
+    commandresult = await mqtt_helperbot.send_command(cmdjson, "testj")
+
+    assert commandresult == {
+        "id": "testj",
+        "resp": {'body':{'code':0,'data':{'area':0,'cid':'111','start':'1569378657','time':6,'type':'auto'},'msg':'ok'},'header':{'fwVer':'1.6.4','hwVer':'0.1.1','pri':1,'ts':'1569380074036','tzm':480,'ver':'0.0.1'}},
         "ret": "ok",
     }
 
