@@ -49,12 +49,13 @@ class ConfServer:
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop())
+        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[self.log_all_requests])
 
         self.app.add_routes(
             [
-                web.get("", self.handle_base),
-                web.get("/restart_{service}", self.handle_RestartService),
+                
+                web.get("", self.handle_base),                
+                web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
                     self.handle_login,
@@ -134,7 +135,7 @@ class ConfServer:
                 web.post("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
                 web.get("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
                 web.post(
-                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
+                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap, name='getProductIotMap'
                 ),
                 web.post("/api/lg/log.do", self.handle_lg_log),  # EcoVacs Home
                 web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
@@ -225,6 +226,56 @@ class ConfServer:
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
+
+    @web.middleware
+    async def log_all_requests(self, request, handler):
+        
+        try:
+            if request.content_length:
+                if request.content_type == "application/x-www-form-urlencoded":
+                    postbody = await request.post()
+
+                elif request.content_type == "application/json":
+                    try:
+                        postbody = json.loads(await request.text())
+                    except Exception as e:
+                        confserverlog.error("Request body not json: {} - {}".format(e, e.doc))
+                        postbody = e.doc
+                
+                else:
+                    postbody = await request.post()
+            else:
+                postbody = None
+
+            response = await handler(request)
+            logall = {
+                "request": {
+                "route_name": f"{request.match_info.route.name}",
+                "method": f"{request.method}",
+                "path": f"{request.path}",
+                "query_string": f"{request.query_string}",
+                "raw_path": f"{request.raw_path}",
+                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                "body": f"{postbody}",
+                    },
+
+                "response": {
+                "response_body": f"{json.loads(response.body)}",
+                "status": f"{response.status}",
+                }
+                }   
+
+            confserverlog.debug(json.dumps(logall))
+            
+            return response
+
+        except web.HTTPNotFound as notfound:
+            confserverlog.debug("Request path {} not found".format(request.raw_path))
+            return notfound
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))           
+            return e 
 
     async def restart_Helper(self):
 
