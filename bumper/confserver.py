@@ -271,10 +271,34 @@ class ConfServer:
 
         except web.HTTPNotFound as notfound:
             confserverlog.debug("Request path {} not found".format(request.raw_path))
+            requestlog = {
+                "request": {
+                "route_name": f"{request.match_info.route.name}",
+                "method": f"{request.method}",
+                "path": f"{request.path}",
+                "query_string": f"{request.query_string}",
+                "raw_path": f"{request.raw_path}",
+                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                "body": f"{postbody}",
+                    }
+            }
+            confserverlog.debug(json.dumps(requestlog))
             return notfound
 
         except Exception as e:
             confserverlog.exception("{}".format(e))           
+            requestlog = {
+                "request": {
+                "route_name": f"{request.match_info.route.name}",
+                "method": f"{request.method}",
+                "path": f"{request.path}",
+                "query_string": f"{request.query_string}",
+                "raw_path": f"{request.raw_path}",
+                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                "body": f"{postbody}",
+                    }
+            }
+            confserverlog.debug(json.dumps(requestlog))
             return e 
 
     async def restart_Helper(self):
@@ -1058,8 +1082,6 @@ class ConfServer:
                     bumper.bot_remove(postbody["did"])
                     body = {"result": "ok", "todo": "result"}
 
-                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
-
                 return web.json_response(body)
 
             except Exception as e:
@@ -1100,8 +1122,6 @@ class ConfServer:
                         "ret": "ok",
                         "todo": "result",
                     }
-
-                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
 
                 return web.json_response(body)
 
@@ -1171,7 +1191,6 @@ class ConfServer:
                 if not "cmdName" in json_body:
                     if "td" in json_body:
                         json_body["cmdName"] = json_body["td"]
-                        # json_body["td"] = "q"
 
                 if not "toId" in json_body:
                     json_body["toId"] = did
@@ -1186,18 +1205,18 @@ class ConfServer:
                     json_body["payloadType"] = "x"
 
                 if not "payload" in json_body:
-                    json_body["payload"] = ""
+                    #json_body["payload"] = ""
                     if json_body["td"] == "GetCleanLogs":
                         json_body["td"] = "q"
-                        json_body["payload"] = '<ctl count="30"/>'  # <ctl />"
+                        json_body["payload"] = '<ctl count="30"/>'
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng":
-                    body = ""
+                if bot["company"] == "eco-ng":                    
                     retcmd = await bumper.mqtt_helperbot.send_command(
                         json_body, randomid
                     )
+                    body = retcmd
                     confserverlog.debug("Send Bot - {}".format(json_body))
                     confserverlog.debug("Bot Response - {}".format(body))
                     logs = []
@@ -1205,21 +1224,24 @@ class ConfServer:
                     if logsroot.attrib["ret"] == "ok":
                         cleanlogs = logsroot.getchildren()
                         for l in cleanlogs:
-                            logs.append(l.attrib)
-
+                            cleanlog = {
+                                "ts": l.attrib['s'],
+                                "area": l.attrib['a'],                                
+                                "last": l.attrib['l'],
+                                "cleanType": l.attrib['t'],
+                                #imageUrl allows for providing images of cleanings, something to look into later
+                                #"imageUrl": "https://localhost:8007",                            
+                            }
+                            logs.append(cleanlog)
                         body = {
                             "ret": "ok",
-                            # "logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
-                            "logs": [],
+                            "logs": logs,
                         }
 
                     else:
                         body = {"ret": "ok", "logs": []}
 
-                    confserverlog.debug(
-                        "POST: {} - Response: {}".format(json_body, body)
-                    )
-
+                    confserverlog.debug("lg logs return: {}".format(json.dumps(body)))
                     return web.json_response(body)
                 else:
                     # No response, send error back
