@@ -489,7 +489,10 @@ class ConfServer:
                 bumper.user_add_device(tmpuser["userid"], user_devid)
 
             for bot in bots:  # Add all bots to the user
-                bumper.user_add_bot(tmpuser["userid"], bot["did"])
+                if "did" in bot:
+                    bumper.user_add_bot(tmpuser["userid"], bot["did"])
+                else:
+                    confserverlog.error("No DID for bot: {}".format(bot))
 
             if "checkLogin" in request.path:  # If request was to check a token do so
                 checkToken = self.check_token(

@@ -84,7 +84,7 @@ async def test_login(aiohttp_client):
     assert "username" in jsonresp["data"]
 
     remove_existing_db()
-    bumper.db = "tests/tmp.db"  # Set db location for testing
+    bumper.db = "tests/tmp.db"  # Set db location for testing 
 
     # Test global_e without user
     resp = await client.get("/v1/private/us/en/dev_1234/global_e/1/0/0/user/login")
@@ -109,6 +109,25 @@ async def test_login(aiohttp_client):
 
     # Add a bot to db that will be added to user
     bumper.bot_add("sn_123", "did_123", "dev_123", "res_123", "com_123")
+    resp = await client.get("/v1/private/us/en/dev_1234/ios/1/0/0/user/login")
+    assert resp.status == 200
+    text = await resp.text()
+    jsonresp = json.loads(text)
+    assert jsonresp["code"] == bumper.RETURN_API_SUCCESS
+    assert "accessToken" in jsonresp["data"]
+    assert "uid" in jsonresp["data"]
+    assert "username" in jsonresp["data"]
+
+    # Add a bot to db that doesn't have a did
+    newbot = {
+            "class": "dev_1234",
+            "company": "com_123",
+            #"did": self.did,
+            "name": "sn_1234",            
+            "resource": "res_1234",            
+    }
+    bumper.bot_full_upsert(newbot)
+
     resp = await client.get("/v1/private/us/en/dev_1234/ios/1/0/0/user/login")
     assert resp.status == 200
     text = await resp.text()
