@@ -309,7 +309,10 @@ def bot_toEcoVacsHome_JSON(bot):  # EcoVacs Home
 def bot_full_upsert(vacbot):
     bots = db_get().table("bots")
     Bot = Query()
-    bots.upsert(vacbot, Bot.did == vacbot["did"])
+    if "did" in vacbot:
+        bots.upsert(vacbot, Bot.did == vacbot["did"])
+    else:
+        bumperlog.error("No DID in vacbot: {}".format(vacbot))
 
 
 def bot_set_nick(did, nick):
