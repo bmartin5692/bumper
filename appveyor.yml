@@ -9,7 +9,7 @@ environment:
 
 install:
   - pip install pipenv
-  - pipenv --python 3
+  - pipenv --python 3.7
   - pipenv install --dev
 
 build: off
