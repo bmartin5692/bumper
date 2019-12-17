@@ -52,6 +52,30 @@ Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with
 
 ### Importing the CA Cert on Android
 
+#### Android 7 and up (requires root)
+
+Android 7 introduced changes to the certificate mechanism. See [blog entry](https://android-developers.googleblog.com/2016/07/changes-to-trusted-certificate.html).
+
+> Apps that target API Level 24 and above no longer trust user or admin-added CAs for secure connections, by default.
+
+To circumvent this problem, the certificate must be added as a system storage.
+
+```bash
+openssl x509 -in ca.crt -noout -text >> ca.crt
+
+# restart adb as root
+adb root
+# remount /system rw
+adb remount
+# add certificate
+adb push ca.crt "/system/etc/security/cacerts/$(openssl x509 -inform PEM -subject_hash_old -in ca.crt | head -1).0"
+adb reboot
+```
+
+After reboot, verify that the certificate was added by checking `Settings > Security > Encryption & credentials > Trusted credentials > System`
+
+#### Android 6 and below
+
 1. Open the e-mail on your Android device
 
 **Quick Method**
