@@ -255,7 +255,7 @@ class MQTTServer:
                 "auth": {
                     "allow-anonymous": False,
                     "password-file": os.path.join(
-                        os.path.dirname(os.path.realpath(__file__)), "passwd"
+                        os.path.join(bumper.data_dir, "passwd")
                     ),
                     "plugins": ["bumper"],  # No plugins == no auth
                 },
