@@ -497,6 +497,11 @@ async def test_getProductIotMap(aiohttp_client):
     assert jsonresp["code"] == bumper.RETURN_API_SUCCESS
 
 
+    # Test getPimFile
+    resp = await client.get("/api/pim/file/get/123")
+    assert resp.status == 200
+    
+
 async def test_getUsersAPI(aiohttp_client):
     remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
@@ -905,4 +910,6 @@ async def test_dim_devmanager(aiohttp_client):
     text = await resp.text()
     test_resp = json.loads(text)
     assert test_resp["ret"] == "fail"
+
+  
 

@@ -17,6 +17,7 @@ tests/*
 # Ignore logs/data/certs
 logs/*
 data/*
+!data/web*
 certs/*
 
 # Except README in logs/data/certs

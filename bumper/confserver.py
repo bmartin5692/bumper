@@ -6,6 +6,7 @@ import ssl
 import string
 import random
 import bumper
+import os
 from bumper.models import *
 from datetime import datetime, timedelta
 import asyncio
@@ -142,6 +143,7 @@ class ConfServer:
                     "/api/dim/devmanager.do", self.handle_dim_devmanager
                 ),  # EcoVacs Home
                 web.post("/lookup.do", self.handle_lookup),
+                web.get("/api/pim/file/get/{id}", self.handle_pimFile)
             ]
         )
         # Direct register from app:
@@ -1272,6 +1274,16 @@ class ConfServer:
                         body = {"ret": "ok", "unRead": False}
                         return web.json_response(body)
 
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+
+
+    async def handle_pimFile(self, request):
+        try:
+            fileID = request.match_info.get("id", "")
+
+            return web.FileResponse(os.path.join(bumper.data_dir,"web","robotvac_image.jpg"))
+            
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
