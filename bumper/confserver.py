@@ -203,10 +203,12 @@ class ConfServer:
             mq_sessions = []
             for sess in mqttserver._sessions:
                 tmpsess = []
-                tmpsess.append({"client_id": mqttserver._sessions[sess][0].client_id})
-                tmpsess.append(
-                    {"state": mqttserver._sessions[sess][0].transitions.state}
-                )
+                tmpsess.append({
+                    "username": mqttserver._sessions[sess][0].username,
+                    "client_id": mqttserver._sessions[sess][0].client_id,
+                    "state": mqttserver._sessions[sess][0].transitions.state,
+                })
+               
                 mq_sessions.append(tmpsess)
             all = {
                 "bots": bots,
