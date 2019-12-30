@@ -13,6 +13,7 @@ import bumper
 import json
 from datetime import datetime, timedelta
 import bumper
+from passlib.apps import custom_app_context as pwd_context
 
 helperbotlog = logging.getLogger("helperbot")
 boterrorlog = logging.getLogger("boterror")
@@ -253,11 +254,11 @@ class MQTTServer:
                 },
                 "sys_interval": 10,
                 "auth": {
-                    "allow-anonymous": False,
+                    "allow-anonymous": False, # Set to True to allow anonymous authentication
                     "password-file": os.path.join(
                         os.path.join(bumper.data_dir, "passwd")
-                    ),
-                    "plugins": ["bumper"],  # No plugins == no auth
+                    ), # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+                    "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
                 },
                 "topic-check": {"enabled": False},
             }
@@ -271,6 +272,8 @@ class BumperMQTTServer_Plugin:
         self.context = context
         try:
             self.auth_config = self.context.config["auth"]
+            self._users = dict()
+            self._read_password_file()
 
         except KeyError:
             self.context.logger.warning(
@@ -280,6 +283,7 @@ class BumperMQTTServer_Plugin:
             mqttserverlog.exception("{}".format(e))
 
     async def authenticate(self, *args, **kwargs):
+        authenticated = False
         if not self.auth_config:
             # auth config section not found
             self.context.logger.warning(
@@ -287,19 +291,14 @@ class BumperMQTTServer_Plugin:
             )
             return False
 
-        allow_anonymous = self.auth_config.get(
-            "allow-anonymous", True
-        )  # allow anonymous by default
-        if allow_anonymous:
-            authenticated = True
-            self.context.logger.debug("Authentication success: config allows anonymous")
-        else:
-            try:
-                session = kwargs.get("session", None)
-                username = session.username
-                password = session.password
-                client_id = session.client_id
+        
+        try:
+            session = kwargs.get("session", None)
+            username = session.username
+            password = session.password
+            client_id = session.client_id
 
+            if "@" in client_id:
                 didsplit = str(client_id).split("@")
                 if not (  # if ecouser or bumper aren't in details it is a bot
                     "ecouser" in didsplit[1] or "bumper" in didsplit[1]
@@ -312,10 +311,7 @@ class BumperMQTTServer_Plugin:
                         tmpbotdetail[1],
                         "eco-ng",
                     )
-
-                    mqttserverlog.info(
-                        "bot authenticated SN: {} DID: {}".format(username, didsplit[0])
-                    )
+                    mqttserverlog.info(f"Bumper Authentication Success - Bot - SN: {username} - DID: {didsplit[0]} - Class: {tmpbotdetail[0]}")                    
                     authenticated = True
 
                 else:
@@ -325,6 +321,7 @@ class BumperMQTTServer_Plugin:
                     resource = tmpclientdetail[1]
 
                     if userid == "helper1":
+                        mqttserverlog.info(f"Bumper Authentication Success - Helperbot: {client_id}")
                         authenticated = True
                     else:
                         auth = False
@@ -335,19 +332,59 @@ class BumperMQTTServer_Plugin:
 
                         if auth:
                             bumper.client_add(userid, realm, resource)
-                            mqttserverlog.info("client authenticated {}".format(userid))
+                            mqttserverlog.info(f"Bumper Authentication Success - Client - Username: {username} - ClientID: {client_id}")
                             authenticated = True
 
                         else:
                             authenticated = False
 
-            except Exception as e:
-                mqttserverlog.exception(
-                    "Session: {} - {}".format((kwargs.get("session", None)), e)
-                )
-                authenticated = False
+            # Check for File Auth            
+            if username and not authenticated: # If there is a username and it isn't already authenticated
+                hash = self._users.get(username, None)
+                if hash: # If there is a matching entry in passwd, check hash
+                    authenticated = pwd_context.verify(password, hash)
+                    if authenticated:
+                        mqttserverlog.info(f"File Authentication Success - Username: {username} - ClientID: {client_id}")
+                    else:
+                        mqttserverlog.info(f"File Authentication Failed - Username: {username} - ClientID: {client_id}")
+                else:
+                    mqttserverlog.info(f"File Authentication Failed - No Entry for Username: {username} - ClientID: {client_id}")
+
+        except Exception as e:
+            mqttserverlog.exception(
+                "Session: {} - {}".format((kwargs.get("session", None)), e)
+            )
+            authenticated = False
+
+        # Check for allow anonymous
+        allow_anonymous = self.auth_config.get(
+            "allow-anonymous", True
+        )  
+        if allow_anonymous and not authenticated: # If anonymous auth is allowed and it isn't already authenticated
+            authenticated = True
+            self.context.logger.debug(f"Anonymous Authentication Success: config allows anonymous - Username: {username}")
+            mqttserverlog.info(f"Anonymous Authentication Success: config allows anonymous - Username: {username}")
 
         return authenticated
+
+    def _read_password_file(self):
+        password_file = self.auth_config.get('password-file', None)
+        if password_file:
+            try:
+                with open(password_file) as f:
+                    self.context.logger.debug(f"Reading user database from {password_file}")
+                    for l in f:
+                        line = l.strip()
+                        if not line.startswith('#'):    # Allow comments in files
+                            (username, pwd_hash) = line.split(sep=":", maxsplit=3)
+                            if username:
+                                self._users[username] = pwd_hash
+                                self.context.logger.debug(f"user: {username} - hash: {pwd_hash}")
+                self.context.logger.debug(f"{(len(self._users))} user(s) read from file {password_file}")
+            except FileNotFoundError:
+                self.context.logger.warning(f"Password file {password_file} not found")
+        else:
+            self.context.logger.debug("Configuration parameter 'password_file' not found")        
 
     async def on_broker_client_connected(self, client_id):
 
@@ -358,7 +395,6 @@ class BumperMQTTServer_Plugin:
             bumper.bot_set_mqtt(bot["did"], True)
             return
 
-        # clientuserid = didsplit[0]
         clientresource = didsplit[1].split("/")[1]
         client = bumper.client_get(clientresource)
         if client:
@@ -374,7 +410,6 @@ class BumperMQTTServer_Plugin:
             bumper.bot_set_mqtt(bot["did"], False)
             return
 
-        # clientuserid = didsplit[0]
         clientresource = didsplit[1].split("/")[1]
         client = bumper.client_get(clientresource)
         if client:
