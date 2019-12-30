@@ -7,16 +7,21 @@ __pycache__
 # Except .
 !.github/
 !.gitignore
+!.dockerignore
+!.travis.yml
 
 # Ignore items in test (report, cache, etc), except files starting with test
 tests/* 
 !tests/test*
 !tests/test_certs
 !tests/pytest.ini
+!tests/passwd
+!tests/passwd_bad
 
 # Ignore logs/data/certs
 logs/*
 data/*
+!data/web*
 certs/*
 
 # Except README in logs/data/certs

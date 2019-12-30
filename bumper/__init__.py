@@ -321,6 +321,11 @@ def main(argv=None):
             first_run()
             return
 
+        if not (
+            os.path.exists(os.path.join(data_dir, "passwd"))
+        ):
+            with open(os.path.join(data_dir, "passwd"), 'w'): pass
+
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--listen", type=str, default=None, help="start serving on address"

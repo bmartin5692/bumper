@@ -379,6 +379,26 @@ async def test_mqttserver():
     mqtt_address = ("127.0.0.1", 8883)
 
     mqtt_server = bumper.MQTTServer(mqtt_address)
+
+    mqtt_server.default_config = {
+                "listeners": {
+                    "default": {"type": "tcp"},
+                    "tls1": {
+                        "bind": "{}:{}".format(mqtt_address[0], mqtt_address[1]),
+                        "ssl": "on",
+                        "certfile": bumper.server_cert,
+                        "keyfile": bumper.server_key,
+                    },
+                },
+                "sys_interval": 10,
+                "auth": {
+                    "allow-anonymous": True, # Set to True to allow anonymous authentication
+                    "password-file": "tests/passwd", # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+                    "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                },
+                "topic-check": {"enabled": False},
+            }
+    
     await mqtt_server.broker_coro()
 
     # Test helperbot connect
@@ -420,6 +440,170 @@ async def test_mqttserver():
     )  # Check fake_bot is connected
     await fake_bot.Client.disconnect()
 
+    # Test file auth client connect
+    test_client = bumper.MQTTHelperBot(mqtt_address)
+    test_client.client_id = "test-file-auth"
+    # await test_client.start_helper_bot()
+    test_client.Client = hbmqtt.client.MQTTClient(
+        client_id=test_client.client_id, config={"check_hostname": False, "auto_reconnect": False, "reconnect_retries": 1}
+    )
+
+    # good user/pass
+    await test_client.Client.connect(
+        f"mqtts://test-client:abc123!@{test_client.address[0]}:{test_client.address[1]}/",
+        cafile=bumper.ca_cert, cleansession=True
+    )
+
+    assert (
+        test_client.Client._connected_state._value == True
+    )  # Check client is connected
+    await test_client.Client.disconnect()
+    assert (
+        test_client.Client._connected_state._value == False
+    )  # Check client is disconnected
+    
+    # bad password
+    try:
+        await test_client.Client.connect(
+            f"mqtts://test-client:notvalid!@{test_client.address[0]}:{test_client.address[1]}/",
+            cafile=bumper.ca_cert, cleansession=True
+        )
+
+        assert (
+            test_client.Client._connected_state._value == False
+        )  # Check client is connected
+
+    except Exception as ae:
+        pass
+
+    # no username in file
+    try:
+        await test_client.Client.connect(
+            f"mqtts://test-client-noexist:notvalid!@{test_client.address[0]}:{test_client.address[1]}/",
+            cafile=bumper.ca_cert, cleansession=True
+        )
+
+        assert (
+            test_client.Client._connected_state._value == False
+        )  # Check client is connected
+
+    except Exception as ae:
+        pass    
+        
+   
+
     await asyncio.sleep(0.1)
 
     await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
+
+async def test_passwordfile_badhash_mqttserver():
+    mqtt_address = ("127.0.0.1", 8883)
+
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+
+    mqtt_server.default_config = {
+                "listeners": {
+                    "default": {"type": "tcp"},
+                    "tls1": {
+                        "bind": "{}:{}".format(mqtt_address[0], mqtt_address[1]),
+                        "ssl": "on",
+                        "certfile": bumper.server_cert,
+                        "keyfile": bumper.server_key,
+                    },
+                },
+                "sys_interval": 10,
+                "auth": {
+                    "allow-anonymous": True, # Set to True to allow anonymous authentication
+                    "password-file": "tests/passwd_bad", # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+                    "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                },
+                "topic-check": {"enabled": False},
+            }
+    
+    await mqtt_server.broker_coro()  
+    await asyncio.sleep(0.1)
+    
+    # bad password
+    try:
+        test_client = bumper.MQTTHelperBot(mqtt_address)
+
+        await test_client.Client.connect(
+            f"mqtts://test-client:notvalid!@{test_client.address[0]}:{test_client.address[1]}/",
+            cafile=bumper.ca_cert, cleansession=True
+        )
+
+        assert (
+            test_client.Client._connected_state._value == False
+        )  # Check client is connected
+   
+    
+    except Exception as ae:
+        pass
+    
+    await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
+
+async def test_nofileauth_mqttserver():
+    try:
+        
+        mqtt_address = ("127.0.0.1", 8883)
+
+        mqtt_server = bumper.MQTTServer(mqtt_address)
+
+        mqtt_server.default_config = {
+                    "listeners": {
+                        "default": {"type": "tcp"},
+                        "tls1": {
+                            "bind": "{}:{}".format(mqtt_address[0], mqtt_address[1]),
+                            "ssl": "on",
+                            "certfile": bumper.server_cert,
+                            "keyfile": bumper.server_key,
+                        },
+                    },
+                    "sys_interval": 10,
+                    "auth": {
+                        "allow-anonymous": True, # Set to True to allow anonymous authentication
+                        "password-file": "tests/passwd-notfound", # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+                        "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                    },
+                    "topic-check": {"enabled": False},
+                }
+        
+        await mqtt_server.broker_coro()
+
+    except:
+        pass
+    
+
+async def test_passwordfile_opt_missing_mqttserver():
+    try:
+    
+        mqtt_address = ("127.0.0.1", 8883)
+
+        mqtt_server = bumper.MQTTServer(mqtt_address)
+
+        mqtt_server.default_config = {
+                    "listeners": {
+                        "default": {"type": "tcp"},
+                        "tls1": {
+                            "bind": "{}:{}".format(mqtt_address[0], mqtt_address[1]),
+                            "ssl": "on",
+                            "certfile": bumper.server_cert,
+                            "keyfile": bumper.server_key,
+                        },
+                    },
+                    "sys_interval": 10,
+                    "auth": {
+                        "allow-anonymous": True, # Set to True to allow anonymous authentication
+                    
+                        "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                    },
+                    "topic-check": {"enabled": False},
+                }
+        
+        await mqtt_server.broker_coro()
+        await mqtt_server.broker.shutdown()    
+    
+    except:
+        pass
