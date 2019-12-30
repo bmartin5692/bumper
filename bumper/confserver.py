@@ -252,22 +252,39 @@ class ConfServer:
                 postbody = None
 
             response = await handler(request)
-            logall = {
-                "request": {
-                "route_name": f"{request.match_info.route.name}",
-                "method": f"{request.method}",
-                "path": f"{request.path}",
-                "query_string": f"{request.query_string}",
-                "raw_path": f"{request.raw_path}",
-                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                "body": f"{postbody}",
-                    },
+            if not "application/octet-stream" in response.content_type:
+                logall = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        },
 
-                "response": {
-                "response_body": f"{json.loads(response.body)}",
-                "status": f"{response.status}",
-                }
-                }   
+                    "response": {
+                    "response_body": f"{json.loads(response.body)}",
+                    "status": f"{response.status}",
+                    }
+                    }
+            else:
+                logall = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        },
+
+                    "response": {
+                    "status": f"{response.status}",
+                    }
+                    }   
 
             confserverlog.debug(json.dumps(logall))
             
