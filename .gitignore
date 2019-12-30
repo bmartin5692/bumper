@@ -13,6 +13,8 @@ tests/*
 !tests/test*
 !tests/test_certs
 !tests/pytest.ini
+!tests/passwd
+!tests/passwd_bad
 
 # Ignore logs/data/certs
 logs/*
