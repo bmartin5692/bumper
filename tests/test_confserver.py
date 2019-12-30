@@ -56,16 +56,65 @@ def test_get_milli_time():
     )
 
 
-# Comment out test_base until api changes are complete
-""" async def test_base(aiohttp_client):
+async def test_base(aiohttp_client):
     remove_existing_db()
     bumper.db = "tests/tmp.db"  # Set db location for testing
-    client = await aiohttp_client(create_app)
+    
+    # Start MQTT
+    mqtt_address = ("127.0.0.1", 8883)    
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+    bumper.mqtt_server = mqtt_server
+    await mqtt_server.broker_coro()
+    
+    # Start Helperbot
+    mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
+    bumper.mqtt_helperbot = mqtt_helperbot
+    await mqtt_helperbot.start_helper_bot()
 
+    client = await aiohttp_client(create_app)
     resp = await client.get("/")
-    assert resp.status == 200
-    text = await resp.text()
-    assert "Bumper!" in text """
+    assert resp.status == 200   
+
+    mqtt_helperbot.Client.disconnect()
+
+    await mqtt_server.broker.shutdown()
+
+async def test_restartService(aiohttp_client):
+    remove_existing_db()
+    bumper.db = "tests/tmp.db"  # Set db location for testing
+    
+    # Start MQTT
+    mqtt_address = ("127.0.0.1", 8883)    
+    mqtt_server = bumper.MQTTServer(mqtt_address)
+    bumper.mqtt_server = mqtt_server
+    await mqtt_server.broker_coro()
+
+    # Start XMPP
+    xmpp_address = ("127.0.0.1", 5223)
+    xmpp_server = bumper.XMPPServer(xmpp_address)
+    bumper.xmpp_server = xmpp_server
+    await xmpp_server.start_async_server()
+    
+    # Start Helperbot
+    mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
+    bumper.mqtt_helperbot = mqtt_helperbot
+    await mqtt_helperbot.start_helper_bot()
+
+    client = await aiohttp_client(create_app)
+    
+    resp = await client.get("/restart_Helperbot")
+    assert resp.status == 200   
+
+    resp = await client.get("/restart_MQTTServer")
+    assert resp.status == 200   
+
+    resp = await client.get("/restart_XMPPServer")
+    assert resp.status == 200   
+
+    mqtt_helperbot.Client.disconnect()
+    await mqtt_server.broker.shutdown()    
+
+    xmpp_server.disconnect()
 
 
 async def test_login(aiohttp_client):

@@ -309,11 +309,6 @@ class ConfServer:
     async def restart_MQTT(self):
         mqttserver = bumper.mqtt_server.broker
 
-        for sess in list(mqttserver._sessions):
-            sessobj = mqttserver._sessions[sess][1]
-            await sessobj.writer.close()
-            mqttserver.delete_session(sess)
-
         await bumper.mqtt_server.broker.shutdown()
         while not bumper.mqtt_server.broker.transitions.state == "stopped":
             await asyncio.sleep(0.1)
