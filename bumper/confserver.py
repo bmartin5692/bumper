@@ -50,12 +50,13 @@ class ConfServer:
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop())
+        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[self.log_all_requests])
 
         self.app.add_routes(
             [
-                web.get("", self.handle_base),
-                web.get("/restart_{service}", self.handle_RestartService),
+                
+                web.get("", self.handle_base),                
+                web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
                     self.handle_login,
@@ -135,7 +136,7 @@ class ConfServer:
                 web.post("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
                 web.get("/api/appsvr/app.do", self.handle_appsvr_api),  # EcoVacs Home
                 web.post(
-                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap
+                    "/api/pim/product/getProductIotMap", self.handle_getProductIotMap, name='getProductIotMap'
                 ),
                 web.post("/api/lg/log.do", self.handle_lg_log),  # EcoVacs Home
                 web.post("/api/iot/devmanager.do", self.handle_devmanager_botcommand),
@@ -230,6 +231,97 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
+    @web.middleware
+    async def log_all_requests(self, request, handler):
+        
+        try:
+            if request.content_length:
+                if request.content_type == "application/x-www-form-urlencoded":
+                    postbody = await request.post()
+
+                elif request.content_type == "application/json":
+                    try:
+                        postbody = json.loads(await request.text())
+                    except Exception as e:
+                        confserverlog.error("Request body not json: {} - {}".format(e, e.doc))
+                        postbody = e.doc
+                
+                else:
+                    postbody = await request.post()
+            else:
+                postbody = None
+
+            response = await handler(request)
+            if not "application/octet-stream" in response.content_type:
+                logall = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        },
+
+                    "response": {
+                    "response_body": f"{json.loads(response.body)}",
+                    "status": f"{response.status}",
+                    }
+                    }
+            else:
+                logall = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        },
+
+                    "response": {
+                    "status": f"{response.status}",
+                    }
+                    }   
+
+            confserverlog.debug(json.dumps(logall))
+            
+            return response
+
+        except web.HTTPNotFound as notfound:
+            confserverlog.debug("Request path {} not found".format(request.raw_path))
+            requestlog = {
+                "request": {
+                "route_name": f"{request.match_info.route.name}",
+                "method": f"{request.method}",
+                "path": f"{request.path}",
+                "query_string": f"{request.query_string}",
+                "raw_path": f"{request.raw_path}",
+                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                "body": f"{postbody}",
+                    }
+            }
+            confserverlog.debug(json.dumps(requestlog))
+            return notfound
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))           
+            requestlog = {
+                "request": {
+                "route_name": f"{request.match_info.route.name}",
+                "method": f"{request.method}",
+                "path": f"{request.path}",
+                "query_string": f"{request.query_string}",
+                "raw_path": f"{request.raw_path}",
+                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                "body": f"{postbody}",
+                    }
+            }
+            confserverlog.debug(json.dumps(requestlog))
+            return e 
+
     async def restart_Helper(self):
 
         await bumper.mqtt_helperbot.Client.disconnect()
@@ -237,11 +329,6 @@ class ConfServer:
 
     async def restart_MQTT(self):
         mqttserver = bumper.mqtt_server.broker
-
-        for sess in list(mqttserver._sessions):
-            sessobj = mqttserver._sessions[sess][1]
-            await sessobj.writer.close()
-            mqttserver.delete_session(sess)
 
         await bumper.mqtt_server.broker.shutdown()
         while not bumper.mqtt_server.broker.transitions.state == "stopped":
@@ -947,8 +1034,6 @@ class ConfServer:
                     bumper.bot_remove(postbody["did"])
                     body = {"result": "ok", "todo": "result"}
 
-                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
-
                 return web.json_response(body)
 
             except Exception as e:
@@ -989,8 +1074,6 @@ class ConfServer:
                         "ret": "ok",
                         "todo": "result",
                     }
-
-                confserverlog.debug("POST: {} - Response: {}".format(postbody, body))
 
                 return web.json_response(body)
 
@@ -1060,7 +1143,6 @@ class ConfServer:
                 if not "cmdName" in json_body:
                     if "td" in json_body:
                         json_body["cmdName"] = json_body["td"]
-                        # json_body["td"] = "q"
 
                 if not "toId" in json_body:
                     json_body["toId"] = did
@@ -1075,18 +1157,18 @@ class ConfServer:
                     json_body["payloadType"] = "x"
 
                 if not "payload" in json_body:
-                    json_body["payload"] = ""
+                    #json_body["payload"] = ""
                     if json_body["td"] == "GetCleanLogs":
                         json_body["td"] = "q"
-                        json_body["payload"] = '<ctl count="30"/>'  # <ctl />"
+                        json_body["payload"] = '<ctl count="30"/>'
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng":
-                    body = ""
+                if bot["company"] == "eco-ng":                    
                     retcmd = await bumper.mqtt_helperbot.send_command(
                         json_body, randomid
                     )
+                    body = retcmd
                     confserverlog.debug("Send Bot - {}".format(json_body))
                     confserverlog.debug("Bot Response - {}".format(body))
                     logs = []
@@ -1094,21 +1176,24 @@ class ConfServer:
                     if logsroot.attrib["ret"] == "ok":
                         cleanlogs = logsroot.getchildren()
                         for l in cleanlogs:
-                            logs.append(l.attrib)
-
+                            cleanlog = {
+                                "ts": l.attrib['s'],
+                                "area": l.attrib['a'],                                
+                                "last": l.attrib['l'],
+                                "cleanType": l.attrib['t'],
+                                #imageUrl allows for providing images of cleanings, something to look into later
+                                #"imageUrl": "https://localhost:8007",                            
+                            }
+                            logs.append(cleanlog)
                         body = {
                             "ret": "ok",
-                            # "logs": logs, #TODO: Doesn't parse correctly, new protocol & server side processing
-                            "logs": [],
+                            "logs": logs,
                         }
 
                     else:
                         body = {"ret": "ok", "logs": []}
 
-                    confserverlog.debug(
-                        "POST: {} - Response: {}".format(json_body, body)
-                    )
-
+                    confserverlog.debug("lg logs return: {}".format(json.dumps(body)))
                     return web.json_response(body)
                 else:
                     # No response, send error back
