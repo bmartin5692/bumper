@@ -23,6 +23,7 @@ autoflake = "*"
 pytest-env = "*"
 pytest = "==5.0.1"
 pytest-asyncio = "*"
+mkdocs = "*"
 
 [pipenv]
 allow_prereleases = true

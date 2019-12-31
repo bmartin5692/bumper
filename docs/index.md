@@ -39,3 +39,9 @@ For more information on generating certificates manually, see the [Creating Cert
 	- **Note:** Some models may require removing and re-inserting the battery pack.
 	- This doesn't seem to be required for models that don't have easily accessible batteries such as the 900/901.
 - If your configuration is correct, the robot will connect to Bumper within about 30 seconds. Bumper will output information about the connection status. 
+
+# Troubleshooting
+
+Logs are output in the /logs directory.
+
+If there is an issue, enable debug logging with the `--debug` switch for additional detail.
