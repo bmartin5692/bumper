@@ -4,8 +4,8 @@ The easiest way is overriding the main domains used by EcoVacs using DNSMasq/PiH
 
 ## Custom DNSMasq Config
 
-Typically written at /etc/dnsmasq.d/{##}-{name}.conf
-    - Ex: `/etc/dnsmasq.d/02-custom.conf`
+Typically written at /etc/dnsmasq.d/{##}-{name}.conf  
+  - Ex: `/etc/dnsmasq.d/02-custom.conf`
 
 **File Contents:**
 ````
@@ -16,7 +16,8 @@ address=/ecovacs.net/{bumper server ip}
 **Note:** *Replace `{bumper server ip}` with your server's IP*
 
 If using PiHole, reload FTL to apply changes:
-`sudo service pihole-FTL reload`
+  
+  `sudo service pihole-FTL reload`
 
 ## Manual Override
 
@@ -27,6 +28,7 @@ If overriding DNS for the top-level domains isn't an option, you'll need to conf
 Not all domains have been documented at this point, and this list will be updated as more are identified/seen. The preferred way to ensure Bumper works is to override the full domains as above.
 
 Replacement Examples:
+
   - {countrycode}
     - If you see `eco-{countrycode}-api.ecovacs.com` and you live in the US/North America you would use: `eco-us-api.ecovacs.com`
     - **Note**: {countrycode} may also be generalized regions such as "EU".

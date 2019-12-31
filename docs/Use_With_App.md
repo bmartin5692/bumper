@@ -25,28 +25,23 @@ Bumper *can* be used with the official "Ecovacs" or "Ecovacs Home" app, but with
 ### Importing the CA Cert on iOS
 
 1. Open the e-mail on your iOS device, and click the attached cert
-
 ![Example of email on iOS device](images/ios_email_cert.png)
 
-2. Install the profile by clicking "Install", and entering your pass code if prompted
-
+1. Install the profile by clicking "Install", and entering your pass code if prompted
 ![Example of install profile on iOS device](images/ios_install_profile.png)
 
-3. Accept the certificate warning by clicking "Install" again
-
+1. Accept the certificate warning by clicking "Install" again
 ![Example of cert warning on iOS device](images/ios_cert_warning_install.png)
 
-4. Click "Done" to exit the profile installation
-5. Go to Settings > General > About
-6. Scroll to the bottom and click "Certificate Trust Settings"
-7. Enable Full Trust for the Bumper CA Cert, by moving the slider to the right
-
+1. Click "Done" to exit the profile installation
+1. Go to Settings > General > About
+1. Scroll to the bottom and click "Certificate Trust Settings"
+1. Enable Full Trust for the Bumper CA Cert, by moving the slider to the right
 ![Example of enable trust cert on iOS device](images/ios_cert_trust.png)
-
 ![Example of enable trust cert on iOS device 2](images/ios_cert_trust_continue.png)
 
-8. Click continue when prompted
-9. That's it, you can now [Use the app](#use-the-app)
+1. Click continue when prompted
+1. That's it, you can now [Use the app](#use-the-app)
 
 ----
 
@@ -80,17 +75,17 @@ After reboot, verify that the certificate was added by checking `Settings > Secu
 
 **Quick Method**
 
-2. Click the cert, and if prompted provide a name
-3. Under "Used for", select "VPN and apps"
+1. Click the cert, and if prompted provide a name
+1. Under "Used for", select "VPN and apps"
 
 **Long Method**
 
-2. Save the attached cert file
-3. Go to Settings > Lock screen and security > Other security settings
-4. Under "Credential storage", click "Install from device storage"
-5. Browse to the downloaded cert, select it, then click "Done"
-6. Click the cert, and if prompted provide a name
-7. Under "Used for", select "VPN and apps"
+1. Save the attached cert file
+1. Go to Settings > Lock screen and security > Other security settings
+1. Under "Credential storage", click "Install from device storage"
+1. Browse to the downloaded cert, select it, then click "Done"
+1. Click the cert, and if prompted provide a name
+1. Under "Used for", select "VPN and apps"
 
 Now, start [using the app](#use-the-app).
 

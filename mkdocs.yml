@@ -1,0 +1,16 @@
+site_name: Bumper Docs
+nav:
+  - Home: index.md
+  - How It Works: How_It_Works.md
+  - Using: 
+    - "Command-Line": CmdLine.md
+    - "Docker": Docker.md
+    - "Using with Apps": Use_With_App.md
+    - "Using with Sucks": Use_With_Sucks.md
+  - Certs: Create_Certs.md
+  - DNS: DNS_Setup.md
+  - Configuration: 
+    - "Environment Variables": Env_Var.md
+  - Origins: origins.md
+
+theme: readthedocs
