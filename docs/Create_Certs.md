@@ -31,6 +31,7 @@ Create_Certs was created to ease creation of certificates specifically for Bumpe
 Create_Certs is written in Go which allows cross-platform compiling. If the binaries don't work on your platform, install Go. 
 
 With Go installed you can:
+
 * Execute the go code - `go run create_certs/src/create_certs.go` 
 * Build a new binary for your platform - `go build create_certs/src/create_certs.go`
 
@@ -53,110 +54,120 @@ I get it, you don't trust create_certs and want to do it manually.  The easiest 
 ### Create a Root CA
 
 1. Create csrconfig.txt for use in later commands
-    csrconfig.txt
-    ````
-    [ req ]
-    default_md = sha256
-    prompt = no
-    req_extensions = req_ext
-    distinguished_name = req_distinguished_name
-    [ req_distinguished_name ]
-    commonName = Bumper CA
-    organizationName = Bumper
-    [ req_ext ]
-    keyUsage=critical,keyCertSign,cRLSign
-    basicConstraints=critical,CA:true,pathlen:1
-    ````
+
+***csrconfig.txt***
+````
+[ req ]
+default_md = sha256
+prompt = no
+req_extensions = req_ext
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
+commonName = Bumper CA
+organizationName = Bumper
+[ req_ext ]
+keyUsage=critical,keyCertSign,cRLSign
+basicConstraints=critical,CA:true,pathlen:1
+````
 
 1. Create certconfig.txt for use in later commands
-    certconfig.txt
-    ````
-    [ req ]
-    default_md = sha256
-    prompt = no
-    req_extensions = req_ext
-    distinguished_name = req_distinguished_name
-    [ req_distinguished_name ]
-    commonName = Bumper CA
-    organizationName = Bumper
-    [ req_ext ]
-    subjectKeyIdentifier = hash
-    authorityKeyIdentifier = keyid:always,issuer
-    keyUsage=critical,keyCertSign,cRLSign
-    basicConstraints=critical,CA:true,pathlen:1
-    ````
+
+***certconfig.txt***
+````
+[ req ]
+default_md = sha256
+prompt = no
+req_extensions = req_ext
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
+commonName = Bumper CA
+organizationName = Bumper
+[ req_ext ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+keyUsage=critical,keyCertSign,cRLSign
+basicConstraints=critical,CA:true,pathlen:1
+````
 
 1. Generate the RSA private key 
-`openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
+    
+    `openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
 
 1. Create the CSR
-`openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
+    
+    `openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
 
 1. Self-sign your CSR
-`openssl req -x509 -nodes -in cert.csr -days 3650 -key priv.key -config certconfig.txt -extensions req_ext -out cert.crt`
+    
+    `openssl req -x509 -nodes -in cert.csr -days 3650 -key priv.key -config certconfig.txt -extensions req_ext -out cert.crt`
 
 ### Create the Server Certificate
 
 1. Create csrconfig.txt for use in later commands
-    csrconfig.txt
-    ````
-    [ req ]
-    default_md = sha256
-    prompt = no
-    req_extensions = req_ext
-    distinguished_name = req_distinguished_name
-    [ req_distinguished_name ]
-    commonName = Bumper Server
-    organizationName = Bumper
-    [ req_ext ]
-    keyUsage=critical,digitalSignature,keyEncipherment
-    extendedKeyUsage=serverAuth,clientAuth
-    basicConstraints=critical,CA:false
-    subjectAltName = @alt_names
-    [ alt_names ]
-    DNS.0 = ecovacs.com
-    DNS.1 = *.ecovacs.com
-    DNS.2 = ecouser.net
-    DNS.3 = *.ecouser.net
-    DNS.4 = ecovacs.net
-    DNS.5 = *.ecovacs.net
-    ````
+
+***csrconfig.txt***
+````
+[ req ]
+default_md = sha256
+prompt = no
+req_extensions = req_ext
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
+commonName = Bumper Server
+organizationName = Bumper
+[ req_ext ]
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth,clientAuth
+basicConstraints=critical,CA:false
+subjectAltName = @alt_names
+[ alt_names ]
+DNS.0 = ecovacs.com
+DNS.1 = *.ecovacs.com
+DNS.2 = ecouser.net
+DNS.3 = *.ecouser.net
+DNS.4 = ecovacs.net
+DNS.5 = *.ecovacs.net
+````
 
 1. Create certconfig.txt for use in later commands
-    certconfig.txt
-    ````
-    [ req ]
-    default_md = sha256
-    prompt = no
-    req_extensions = req_ext
-    distinguished_name = req_distinguished_name
-    [ req_distinguished_name ]
-    commonName = Bumper Server
-    organizationName = Bumper
-    [ req_ext ]
-    subjectKeyIdentifier = hash
-    authorityKeyIdentifier = keyid:always,issuer
-    keyUsage=critical,digitalSignature,keyEncipherment
-    extendedKeyUsage=serverAuth,clientAuth
-    basicConstraints=critical,CA:false
-    subjectAltName = @alt_names
-    [ alt_names ]
-    DNS.0 = ecovacs.com
-    DNS.1 = *.ecovacs.com
-    DNS.2 = ecouser.net
-    DNS.3 = *.ecouser.net
-    DNS.4 = ecovacs.net
-    DNS.5 = *.ecovacs.net
-    ````
+
+***certconfig.txt***
+````
+[ req ]
+default_md = sha256
+prompt = no
+req_extensions = req_ext
+distinguished_name = req_distinguished_name
+[ req_distinguished_name ]
+commonName = Bumper Server
+organizationName = Bumper
+[ req_ext ]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=serverAuth,clientAuth
+basicConstraints=critical,CA:false
+subjectAltName = @alt_names
+[ alt_names ]
+DNS.0 = ecovacs.com
+DNS.1 = *.ecovacs.com
+DNS.2 = ecouser.net
+DNS.3 = *.ecouser.net
+DNS.4 = ecovacs.net
+DNS.5 = *.ecovacs.net
+````
 
 1. Generate the RSA private key
-`openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
+    
+    `openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
 
 1. Create the CSR
-`openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
+
+    `openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
 
 1. Sign your CSR with a root CA cert
-`openssl x509 -req -in cert.csr -days 3650 -CA ca.crt -CAkey priv.key -extfile certconfig.txt -extensions req_ext -CAserial /tmp/tmp-10593TSH1OlVSxC7C -CAcreateserial -out cert.crt`
+    
+    `openssl x509 -req -in cert.csr -days 3650 -CA ca.crt -CAkey priv.key -extfile certconfig.txt -extensions req_ext -CAserial /tmp/tmp-10593TSH1OlVSxC7C -CAcreateserial -out cert.crt`
 
 ## Using a Custom CA/Self
 
