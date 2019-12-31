@@ -15,7 +15,7 @@ FROM $FROM_ARCH/python:3.7-alpine as base
 COPY --from=builder qemu-arm-static /usr/bin
 COPY --from=builder qemu-aarch64-static /usr/bin
 
-FROM base as builder
+FROM base as builderfinal
 
 # add build utils (gcc, others)
 RUN apk add build-base
