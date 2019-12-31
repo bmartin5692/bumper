@@ -1,20 +1,20 @@
 image: bmartin5692/bumper:multiarch
 manifests:
-  - image: bmartin5692/bumper:amd64
+  - image: bmartin5692/bumper:multiarch-amd64
     platform:
       architecture: amd64
       os: linux
-  - image: bmartin5692/bumper:arm32v5
+  - image: bmartin5692/bumper:multiarch-arm32v5
     platform:
       architecture: arm
       os: linux
       variant: v5
-  - image: bmartin5692/bumper:arm32v7
+  - image: bmartin5692/bumper:multiarch-arm32v7
     platform:
       architecture: arm
       os: linux
       variant: v7
-  - image: bmartin5692/bumper:arm64v8
+  - image: bmartin5692/bumper:multiarch-arm64v8
     platform:
       architecture: arm64
       os: linux
