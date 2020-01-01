@@ -272,7 +272,7 @@ def create_certs():
         # run on mac
         subprocess.run([os.path.join("..", "create_certs", "create_certs_osx")])
     elif str(platform.system()).lower() == "linux":
-        if "arm" in platform.machine().lower():
+        if "arm" in platform.machine().lower() or "aarch64" in platform.machine().lower():
             # run for pi
             subprocess.run([os.path.join("..", "create_certs", "create_certs_rpi")])
         else:
