@@ -12,10 +12,10 @@ Bumper is a standalone and self-hosted implementation of the central server used
 
 | Master Branch | Status                                                                 |
 | ------------------- | ---------------------------------------------------------------------- |
-| AppVeyor (Win32)    | [![AppVeyor](https://img.shields.io/appveyor/ci/bmartin5692/bumper.svg?logo=appveyor)](https://ci.appveyor.com/project/bmartin5692/bumper) |
-| TravisCI (Linux)    | [![Build Status](https://img.shields.io/travis/com/bmartin5692/bumper.svg?logo=travis)](https://travis-ci.com/bmartin5692/bumper) |
-| Docker Hub	      | [![Docker Build](https://img.shields.io/docker/cloud/build/bmartin5692/bumper.svg?logo=docker)](https://hub.docker.com/r/bmartin5692/bumper) |
-| CodeCov Coverage    | [![Codecov](https://img.shields.io/codecov/c/github/bmartin5692/bumper.svg?logo=codecov)](https://codecov.io/gh/bmartin5692/bumper) |
+| AppVeyor (Win32)    | [![AppVeyor branch](https://img.shields.io/appveyor/ci/bmartin5692/bumper/master?logo=appveyor)](https://ci.appveyor.com/project/bmartin5692/bumper/branch/master) |
+| TravisCI (Linux)    | [![Travis (.org) branch)](https://img.shields.io/travis/bmartin5692/bumper/master?logo=travis)](https://travis-ci.com/bmartin5692/bumper/branch/master) |
+| Docker Hub	      | [![Docker Build](https://img.shields.io/docker/cloud/build/bmartin5692/bumper?logo=docker)](https://hub.docker.com/r/bmartin5692/bumper/branch/master) |
+| CodeCov Coverage    | [![Codecov branch](https://img.shields.io/codecov/c/github/bmartin5692/bumper/master?logo=codecov)](https://codecov.io/gh/bmartin5692/bumper/branch/master) |
 
 
 **Community**:
