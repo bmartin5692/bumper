@@ -307,15 +307,21 @@ class XMPPAsyncClient:
             ctl_to = xml.get("to")
             if not "from" in xml.attrib:
                 xml.attrib["from"] = "{}".format(self.bumper_jid)
+            if "errno" in data:
+                xmppserverlog.error(f"Error from bot - {data}")                
             if (
-                "errno='103' error='permission denied," in data
-            ):  # No permissions, usually if bot was last on Ecovac network
+                "errno='103'" in data
+            ):  # No permissions, usually if bot was last on Ecovac network, Bumper will try to add fuid user as owner
                 if self.type == self.BOT:
+                    xmppserverlog.info("Bot reported user has no permissions, Bumper will attempt to add user to bot. This is typical if bot was last on Ecovacs Network.")
                     xquery = xml.getchildren()
                     ctl = xquery[0].getchildren()
-                    ctlerr = ctl[0].attrib["error"]
-                    adminuser = ctlerr.replace("permission denied, please contact ", "")
-                    adminuser = adminuser.replace(" ", "")
+                    if "error" in ctl[0].attrib:
+                        ctlerr = ctl[0].attrib["error"]
+                        adminuser = ctlerr.replace("permission denied, please contact ", "")
+                        adminuser = adminuser.replace(" ", "")
+                    elif "admin" in ctl[0].attrib:
+                        adminuser = ctl[0].attrib["admin"]
                     if not (
                         adminuser.startswith("fuid_")
                         or adminuser.startswith("fusername_")
@@ -328,14 +334,14 @@ class XMPPAsyncClient:
                         adduser = '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="AddUser" id="0000" jid="{}" /></query></iq>'.format(
                             uuid.uuid4(), adminuser, self.bumper_jid, newuser
                         )
-                        xmppserverlog.debug("Add User: {}".format(adduser))
+                        xmppserverlog.debug("Adding User to bot - {}".format(adduser))
                         self.send(adduser)
 
                         # Add user ACs - Manage users, settings, and clean (full access)
                         adduseracs = '<iq type="set" id="{}" from="{}" to="{}"><query xmlns="com:ctl"><ctl td="SetAC" id="1111" jid="{}"><acs><ac name="userman" allow="1"/><ac name="setting" allow="1"/><ac name="clean" allow="1"/></acs></ctl></query></iq>'.format(
                             uuid.uuid4(), adminuser, self.bumper_jid, newuser
                         )
-                        xmppserverlog.debug("Add User ACs: {}".format(adduseracs))
+                        xmppserverlog.debug("Add User ACs to bot - {}".format(adduseracs))
                         self.send(adduseracs)
 
                         # GetUserInfo - Just to confirm it set correctly
