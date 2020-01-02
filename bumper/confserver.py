@@ -11,6 +11,8 @@ from bumper.models import *
 from datetime import datetime, timedelta
 import asyncio
 from aiohttp import web
+import aiohttp_jinja2
+import jinja2
 import uuid
 import xml.etree.ElementTree as ET
 
@@ -50,7 +52,8 @@ class ConfServer:
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[self.log_all_requests])
+        self.app = web.Application(loop=asyncio.get_event_loop())#, middlewares=[self.log_all_requests])
+        aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.data_dir, "web","templates")))
 
         self.app.add_routes(
             [
@@ -201,6 +204,7 @@ class ConfServer:
             clients = bumper.db_get().table("clients").all()
             helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
             mqttserver = bumper.mqtt_server.broker
+            xmppserver = bumper.xmpp_server
             mq_sessions = []
             for sess in mqttserver._sessions:
                 tmpsess = []
@@ -224,9 +228,11 @@ class ConfServer:
                         ]
                     },
                 ],
-            }
-
-            return web.json_response(all)
+                "xmpp_server": xmppserver
+            }            
+            resp = aiohttp_jinja2.render_template('home.jinja2', request, context=all)
+            #return web.json_response(all)
+            return resp
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
