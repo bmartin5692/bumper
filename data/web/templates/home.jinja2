@@ -11,103 +11,112 @@
     {% endfor %}
     </ul>
 
+<div class="container-fluid col-8">
     <h1>Bumper</h1>
-
     
     <!-- Section Stats -->
-    <div class="card col-8">
-    <div>
-    <h2>Bumper Server Status</h2>
-    <h3>MQTT Server</h3>
-    Status: {% if mqtt_server[0].state == "started" %} <span class="badge badge-success">{{ mqtt_server[0].state }}</span> {% else %} <span class="badge badge-danger">{{ mqtt_server[0].state }}</span> {% endif %}
-    Sessions: {{ mqtt_server[1].sessions[0].count }}
-    
-    <table class="table table-striped table-bordered">
-    <thead class="thead-dark">
-    <TH>username</TH><TH>clientid</TH><TH>state</TH>
-    </thead>
-    {% for sess in mqtt_server[1].sessions[1].clients %}
-    <TR>
-        <TD>{{ sess[0].username }}</TD>
-        <TD>{{ sess[0].client_id }}</TD>       
-        <TD {% if sess[0].state == "connected" %} class="table-success" {% endif %}> {{ sess[0].state }} </TD>
-    </TR>
-    {% endfor %}
-    </table>
+    <div class="card bg-light border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Bumper Server Status</h2>
+        </div>    
+        <div class="card-body">
+        
+        <h3>MQTT Server</h3>
+        Status: {% if mqtt_server[0].state == "started" %} <span class="badge badge-success">{{ mqtt_server[0].state }}</span> {% else %} <span class="badge badge-danger">{{ mqtt_server[0].state }}</span> {% endif %}
+        Sessions: {{ mqtt_server[1].sessions[0].count }}
+        
+        <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+        <TH>username</TH><TH>clientid</TH><TH>state</TH>
+        </thead>
+        {% for sess in mqtt_server[1].sessions[1].clients %}
+        <TR>
+            <TD>{{ sess[0].username }}</TD>
+            <TD>{{ sess[0].client_id }}</TD>       
+            <TD {% if sess[0].state == "connected" %} class="table-success" {% endif %}> {{ sess[0].state }} </TD>
+        </TR>
+        {% endfor %}
+        </table>
 
-    <h3>XMPP Server</h3>
-    Status: {% if xmpp_server.server._serving == True %} <span class="badge badge-success">running</span> {% else %} <span class="badge badge-danger">not running</span> {% endif %}
-    Clients: {{ xmpp_server.clients | length }}
-    
-    <table class="table table-striped table-bordered">
-    <thead class="thead-dark">
-    <TH>uid</TH><TH>jid</TH><TH>state</TH>
-    </thead>
-    {% for client in xmpp_server.clients  %}
-    <TR>
-        <TD>{{ client.uid }}</TD>
-        <TD>{{ client.bumper_jid }}</TD>       
-        <TD {% if client.state == 4 %} class="table-success" {% endif %}>{% if client.state == 4 %} connected {% else %} not connected {% endif %}</TD>
-    </TR>
-    {% endfor %}
-    </table>    
+        <h3>XMPP Server</h3>
+        Status: {% if xmpp_server.server._serving == True %} <span class="badge badge-success">running</span> {% else %} <span class="badge badge-danger">not running</span> {% endif %}
+        Clients: {{ xmpp_server.clients | length }}
+        
+        <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+        <TH>uid</TH><TH>jid</TH><TH>state</TH>
+        </thead>
+        {% for client in xmpp_server.clients  %}
+        <TR>
+            <TD>{{ client.uid }}</TD>
+            <TD>{{ client.bumper_jid }}</TD>       
+            <TD {% if client.state == 4 %} class="table-success" {% endif %}>{% if client.state == 4 %} connected {% else %} not connected {% endif %}</TD>
+        </TR>
+        {% endfor %}
+        </table>    
 
-    
-    <h3>Helperbot</h3>
-    Status: {% if helperbot[0].state == "connected" %} <span class="badge badge-success">{{ helperbot[0].state }}</span> {% else %} <span class="badge badge-danger">{{ helperbot[0].state }}</span> {% endif %}
+        
+        <h3>Helperbot</h3>
+        Status: {% if helperbot[0].state == "connected" %} <span class="badge badge-success">{{ helperbot[0].state }}</span> {% else %} <span class="badge badge-danger">{{ helperbot[0].state }}</span> {% endif %}
 
-    </div>
+        </div>
+
     </div>
 
     </br>
 
     <!-- Section Bots -->
-    <div class="card col-8">
-    <div>
-    <h2>Bots</h2>
-    <table class="table table-striped table-bordered">
-    <thead class="thead-dark">
-    <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
-    </thead>
-    {% for bot in bots %}
-    <TR>
-        <TD>{{ bot.name }}</TD>
-        <TD>{{ bot.nick }}</TD>
-        <TD>{{ bot.class }}</TD>
-        <TD>{{ bot.did }}</TD>
-        <TD>{{ bot.resource }} </TD>
-        <TD>{{ bot.company}} </TD>
-        
-        <TD {% if bot.mqtt_connection == True %} class="table-success" {% endif %}> {{ bot.mqtt_connection }} </TD>
-        <TD {% if bot.xmpp_connection == True %} class="table-success" {% endif %}> {{ bot.xmpp_connection }}</TD>        
-    </TR>
-    {% endfor %}
-    </table>
-    </div>
+    <div class="card bg-light border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Bots</h2>
+        </div>    
+        <div class="card-body">
+        <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+        <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
+        </thead>
+        {% for bot in bots %}
+        <TR>
+            <TD>{{ bot.name }}</TD>
+            <TD>{{ bot.nick }}</TD>
+            <TD>{{ bot.class }}</TD>
+            <TD>{{ bot.did }}</TD>
+            <TD>{{ bot.resource }} </TD>
+            <TD>{{ bot.company}} </TD>
+            
+            <TD {% if bot.mqtt_connection == True %} class="table-success" {% endif %}> {{ bot.mqtt_connection }} </TD>
+            <TD {% if bot.xmpp_connection == True %} class="table-success" {% endif %}> {{ bot.xmpp_connection }}</TD>        
+        </TR>
+        {% endfor %}
+        </table>
+        </div>
     </div>
 
 </br>
 
     <!-- Section Clients -->
-    <div class="card col-8">
-    <div>
-    <h2>Clients</h2>
-    <table class="table table-striped table-bordered">
-    <thead class="thead-dark">
-    <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
-    </thead>
-    {% for client in clients %}
-    <TR>
-        <TD>{{ client.userid }}</TD>
-        <TD>{{ client.realm }}</TD>
-        <TD>{{ client.resource }}</TD>
-        <TD {% if client.mqtt_connection == True %} class="table-success" {% endif %}> {{ client.mqtt_connection }} </TD>
-        <TD {% if client.xmpp_connection == True %} class="table-success" {% endif %}> {{ client.xmpp_connection }}</TD>        
-    </TR>
-    {% endfor %}
-    </table>
-    </div>    
+    <div class="card bg-light border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Clients</h2>
+        </div>    
+        <div class="card-body">
+        <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+        <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
+        </thead>
+        {% for client in clients %}
+        <TR>
+            <TD>{{ client.userid }}</TD>
+            <TD>{{ client.realm }}</TD>
+            <TD>{{ client.resource }}</TD>
+            <TD {% if client.mqtt_connection == True %} class="table-success" {% endif %}> {{ client.mqtt_connection }} </TD>
+            <TD {% if client.xmpp_connection == True %} class="table-success" {% endif %}> {{ client.xmpp_connection }}</TD>        
+        </TR>
+        {% endfor %}
+        </table>
+        </div>    
     </div>
     
+</div>    
 </body>
 </html>
