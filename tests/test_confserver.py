@@ -62,7 +62,7 @@ async def test_base(aiohttp_client):
     
     # Start MQTT
     mqtt_address = ("127.0.0.1", 8883)    
-    mqtt_server = bumper.MQTTServer(mqtt_address)
+    mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
     bumper.mqtt_server = mqtt_server
     await mqtt_server.broker_coro()
 
@@ -84,7 +84,6 @@ async def test_base(aiohttp_client):
     mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
-    await asyncio.sleep(0.1)
 
     bumper.xmpp_server.disconnect()
 
@@ -95,7 +94,7 @@ async def test_restartService(aiohttp_client):
     
     # Start MQTT
     mqtt_address = ("127.0.0.1", 8883)    
-    mqtt_server = bumper.MQTTServer(mqtt_address)
+    mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
     bumper.mqtt_server = mqtt_server
     await mqtt_server.broker_coro()
 
@@ -123,7 +122,6 @@ async def test_restartService(aiohttp_client):
 
     mqtt_helperbot.Client.disconnect()
     await mqtt_server.broker.shutdown()
-    await asyncio.sleep(0.1)    
 
     xmpp_server.disconnect()
 

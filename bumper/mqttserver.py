@@ -229,9 +229,23 @@ class MQTTServer:
             #asyncio.create_task(bumper.shutdown())
             pass
 
-    def __init__(self, address):
+    def __init__(self, address, **kwargs):
         try:
             self.address = address
+
+            # Default config opts
+            passwd_file = os.path.join(
+                os.path.join(bumper.data_dir, "passwd")
+            ) # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+
+            allow_anon = False
+
+            for key, value in kwargs.items():
+                if key == "password_file":            
+                    passwd_file = kwargs["password_file"]
+                
+                elif key == "allow_anonymous":
+                    allow_anon = kwargs["allow_anonymous"] # Set to True to allow anonymous authentication
 
             # The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
             distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
@@ -254,10 +268,8 @@ class MQTTServer:
                 },
                 "sys_interval": 0,
                 "auth": {
-                    "allow-anonymous": False, # Set to True to allow anonymous authentication
-                    "password-file": os.path.join(
-                        os.path.join(bumper.data_dir, "passwd")
-                    ), # For file auth, set user:hash in passwd file see (https://hbmqtt.readthedocs.io/en/latest/references/hbmqtt.html#configuration-example)
+                    "allow-anonymous": allow_anon, 
+                    "password-file": passwd_file,
                     "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
                 },
                 "topic-check": {"enabled": False},
@@ -385,8 +397,6 @@ class BumperMQTTServer_Plugin:
                 self.context.logger.debug(f"{(len(self._users))} user(s) read from file {password_file}")
             except FileNotFoundError:
                 self.context.logger.warning(f"Password file {password_file} not found")
-        else:
-            self.context.logger.debug("Configuration parameter 'password_file' not found")        
 
     async def on_broker_client_connected(self, client_id):
 
