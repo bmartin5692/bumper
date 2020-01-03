@@ -84,6 +84,7 @@ async def test_base(aiohttp_client):
     mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
 
     bumper.xmpp_server.disconnect()
 
@@ -121,7 +122,8 @@ async def test_restartService(aiohttp_client):
     assert resp.status == 200   
 
     mqtt_helperbot.Client.disconnect()
-    await mqtt_server.broker.shutdown()    
+    await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)    
 
     xmpp_server.disconnect()
 

@@ -154,6 +154,7 @@ async def test_helperbot_message():
         mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
 
 
 async def test_helperbot_expire_message():
@@ -220,6 +221,7 @@ async def test_helperbot_expire_message():
         mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
 
 
 async def test_helperbot_sendcommand():
@@ -368,6 +370,7 @@ async def test_helperbot_sendcommand():
     mqtt_helperbot.Client.disconnect()
 
     await mqtt_server.broker.shutdown()
+    await asyncio.sleep(0.1)
 
 
 async def test_mqttserver():
@@ -604,6 +607,7 @@ async def test_passwordfile_opt_missing_mqttserver():
         
         await mqtt_server.broker_coro()
         await mqtt_server.broker.shutdown()    
+        await asyncio.sleep(0.1)
     
     except:
         pass
