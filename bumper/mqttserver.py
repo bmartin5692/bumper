@@ -27,7 +27,7 @@ class MQTTHelperBot:
 
     def __init__(self, address):
         self.address = address
-        self.client_id = "helper1@bumper/helper1"
+        self.client_id = "helperbot@bumper/helperbot"
         self.command_responses = []
 
     async def start_helper_bot(self):
@@ -44,88 +44,25 @@ class MQTTHelperBot:
             )
             await self.Client.subscribe(
                 [
-                    ("iot/p2p/+/+/+/+/helper1/bumper/helper1/+/+/+", QOS_0),
+                    ("iot/p2p/+/+/+/+/helperbot/bumper/helperbot/+/+/+", QOS_0),
                     ("iot/p2p/+", QOS_0),
                     ("iot/atr/+", QOS_0),
                 ]
             )
 
-            asyncio.create_task(self.get_msg())
+#        except ConnectionRefusedError as e:
+#            helperbotlog.Error(e)
+#            pass
 
-        except ConnectionRefusedError as e:
-            helperbotlog.Error(e)
-            pass
+#        except asyncio.CancelledError as e:
+#            pass
 
-        except asyncio.CancelledError as e:
-            pass
-
-        except hbmqtt.client.ConnectException as e:
-            helperbotlog.Error(e)
-            pass
+#        except hbmqtt.client.ConnectException as e:
+#            helperbotlog.Error(e)
+#            pass
 
         except Exception as e:
             helperbotlog.exception("{}".format(e))
-
-    async def get_msg(self):
-        while True:
-            message = await self.Client.deliver_message()
-
-            if str(message.topic).split("/")[6] == "helper1":
-                # Response to command
-                helperbotlog.debug(
-                    "Received Response - Topic: {} - Message: {}".format(
-                        message.topic, str(message.data.decode("utf-8"))
-                    )
-                )
-                self.command_responses.append(
-                    {
-                        "time": time.time(),
-                        "topic": message.topic,
-                        "payload": str(message.data.decode("utf-8")),
-                    }
-                )
-            elif str(message.topic).split("/")[3] == "helper1":
-                # Helperbot sending command
-                helperbotlog.debug(
-                    "Send Command - Topic: {} - Message: {}".format(
-                        message.topic, str(message.data.decode("utf-8"))
-                    )
-                )
-            elif str(message.topic).split("/")[1] == "atr":
-                # Broadcast message received on atr
-                if str(message.topic).split("/")[2] == "errors":
-                    boterrorlog.error(
-                        "Received Error - Topic: {} - Message: {}".format(
-                            message.topic, str(message.data.decode("utf-8"))
-                        )
-                    )
-                else:
-                    helperbotlog.debug(
-                        "Received Broadcast - Topic: {} - Message: {}".format(
-                            message.topic, str(message.data.decode("utf-8"))
-                        )
-                    )
-
-            else:
-                helperbotlog.debug(
-                    "Received Message - Topic: {} - Message: {}".format(
-                        message.topic, str(message.data.decode("utf-8"))
-                    )
-                )
-
-            # Cleanup "expired messages" > 60 seconds from time
-            for msg in self.command_responses:
-                expire_time = (
-                    datetime.fromtimestamp(msg["time"])
-                    + timedelta(seconds=self.expire_msg_seconds)
-                ).timestamp()
-                if time.time() > expire_time:
-                    helperbotlog.debug(
-                        "Pruning Message Due To Expiration - Message Topic: {}".format(
-                            msg["topic"]
-                        )
-                    )
-                    self.command_responses.remove(msg)
 
     async def wait_for_resp(self, requestid):
         try:
@@ -139,8 +76,7 @@ class MQTTHelperBot:
                 if len(self.command_responses) > 0:
                     for msg in self.command_responses:
                         topic = str(msg["topic"]).split("/")
-                        if topic[6] == "helper1" and topic[10] == requestid:
-                            # helperbotlog.debug('VacBot MQTT Response: Topic: %s Payload: %s' % (msg['topic'], msg['payload']))
+                        if topic[6] == "helperbot" and topic[10] == requestid:
                             if topic[11] == "j":
                                 resppayload = json.loads(msg["payload"])
                             else:
@@ -175,7 +111,7 @@ class MQTTHelperBot:
     async def send_command(self, cmdjson, requestid):
         if not self.Client._handler.writer is None:
             try:
-                ttopic = "iot/p2p/{}/helper1/bumper/helper1/{}/{}/{}/q/{}/{}".format(
+                ttopic = "iot/p2p/{}/helperbot/bumper/helperbot/{}/{}/{}/q/{}/{}".format(
                     cmdjson["cmdName"],
                     cmdjson["toId"],
                     cmdjson["toType"],
@@ -298,13 +234,6 @@ class BumperMQTTServer_Plugin:
 
     async def authenticate(self, *args, **kwargs):
         authenticated = False
-        if not self.auth_config:
-            # auth config section not found
-            self.context.logger.warning(
-                "'auth' section not found in context configuration"
-            )
-            return False
-
         
         try:
             session = kwargs.get("session", None)
@@ -334,7 +263,7 @@ class BumperMQTTServer_Plugin:
                     realm = tmpclientdetail[0]
                     resource = tmpclientdetail[1]
 
-                    if userid == "helper1":
+                    if userid == "helperbot":
                         mqttserverlog.info(f"Bumper Authentication Success - Helperbot: {client_id}")
                         authenticated = True
                     else:
@@ -413,9 +342,67 @@ class BumperMQTTServer_Plugin:
             bumper.client_set_mqtt(client["resource"], True)
             return
 
-    #async def on_broker_message_received(self, client_id, message):
-        #print(message)
-        # Look at replacing helperbot with code here
+    async def on_broker_message_received(self, client_id, message):
+        self.handle_helperbot_msg(client_id, message)
+        
+    def handle_helperbot_msg(self, client_id, message):
+
+            if str(message.topic).split("/")[6] == "helperbot":
+                # Response to command
+                helperbotlog.debug(
+                    "Received Response - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
+                bumper.mqtt_helperbot.command_responses.append(
+                    {
+                        "time": time.time(),
+                        "topic": message.topic,
+                        "payload": str(message.data.decode("utf-8")),
+                    }
+                )
+            elif str(message.topic).split("/")[3] == "helperbot":
+                # Helperbot sending command
+                helperbotlog.debug(
+                    "Send Command - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
+            elif str(message.topic).split("/")[1] == "atr":
+                # Broadcast message received on atr
+                if str(message.topic).split("/")[2] == "errors":
+                    boterrorlog.error(
+                        "Received Error - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
+                    )
+                else:
+                    helperbotlog.debug(
+                        "Received Broadcast - Topic: {} - Message: {}".format(
+                            message.topic, str(message.data.decode("utf-8"))
+                        )
+                    )
+
+            else:
+                helperbotlog.debug(
+                    "Received Message - Topic: {} - Message: {}".format(
+                        message.topic, str(message.data.decode("utf-8"))
+                    )
+                )
+
+            # Cleanup "expired messages" > 60 seconds from time
+            for msg in bumper.mqtt_helperbot.command_responses:
+                expire_time = (
+                    datetime.fromtimestamp(msg["time"])
+                    + timedelta(seconds=bumper.mqtt_helperbot.expire_msg_seconds)
+                ).timestamp()
+                if time.time() > expire_time:
+                    helperbotlog.debug(
+                        "Pruning Message Due To Expiration - Message Topic: {}".format(
+                            msg["topic"]
+                        )
+                    )
+                    bumper.mqtt_helperbot.command_responses.remove(msg)
 
 
     async def on_broker_client_disconnected(self, client_id):
