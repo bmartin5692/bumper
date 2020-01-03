@@ -286,7 +286,8 @@ def bot_add(sn, did, devclass, resource, company):
 def bot_remove(did):
     bots = db_get().table("bots")
     bot = bot_get(did)
-    bots.remove(doc_ids=[bot.doc_id])
+    if bot:
+        bots.remove(doc_ids=[bot.doc_id])
 
 
 def bot_get(did):
@@ -344,6 +345,11 @@ def client_add(userid, realm, resource):
         bumperlog.info("Adding new client with resource {}".format(newclient.resource))
         client_full_upsert(newclient.asdict())
 
+def client_remove(resource):
+    clients = db_get().table("clients")
+    client = client_get(resource)
+    if client:
+        clients.remove(doc_ids=[client.doc_id])
 
 def client_get(resource):
     clients = db_get().table("clients")

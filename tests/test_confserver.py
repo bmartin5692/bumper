@@ -125,6 +125,16 @@ async def test_restartService(aiohttp_client):
 
     xmpp_server.disconnect()
 
+async def test_RemoveBot(aiohttp_client):
+    client = await aiohttp_client(create_app)
+    resp = await client.get("/bot/remove/test_did")
+    assert resp.status == 200  
+
+async def test_RemoveClient(aiohttp_client):
+    client = await aiohttp_client(create_app)
+    resp = await client.get("/client/remove/test_resource")
+    assert resp.status == 200  
+
 
 async def test_login(aiohttp_client):
     remove_existing_db()

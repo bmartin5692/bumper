@@ -5,41 +5,43 @@
     <title>Bumper</title>
     <meta http-equiv="refresh" content="5" />
     <script>
-    function restartHelperbot() {
-        console.log("restart helperbot");
-        fetch('restart_Helperbot')
+    function restartService(service) {
+        console.log("restart service", service);
+        fetch('restart_' + service)
         .then((response) => {
-            return response.json();
+           return response.json();
         })
         .then((myJson) => {
-            alert("Restarting Helperbot: " + myJson["status"])
-            console.log("restart helperbot - " + myJson["status"]);
+            alert("Restarting " + service + ": " + myJson["status"])
+            console.log("restart",service,"-",myJson["status"]);
         });
         
     }
 
-    function restartMQTTServer() {
-        console.log("restart mqtt server");
-        fetch('restart_MQTTServer')
+    function removeBot(did) {
+        console.log("remove bot",did);
+        fetch('bot/remove/' + did)
         .then((response) => {
             return response.json();
         })
         .then((myJson) => {
-            alert("Restarting MQTT Server: " + myJson["status"])
-            console.log("restart mqtt server  - " + myJson["status"]);
+            alert("Removing Bot (DID) - " + did + " - " + myJson["status"])
+            console.log("remove bot",did, myJson["status"]);
         });
         
     }
 
-    function restartXMPPServer() {
-        console.log("restart xmpp server");
-        fetch('restart_XMPPServer')
+
+    function removeClient(resource) {
+
+        console.log("remove client",resource);
+        fetch('client/remove/' + resource)
         .then((response) => {
             return response.json();
         })
         .then((myJson) => {
-            alert("Restarting XMPP Server: " + myJson["status"])
-            console.log("restart xmpp server - " + myJson["status"]);
+            alert("Removing Client - resource - " + resource + " - " + myJson["status"])
+            console.log("remove client",resource, myJson["status"]);
         });
         
     }
@@ -66,7 +68,7 @@
         <div class="card border border-dark">
         <div class="card card-header">
             <h3 class="card-title">MQTT Server</h3>
-            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartMQTTServer();">Restart Service</button></div>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('MQTTServer');">Restart Service</button></div>
         </div>    
         <div class="card-body">
         Status: {% if mqtt_server[0].state == "started" %} <span class="badge badge-success">{{ mqtt_server[0].state }}</span> {% else %} <span class="badge badge-danger">{{ mqtt_server[0].state }}</span> {% endif %}
@@ -93,7 +95,7 @@
         <div class="card border border-dark">
         <div class="card card-header">
             <h3 class="card-title">XMPP Server</h3>
-            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartXMPPServer();">Restart Service</button></div>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('XMPPServer');">Restart Service</button></div>
         </div>    
         <div class="card-body">
         Status: {% if xmpp_server.server._serving == True %} <span class="badge badge-success">running</span> {% else %} <span class="badge badge-danger">not running</span> {% endif %}
@@ -120,7 +122,7 @@
         <div class="card border border-dark">
         <div class="card card-header">
             <h3 class="card-title">Helperbot</h3>
-            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartHelperbot();">Restart Service</button></div>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('Helperbot');">Restart Service</button></div>
             
         </div>    
         
@@ -143,7 +145,7 @@
         <div class="card-body">
         <table class="table table-striped table-bordered table-responsive-lg">
         <thead class="thead-dark">
-        <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
+        <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>
         </thead>
         {% for bot in bots %}
         <TR>
@@ -155,7 +157,8 @@
             <TD>{{ bot.company}} </TD>
             
             <TD {% if bot.mqtt_connection == True %} class="table-success" {% endif %}> {{ bot.mqtt_connection }} </TD>
-            <TD {% if bot.xmpp_connection == True %} class="table-success" {% endif %}> {{ bot.xmpp_connection }}</TD>        
+            <TD {% if bot.xmpp_connection == True %} class="table-success" {% endif %}> {{ bot.xmpp_connection }}</TD>
+            <TD> <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBot('{{ bot.did }}');">Remove</button> </TD>
         </TR>
         {% endfor %}
         </table>
@@ -172,7 +175,7 @@
         <div class="card-body">
         <table class="table table-striped table-bordered table-responsive-lg">
         <thead class="thead-dark">
-        <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH>
+        <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>
         </thead>
         {% for client in clients %}
         <TR>
@@ -181,6 +184,7 @@
             <TD>{{ client.resource }}</TD>
             <TD {% if client.mqtt_connection == True %} class="table-success" {% endif %}> {{ client.mqtt_connection }} </TD>
             <TD {% if client.xmpp_connection == True %} class="table-success" {% endif %}> {{ client.xmpp_connection }}</TD>        
+            <TD> <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeClient('{{ client.resource }}');">Remove</button> </TD>
         </TR>
         {% endfor %}
         </table>

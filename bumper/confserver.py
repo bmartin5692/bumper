@@ -58,7 +58,9 @@ class ConfServer:
         self.app.add_routes(
             [
                 
-                web.get("", self.handle_base),                
+                web.get("", self.handle_base),         
+                web.get("/bot/remove/{did}", self.handle_RemoveBot, name='remove-bot'),       
+                web.get("/client/remove/{resource}", self.handle_RemoveClient, name='remove-client'),      
                 web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),
                 web.get(
                     "/{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/login",
@@ -380,6 +382,32 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
             pass
+
+    async def handle_RemoveBot(self, request):
+        try:
+            did = request.match_info.get("did", "")
+            bumper.bot_remove(did)
+            if bumper.bot_get(did):
+                return web.json_response({"status": "failed to remove bot"})
+            else:
+                return web.json_response({"status": "successfully removed bot"})
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+            pass        
+
+    async def handle_RemoveClient(self, request):
+        try:           
+            resource = request.match_info.get("resource", "")
+            bumper.client_remove(resource)
+            if bumper.client_get(resource):
+               return web.json_response({"status": "failed to remove client"})
+            else:
+               return web.json_response({"status": "successfully removed client"})
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+            pass                
 
     async def handle_login(self, request):
         try:
