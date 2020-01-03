@@ -35,7 +35,7 @@ class MQTTHelperBot:
         try:
             if self.Client is None:
                 self.Client = MQTTClient(
-                    client_id=self.client_id, config={"check_hostname": False}
+                    client_id=self.client_id, config={"check_hostname": False, "reconnect_retries": 20}
                 )
 
             await self.Client.connect(
@@ -207,27 +207,27 @@ class MQTTHelperBot:
 
 
 class MQTTServer:
-    default_config = {}
+    default_config = None
     broker = None
 
     async def broker_coro(self):
 
         mqttserverlog.info(
             "Starting MQTT Server at {}:{}".format(self.address[0], self.address[1])
-        )
-        self.broker = hbmqtt.broker.Broker(config=self.default_config)
+        )        
 
         try:
             await self.broker.start()
 
         except hbmqtt.broker.BrokerException as e:
             mqttserverlog.exception(e)
-            asyncio.create_task(bumper.shutdown())
+            #asyncio.create_task(bumper.shutdown())
             pass
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
-            asyncio.create_task(bumper.shutdown())
+            #asyncio.create_task(bumper.shutdown())
+            pass
 
     def __init__(self, address):
         try:
@@ -252,7 +252,7 @@ class MQTTServer:
                         "keyfile": bumper.server_key,
                     },
                 },
-                "sys_interval": 10,
+                "sys_interval": 0,
                 "auth": {
                     "allow-anonymous": False, # Set to True to allow anonymous authentication
                     "password-file": os.path.join(
@@ -262,6 +262,8 @@ class MQTTServer:
                 },
                 "topic-check": {"enabled": False},
             }
+
+            self.broker = hbmqtt.broker.Broker(config=self.default_config)
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
@@ -400,6 +402,11 @@ class BumperMQTTServer_Plugin:
         if client:
             bumper.client_set_mqtt(client["resource"], True)
             return
+
+    #async def on_broker_message_received(self, client_id, message):
+        #print(message)
+        # Look at replacing helperbot with code here
+
 
     async def on_broker_client_disconnected(self, client_id):
 

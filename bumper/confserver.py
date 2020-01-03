@@ -198,8 +198,7 @@ class ConfServer:
 
     async def handle_base(self, request):
         try:
-            # TODO - API Options here for viewing clients, tokens, restarting the server, etc.
-            # text = "Bumper!"
+
             bots = bumper.db_get().table("bots").all()
             clients = bumper.db_get().table("clients").all()
             helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
@@ -331,18 +330,27 @@ class ConfServer:
     async def restart_Helper(self):
 
         await bumper.mqtt_helperbot.Client.disconnect()
-        await bumper.mqtt_helperbot.start_helper_bot()
+        asyncio.create_task(bumper.mqtt_helperbot.start_helper_bot())
 
     async def restart_MQTT(self):
-        mqttserver = bumper.mqtt_server.broker
+        
+        if not (bumper.mqtt_server.broker.transitions.state == "stopped" or bumper.mqtt_server.broker.transitions.state == "not_started"):
+            # close session writers - this was required so bots would reconnect properly after restarting
+            for sess in list(bumper.mqtt_server.broker._sessions):                
+                sessobj = bumper.mqtt_server.broker._sessions[sess][1]
+                if sessobj.session.transitions.state == "connected":
+                    await sessobj.writer.close()
 
-        await bumper.mqtt_server.broker.shutdown()
-        while not bumper.mqtt_server.broker.transitions.state == "stopped":
-            await asyncio.sleep(0.1)
+            aloop = asyncio.get_event_loop()
+            aloop.call_later(
+            0.1, lambda: asyncio.create_task(bumper.mqtt_server.broker.shutdown())
+            )  # In .1 seconds shutdown broker
+  
+        aloop = asyncio.get_event_loop()
+        aloop.call_later(
+            1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
+        )  # In 1.5 seconds start broker
 
-        await bumper.mqtt_server.broker_coro()
-        while not bumper.mqtt_server.broker.transitions.state == "started":
-            await asyncio.sleep(0.1)
 
     async def restart_XMPP(self):
         bumper.xmpp_server.disconnect()
@@ -358,8 +366,8 @@ class ConfServer:
                 await self.restart_MQTT()
                 aloop = asyncio.get_event_loop()
                 aloop.call_later(
-                    2, lambda: asyncio.create_task(self.restart_Helper())
-                )  # In 2 seconds restart Helperbot
+                    5, lambda: asyncio.create_task(self.restart_Helper())
+                )  # In 5 seconds restart Helperbot
                 return web.json_response({"status": "complete"})
             elif service == "XMPPServer":
                 await self.restart_XMPP()
@@ -369,6 +377,7 @@ class ConfServer:
 
         except Exception as e:
             confserverlog.exception("{}".format(e))
+            pass
 
     async def handle_login(self, request):
         try:
