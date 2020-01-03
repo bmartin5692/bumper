@@ -47,18 +47,19 @@ class ConfServer:
         self.app = None
         self.site = None
         self.runner = None
+        self.excludelogging = ["base", "remove-bot", "remove-client", "restart-service"]
 
     def get_milli_time(self, timetoconvert):
         return int(round(timetoconvert * 1000))
 
     def confserver_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop())#, middlewares=[self.log_all_requests])
+        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[self.log_all_requests])
         aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.data_dir, "web","templates")))
 
         self.app.add_routes(
             [
                 
-                web.get("", self.handle_base),         
+                web.get("", self.handle_base, name="base"),         
                 web.get("/bot/remove/{did}", self.handle_RemoveBot, name='remove-bot'),       
                 web.get("/client/remove/{resource}", self.handle_RemoveClient, name='remove-client'),      
                 web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),
@@ -240,94 +241,99 @@ class ConfServer:
 
     @web.middleware
     async def log_all_requests(self, request, handler):
-        
-        try:
-            if request.content_length:
-                if request.content_type == "application/x-www-form-urlencoded":
-                    postbody = await request.post()
 
-                elif request.content_type == "application/json":
-                    try:
-                        postbody = json.loads(await request.text())
-                    except Exception as e:
-                        confserverlog.error("Request body not json: {} - {}".format(e, e.doc))
-                        postbody = e.doc
-                
-                else:
-                    postbody = await request.post()
-            else:
-                postbody = None
-
-            response = await handler(request)
-            if not "application/octet-stream" in response.content_type:
-                logall = {
-                    "request": {
-                    "route_name": f"{request.match_info.route.name}",
-                    "method": f"{request.method}",
-                    "path": f"{request.path}",
-                    "query_string": f"{request.query_string}",
-                    "raw_path": f"{request.raw_path}",
-                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                    "body": f"{postbody}",
-                        },
-
-                    "response": {
-                    "response_body": f"{json.loads(response.body)}",
-                    "status": f"{response.status}",
-                    }
-                    }
-            else:
-                logall = {
-                    "request": {
-                    "route_name": f"{request.match_info.route.name}",
-                    "method": f"{request.method}",
-                    "path": f"{request.path}",
-                    "query_string": f"{request.query_string}",
-                    "raw_path": f"{request.raw_path}",
-                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                    "body": f"{postbody}",
-                        },
-
-                    "response": {
-                    "status": f"{response.status}",
-                    }
-                    }   
-
-            confserverlog.debug(json.dumps(logall))
+        if request._match_info.route.name not in self.excludelogging:
             
-            return response
+            try:
+                if request.content_length:
+                    if request.content_type == "application/x-www-form-urlencoded":
+                        postbody = await request.post()
 
-        except web.HTTPNotFound as notfound:
-            confserverlog.debug("Request path {} not found".format(request.raw_path))
-            requestlog = {
-                "request": {
-                "route_name": f"{request.match_info.route.name}",
-                "method": f"{request.method}",
-                "path": f"{request.path}",
-                "query_string": f"{request.query_string}",
-                "raw_path": f"{request.raw_path}",
-                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                "body": f"{postbody}",
-                    }
-            }
-            confserverlog.debug(json.dumps(requestlog))
-            return notfound
+                    elif request.content_type == "application/json":
+                        try:
+                            postbody = json.loads(await request.text())
+                        except Exception as e:
+                            confserverlog.error("Request body not json: {} - {}".format(e, e.doc))
+                            postbody = e.doc
+                    
+                    else:
+                        postbody = await request.post()
+                else:
+                    postbody = None
 
-        except Exception as e:
-            confserverlog.exception("{}".format(e))           
-            requestlog = {
-                "request": {
-                "route_name": f"{request.match_info.route.name}",
-                "method": f"{request.method}",
-                "path": f"{request.path}",
-                "query_string": f"{request.query_string}",
-                "raw_path": f"{request.raw_path}",
-                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                "body": f"{postbody}",
-                    }
-            }
-            confserverlog.debug(json.dumps(requestlog))
-            return e 
+                response = await handler(request)
+                if not "application/octet-stream" in response.content_type:
+                    logall = {
+                        "request": {
+                        "route_name": f"{request.match_info.route.name}",
+                        "method": f"{request.method}",
+                        "path": f"{request.path}",
+                        "query_string": f"{request.query_string}",
+                        "raw_path": f"{request.raw_path}",
+                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                        "body": f"{postbody}",
+                            },
+
+                        "response": {
+                        "response_body": f"{json.loads(response.body)}",
+                        "status": f"{response.status}",
+                        }
+                        }
+                else:
+                    logall = {
+                        "request": {
+                        "route_name": f"{request.match_info.route.name}",
+                        "method": f"{request.method}",
+                        "path": f"{request.path}",
+                        "query_string": f"{request.query_string}",
+                        "raw_path": f"{request.raw_path}",
+                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                        "body": f"{postbody}",
+                            },
+
+                        "response": {
+                        "status": f"{response.status}",
+                        }
+                        }   
+
+                confserverlog.debug(json.dumps(logall))
+                
+                return response
+
+            except web.HTTPNotFound as notfound:
+                confserverlog.debug("Request path {} not found".format(request.raw_path))
+                requestlog = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        }
+                }
+                confserverlog.debug(json.dumps(requestlog))
+                return notfound
+
+            except Exception as e:
+                confserverlog.exception("{}".format(e))           
+                requestlog = {
+                    "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                    "body": f"{postbody}",
+                        }
+                }
+                confserverlog.debug(json.dumps(requestlog))
+                return e 
+
+        else:
+            return await handler(request)
 
     async def restart_Helper(self):
 
