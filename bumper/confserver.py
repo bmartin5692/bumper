@@ -341,16 +341,17 @@ class ConfServer:
                 if sessobj.session.transitions.state == "connected":
                     await sessobj.writer.close()
 
+            #await bumper.mqtt_server.broker.shutdown()
             aloop = asyncio.get_event_loop()
             aloop.call_later(
             0.1, lambda: asyncio.create_task(bumper.mqtt_server.broker.shutdown())
             )  # In .1 seconds shutdown broker
-  
+
+        
         aloop = asyncio.get_event_loop()
         aloop.call_later(
-            1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
+           1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
         )  # In 1.5 seconds start broker
-
 
     async def restart_XMPP(self):
         bumper.xmpp_server.disconnect()
@@ -363,11 +364,12 @@ class ConfServer:
                 await self.restart_Helper()
                 return web.json_response({"status": "complete"})
             elif service == "MQTTServer":
-                await self.restart_MQTT()
+                asyncio.create_task(self.restart_MQTT())
                 aloop = asyncio.get_event_loop()
                 aloop.call_later(
                     5, lambda: asyncio.create_task(self.restart_Helper())
                 )  # In 5 seconds restart Helperbot
+                
                 return web.json_response({"status": "complete"})
             elif service == "XMPPServer":
                 await self.restart_XMPP()
