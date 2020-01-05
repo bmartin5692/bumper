@@ -69,6 +69,11 @@ class portal_api_iot(plugins.ConfServerApp):
                         body = {"ret": "ok", "unRead": False}
                         return web.json_response(body)
 
+                    if json_body["td"] == "PreWifiConfig":  # EcoVacs Home
+                        body = {"ret":"ok"}
+                        return web.json_response(body)
+    
+
         except Exception as e:
             logging.exception("{}".format(e))
 

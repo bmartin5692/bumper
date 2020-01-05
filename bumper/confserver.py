@@ -102,8 +102,8 @@ class ConfServer:
         for api in apis:         
             self.app.add_subapp(apis[api]["prefix"], apis[api]["app"])
 
-        for resource in self.app.router.resources():
-            print(resource)
+        #for resource in self.app.router.resources():
+        #    print(resource)
 
 
  
@@ -839,6 +839,34 @@ class ConfServer:
                     "msg": "操作成功",
                     "time": self.get_milli_time(datetime.utcnow().timestamp()),
                 }
+
+                # Example body
+                # {
+                # "code": "0000",
+                # "data": {
+                #     "email": "user@gmail.com",
+                #     "hasMobile": "N",
+                #     "hasPassword": "Y",
+                #     "headIco": "",
+                #     "loginName": "user@gmail.com",
+                #     "mobile": null,
+                #     "mobileAreaNo": null,
+                #     "nickname": "",
+                #     "obfuscatedMobile": null,
+                #     "thirdLoginInfoList": [
+                #     {
+                #         "accountType": "WeChat",
+                #         "hasBind": "N"
+                #     }
+                #     ],
+                #     "uid": "20180719212155_*****",
+                #     "userName": "EAY*****"
+                # },
+                # "msg": "操作成功",
+                # "success": true,
+                # "time": 1578203898343
+                # }
+
                 return web.json_response(body)
 
             except Exception as e:

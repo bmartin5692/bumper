@@ -26,8 +26,11 @@ class v1_private_user(plugins.ConfServerApp):
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreement", self.handle_checkAgreement,name="v1_user_checkAgreement"),
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreementBatch", self.handle_checkAgreement,name="v1_user_checkAgreementBatch"),
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserAccountInfo", authhandler.getUserAccountInfo,name="v1_user_getUserAccountInfo"),
+            web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserMenuInfo", self.handle_getUserMenuInfo,name="v1_user_getUserMenuInfo"),
        # Direct register from app:
         # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
+        #Register by email
+        # /registerByEmail
     
         ]
 
@@ -71,6 +74,62 @@ class v1_private_user(plugins.ConfServerApp):
 
         except Exception as e:
             logging.exception("{}".format(e))        
+
+    async def handle_getUserMenuInfo(self, request):
+        try:
+            apptype = request.match_info.get("apptype", "")
+            body = {
+                    "code": "0000",
+                    "data": [
+                        {
+                        "menuItems": [
+                            {
+                            "clickAction": 1,
+                            "clickUri": "https://ecovacs.zendesk.com/hc/en-us",
+                            "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/2019121603180741b73907046e742b80e8fe4a90fe2498.png",
+                            "menuId": "20191216031849_4d744630f7ad2f5208a4b8051be61d10",
+                            "menuName": "Help & Feedback",
+                            "paramsJson": ""
+                            }
+                        ],
+                        "menuPositionKey": "A_FIRST"
+                        },
+                        {
+                        "menuItems": [
+                            {
+                            "clickAction": 3,
+                            "clickUri": "robotShare",
+                            "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/2019121603284185e632ec6c5da10bd82119d7047a1f9e.png",
+                            "menuId": "20191216032853_5fac4cc9cbd0e166dfa951485d1d8cc4",
+                            "menuName": "Share Robot",
+                            "paramsJson": ""
+                            }
+                        ],
+                        "menuPositionKey": "B_SECOND"
+                        },
+                        {
+                        "menuItems": [
+                            {
+                            "clickAction": 3,
+                            "clickUri": "config",
+                            "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/201912160325324068da4e4a09b8c3973db162e84784d5.png",
+                            "menuId": "20191216032545_ebea0fbb4cb02d9c2fec5bdf3371bc2d",
+                            "menuName": "Settings",
+                            "paramsJson": ""
+                            }
+                        ],
+                        "menuPositionKey": "C_THIRD"
+                        }
+                    ],
+                    "msg": "操作成功",
+                    "success": True,
+                    "time": 1578203898342
+                    }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))                    
 
 plugin = v1_private_user()
 
