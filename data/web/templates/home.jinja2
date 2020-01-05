@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <title>Bumper</title>
+    <meta http-equiv="refresh" content="5" />
+    <script>
+    function restartService(service) {
+        console.log("restart service", service);
+        fetch('restart_' + service)
+        .then((response) => {
+           return response.json();
+        })
+        .then((myJson) => {
+            alert("Restarting " + service + ": " + myJson["status"])
+            console.log("restart",service,"-",myJson["status"]);
+        });
+        
+    }
+
+    function removeBot(did) {
+        console.log("remove bot",did);
+        fetch('bot/remove/' + did)
+        .then((response) => {
+            return response.json();
+        })
+        .then((myJson) => {
+            alert("Removing Bot (DID) - " + did + " - " + myJson["status"])
+            console.log("remove bot",did, myJson["status"]);
+        });
+        
+    }
+
+
+    function removeClient(resource) {
+
+        console.log("remove client",resource);
+        fetch('client/remove/' + resource)
+        .then((response) => {
+            return response.json();
+        })
+        .then((myJson) => {
+            alert("Removing Client - resource - " + resource + " - " + myJson["status"])
+            console.log("remove client",resource, myJson["status"]);
+        });
+        
+    }
+
+    </script>
+</head>
+<body>
+    <ul id="navigation">
+    {% for item in navigation %}
+        <li><a href="{{ item.href }}">{{ item.caption }}</a></li>
+    {% endfor %}
+    </ul>
+
+<div class="col-8">
+    <h1>Bumper</h1>
+    
+    <!-- Section Stats -->
+    <div class="card bg-light border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Server Status</h2>
+        </div>    
+        <div class="card-body">
+        
+        <div class="card border border-dark">
+        <div class="card card-header">
+            <h3 class="card-title">MQTT Server</h3>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('MQTTServer');">Restart Service</button></div>
+        </div>    
+        <div class="card-body">
+        Status: {% if mqtt_server[0].state == "started" %} <span class="badge badge-success">{{ mqtt_server[0].state }}</span> {% else %} <span class="badge badge-danger">{{ mqtt_server[0].state }}</span> {% endif %}
+        Sessions: {{ mqtt_server[1].sessions[0].count }}
+        
+        <table class="table table-striped table-bordered table-responsive-lg">
+        <thead class="thead-dark">
+        <TH>username</TH><TH>clientid</TH><TH>state</TH>
+        </thead>
+        {% for sess in mqtt_server[1].sessions[1].clients %}
+        <TR>
+            <TD>{{ sess[0].username }}</TD>
+            <TD>{{ sess[0].client_id }}</TD>       
+            <TD {% if sess[0].state == "connected" %} class="table-success" {% endif %}> {{ sess[0].state }} </TD>
+        </TR>
+        {% endfor %}
+        </table>
+        
+        </div>
+        </div>
+
+        </br>
+
+        <div class="card border border-dark">
+        <div class="card card-header">
+            <h3 class="card-title">XMPP Server</h3>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('XMPPServer');">Restart Service</button></div>
+        </div>    
+        <div class="card-body">
+        Status: {% if xmpp_server.server._serving == True %} <span class="badge badge-success">running</span> {% else %} <span class="badge badge-danger">not running</span> {% endif %}
+        Clients: {{ xmpp_server.clients | length }}
+        
+        <table class="table table-striped table-bordered table-responsive-lg">
+        <thead class="thead-dark">
+        <TH>uid</TH><TH>jid</TH><TH>state</TH>
+        </thead>
+        {% for client in xmpp_server.clients  %}
+        <TR>
+            <TD>{{ client.uid }}</TD>
+            <TD>{{ client.bumper_jid }}</TD>       
+            <TD {% if client.state == 4 %} class="table-success" {% endif %}>{% if client.state == 4 %} connected {% else %} not connected {% endif %}</TD>
+        </TR>
+        {% endfor %}
+        </table>    
+
+        </div>
+        </div>
+
+        </br>
+
+        <div class="card border border-dark">
+        <div class="card card-header">
+            <h3 class="card-title">Helperbot</h3>
+            <div>Action: <button type="button" class="btn btn-outline-danger btn-sm" onclick="restartService('Helperbot');">Restart Service</button></div>
+            
+        </div>    
+        
+        <div class="card-body">
+        Status: {% if helperbot[0].state == "connected" %} <span class="badge badge-success">{{ helperbot[0].state }}</span> {% else %} <span class="badge badge-danger">{{ helperbot[0].state }}</span> {% endif %}
+
+        </div>
+        </div>
+        
+        </div>
+    </div>
+
+    </br>
+
+    <!-- Section Bots -->
+    <div class="card border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Bots</h2>
+        </div>    
+        <div class="card-body">
+        <table class="table table-striped table-bordered table-responsive-lg">
+        <thead class="thead-dark">
+        <TH>SN</TH><TH>Nickname</TH><TH>Class</TH><TH>DID</TH><TH>Resource</TH><TH>Company</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>
+        </thead>
+        {% for bot in bots %}
+        <TR>
+            <TD>{{ bot.name }}</TD>
+            <TD>{{ bot.nick }}</TD>
+            <TD>{{ bot.class }}</TD>
+            <TD>{{ bot.did }}</TD>
+            <TD>{{ bot.resource }} </TD>
+            <TD>{{ bot.company}} </TD>
+            
+            <TD {% if bot.mqtt_connection == True %} class="table-success" {% endif %}> {{ bot.mqtt_connection }} </TD>
+            <TD {% if bot.xmpp_connection == True %} class="table-success" {% endif %}> {{ bot.xmpp_connection }}</TD>
+            <TD> <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeBot('{{ bot.did }}');">Remove</button> </TD>
+        </TR>
+        {% endfor %}
+        </table>
+        </div>
+    </div>
+
+</br>
+
+    <!-- Section Clients -->
+    <div class="card border-dark">
+        <div class="card-header">
+            <h2 class="card-title">Clients</h2>
+        </div>    
+        <div class="card-body">
+        <table class="table table-striped table-bordered table-responsive-lg">
+        <thead class="thead-dark">
+        <TH>User ID</TH><TH>Realm</TH><TH>Resource</TH><TH>MQTT Connected</TH><TH>XMPP Connected</TH><TH>Action</TH>
+        </thead>
+        {% for client in clients %}
+        <TR>
+            <TD>{{ client.userid }}</TD>
+            <TD>{{ client.realm }}</TD>
+            <TD>{{ client.resource }}</TD>
+            <TD {% if client.mqtt_connection == True %} class="table-success" {% endif %}> {{ client.mqtt_connection }} </TD>
+            <TD {% if client.xmpp_connection == True %} class="table-success" {% endif %}> {{ client.xmpp_connection }}</TD>        
+            <TD> <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeClient('{{ client.resource }}');">Remove</button> </TD>
+        </TR>
+        {% endfor %}
+        </table>
+        </div>    
+    </div>
+    
+</div>    
+</body>
+</html>

@@ -141,5 +141,8 @@ def test_client_db():
         bumper.client_get("resource_123")["xmpp_connection"] == False
     )  # Test that xmpp was set False for client
     assert (
-        len(bumper.get_disconnected_xmpp_clients()) == 1
+        len(bumper.get_disconnected_xmpp_clients()) > 0
     )  # Test len of connected xmpp clients is 1
+
+    bumper.client_remove("resource_123")
+    assert bumper.client_get("resource_123") == None

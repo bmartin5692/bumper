@@ -12,6 +12,9 @@ from logging.handlers import RotatingFileHandler
 import socket
 import sys
 
+import importlib
+import pkgutil
+from pkgutil import extend_path
 
 def strtobool(strbool):
     if str(strbool).lower() in ["true", "1", "t", "y", "on", "yes"]:
@@ -31,6 +34,8 @@ data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
 os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
 certs_dir = os.environ.get("BUMPER_CERTS") or os.path.join(bumper_dir, "certs")
 os.makedirs(certs_dir, exist_ok=True)  # Ensure data directory exists or create
+
+
 
 # Certs
 ca_cert = os.environ.get("BUMPER_CA") or os.path.join(certs_dir, "ca.crt")
@@ -56,6 +61,16 @@ mqtt_helperbot = None
 conf_server = None
 conf_server_2 = None
 xmpp_server = None
+
+# Plugins
+sys.path.append(os.path.join(bumper_dir, "bumper", "plugins"))
+sys.path.append(os.path.join(data_dir, "plugins"))
+
+discovered_plugins = {
+    name: importlib.import_module(name)
+    for finder, name, ispkg in pkgutil.iter_modules()
+    if name.startswith('bumper_')
+}
 
 shutting_down = False
 
@@ -206,10 +221,8 @@ async def start():
 
     # Start web servers
     conf_server.confserver_app()
-    asyncio.create_task(conf_server.start_server())
-
-    conf_server_2.confserver_app()
-    asyncio.create_task(conf_server_2.start_server())
+    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
+    asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
 
     # Start maintenance
     while not shutting_down:
