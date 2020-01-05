@@ -76,11 +76,13 @@ class ConfServer:
         api_v1 = {"prefix": "/v1/", "app": web.Application()} # for /v1/   
         api_v2 = {"prefix": "/v2/", "app": web.Application()} # for /v2/   
         portal_api = {"prefix": "/api/", "app": web.Application()} # for /api/ 
+        upload_api = {"prefix": "/upload/", "app": web.Application()} # for /upload/ 
         
         apis = {
             "api_v1": api_v1,
             "api_v2": api_v2,
             "portal_api": portal_api,
+            "upload_api": upload_api,
             
         }
         
