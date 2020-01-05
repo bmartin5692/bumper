@@ -65,6 +65,10 @@ class portal_api_dim(plugins.ConfServerApp):
                         body = {"ret": "ok", "unRead": False}
                         return web.json_response(body)
 
+                    if json_body["td"] == "ReceiveShareDevice":  # EcoVacs Home
+                        body = {"ret":"ok"}
+                        return web.json_response(body)                        
+
         except Exception as e:
             logging.exception("{}".format(e))  
 
