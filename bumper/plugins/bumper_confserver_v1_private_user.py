@@ -119,11 +119,24 @@ class v1_private_user(plugins.ConfServerApp):
                             }
                         ],
                         "menuPositionKey": "C_THIRD"
+                        },
+                        {
+                        "menuItems": [
+                            {
+                            "clickAction": 1,
+                            "clickUri": "https://bumper.ecovacs.com/",
+                            "menuIconUrl": "https://gl-us-pub.ecovacs.com/upload/global/2019/12/16/201912160325324068da4e4a09b8c3973db162e84784d5.png",
+                            "menuId": "20191216032545_ebea0fbb4cb02d9c2fec5bdf3371bc2c",
+                            "menuName": "Bumper Status",
+                            "paramsJson": ""
+                            }
+                        ],
+                        "menuPositionKey": "D_FOURTH"
                         }
                     ],
                     "msg": "操作成功",
                     "success": True,
-                    "time": 1578203898342
+                    "time": self.get_milli_time(datetime.utcnow().timestamp())
                     }
 
             return web.json_response(body)
