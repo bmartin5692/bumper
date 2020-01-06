@@ -30,7 +30,7 @@ class upload_global(plugins.ConfServerApp):
         try:
             fileID = request.match_info.get("id", "")
 
-            return web.FileResponse(os.path.join(bumper.data_dir,"web","robotvac_image.jpg"))
+            return web.FileResponse(os.path.join(bumper.bumper_dir,"bumper","web","images","robotvac_image.jpg"))
             
         except Exception as e:
             logging.exception("{}".format(e))          
