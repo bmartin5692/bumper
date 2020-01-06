@@ -58,7 +58,7 @@ class ConfServer:
         self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
             self.log_all_requests,
             ])
-        aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.data_dir, "web","templates")))          
+        aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.bumper_dir,"bumper","web","templates")))
 
         self.app.add_routes(
             [
