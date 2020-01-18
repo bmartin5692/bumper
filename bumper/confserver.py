@@ -12,6 +12,7 @@ from bumper import plugins
 from datetime import datetime, timedelta
 import asyncio
 from aiohttp import web
+import aiohttp
 import aiohttp_jinja2
 import jinja2
 import uuid
@@ -53,6 +54,93 @@ class ConfServer:
 
     def get_milli_time(self, timetoconvert):
         return int(round(timetoconvert * 1000))
+
+    def confserver_proxy_app(self):
+        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
+            self.log_all_requests,
+            ])
+        
+
+        self.app.add_routes(
+            [
+                web.route("*", "/{path:.*}", self.handle_proxy, name="confserver_proxy"),        
+            ]
+        )
+
+    async def handle_proxy(self, request):
+        
+        try:
+            ecoresp = ""
+
+            # Ecovacs IP for proxy mode testing
+            ecouser_net_ip = "47.88.66.164"
+            ecovacs_com_ip = "47.252.51.29"
+            eco_us_api = "47.89.135.130"
+            mq_na_ip = "47.254.52.46"
+            recommender_ip = "47.111.101.11"
+            bigdata_international_ip = "47.88.132.151"
+            bigdata_northamerica_ip = "47.88.66.111"
+            
+            server_port = 443 #default to 443
+            if "_SSLProtocolTransport" != type(request.transport).__name__ and "_SelectorSocketTransport" != type(request.transport).__name__: #check not ssl transport class
+                if "_extra" in request.transport:
+                    if "sockname" in request.transport._extra:
+                        server_port = request.transport._extra["sockname"][1]
+           
+            if request.raw_path == "/":
+                return web.Response(text="Bumper in Proxy Mode")
+            if request.raw_path == "/lookup.do":
+                return await self.handle_lookup(request)                
+                #ecorequest = f"{request.scheme}://{ecouser_net_ip}"
+            elif "ecovacs.com" in request.host:                
+                ecorequest = f"{request.scheme}://{ecovacs_com_ip}"
+            elif "ecouser.net" in request.host:                
+                ecorequest = f"{request.scheme}://{ecouser_net_ip}"
+            elif "eco-us-api" in request.host:
+                ecorequest = f"{request.scheme}://{eco_us_api}"
+            elif "mq-" in request.host:                
+                ecorequest = f"{request.scheme}://{mq_na_ip}"                
+            elif "recommender" in request.host:                
+                ecorequest = f"{request.scheme}://{recommender_ip}"              
+            elif "bigdata-international" in request.host:                
+                ecorequest = f"{request.scheme}://{bigdata_international_ip}"     
+            elif "bigdata-northamerica" in request.host:                
+                ecorequest = f"{request.scheme}://{bigdata_northamerica_ip}"                   
+            else:
+                ecorequest = f"{request.scheme}://{request.host}"
+
+            if server_port != 443:
+                ecorequest = f"{ecorequest}:{server_port}"
+
+            ecorequest = f"{ecorequest}{request.path_qs}"    
+            requestheaders = {'host': request.host}
+            async with aiohttp.ClientSession(headers=requestheaders, connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
+                if request.content.total_bytes > 0:
+                    confserverlog.debug(f"Proxy Request to EcoVacs (body=true) (host:{request.host}) - {ecorequest} - {request._read_bytes}")
+                    jdata = json.loads(request._read_bytes.decode('utf8').replace("'",'"')) #convert bytes to json for sending
+                    async with session.request(request.method, ecorequest, json=jdata) as resp:
+                        ecoresp = await resp.text()
+                        
+                else:
+                    confserverlog.debug(f"Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
+                    async with session.request(request.method, ecorequest) as resp:
+                        ecoresp = await resp.text()
+                
+                confserverlog.debug(f"Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
+                
+                if resp.status == 200:
+                    ecoresp = json.loads(ecoresp)
+                
+                if resp.status == 200:
+                    return web.json_response(ecoresp)               
+                else:
+                    return web.Response(text=ecoresp)
+                
+            
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
+            return web.Response(text="")
+   
 
     def confserver_app(self):
         self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
@@ -236,41 +324,63 @@ class ConfServer:
                     postbody = None
 
                 response = await handler(request)
-                if not "application/octet-stream" in response.content_type:
-                    logall = {
-                        "request": {
-                        "route_name": f"{request.match_info.route.name}",
-                        "method": f"{request.method}",
-                        "path": f"{request.path}",
-                        "query_string": f"{request.query_string}",
-                        "raw_path": f"{request.raw_path}",
-                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                        "body": f"{postbody}",
-                            },
+                if response:
+                    if not "application/octet-stream" in response.content_type:
+                        try:
+                            logall = {
+                                "request": {
+                                "route_name": f"{request.match_info.route.name}",
+                                "method": f"{request.method}",
+                                "path": f"{request.path}",
+                                "query_string": f"{request.query_string}",
+                                "raw_path": f"{request.raw_path}",
+                                "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                                "body": f"{postbody}",
+                                    },
 
-                        "response": {
-                        "response_body": f"{json.loads(response.body)}",
-                        "status": f"{response.status}",
-                        }
-                        }
-                else:
-                    logall = {
-                        "request": {
-                        "route_name": f"{request.match_info.route.name}",
-                        "method": f"{request.method}",
-                        "path": f"{request.path}",
-                        "query_string": f"{request.query_string}",
-                        "raw_path": f"{request.raw_path}",
-                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                        "body": f"{postbody}",
-                            },
+                                "response": {
+                                #"response_body": f"{json.loads(response.body)}",
+                                "response_body": f"{json.loads(response.text)}",
+                                "status": f"{response.status}",
+                                }
+                                }
+                        except Exception as e:
+                            logall = {
+                            "request": {
+                            "route_name": f"{request.match_info.route.name}",
+                            "method": f"{request.method}",
+                            "path": f"{request.path}",
+                            "query_string": f"{request.query_string}",
+                            "raw_path": f"{request.raw_path}",
+                            "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                            "body": f"{postbody}",
+                                },
 
-                        "response": {
-                        "status": f"{response.status}",
-                        }
-                        }   
+                            "response": {
+                            #"response_body": f"{json.loads(response.body)}",
+                            "response_body": f"{(response.text)}",
+                            "status": f"{response.status}",
+                            }
+                            }
 
-                confserverlog.debug(json.dumps(logall))
+                    else:
+                        logall = {
+                            "request": {
+                            "route_name": f"{request.match_info.route.name}",
+                            "method": f"{request.method}",
+                            "path": f"{request.path}",
+                            "query_string": f"{request.query_string}",
+                            "raw_path": f"{request.raw_path}",
+                            "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                            "body": f"{postbody}",
+                                },
+
+                            "response": {
+                            "status": f"{response.status}",
+                            }
+                            }   
+
+                    confserverlog.debug(json.dumps(logall))
                 
                 return response
 

@@ -55,6 +55,7 @@ bumper_debug = strtobool(os.environ.get("BUMPER_DEBUG")) or False
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
 db = None
+bumper_proxy_mode = strtobool(os.environ.get("BUMPER_PROXY_MODE")) or False
 
 mqtt_server = None
 mqtt_helperbot = None
@@ -220,7 +221,10 @@ async def start():
         await asyncio.sleep(0.1)
 
     # Start web servers
-    conf_server.confserver_app()
+    if bumper_proxy_mode:
+        conf_server.confserver_proxy_app()
+    else:
+        conf_server.confserver_app()
     asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
     asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
 
@@ -350,11 +354,16 @@ def main(argv=None):
             help="announce address to bots on checkin",
         )
         parser.add_argument("--debug", action="store_true", help="enable debug logs")
+        parser.add_argument("--proxy-mode", action="store_true", help="enable proxy mode")
 
         args = parser.parse_args(args=argv)
 
         if args.debug:
             bumper_debug = True
+
+        if args.proxy_mode:
+            global bumper_proxy_mode
+            bumper_proxy_mode = True
 
         if args.listen:
             bumper_listen = args.listen
