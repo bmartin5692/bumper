@@ -67,6 +67,10 @@ class ConfServer:
 
         self.app.add_routes(
             [
+                
+                web.get("/bot/remove/{did}", self.handle_RemoveBot, name='remove-bot'),       
+                web.get("/client/remove/{resource}", self.handle_RemoveClient, name='remove-client'),      
+                web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),      
                 web.route("*", "/{path:.*}", self.handle_proxy, name="confserver_proxy"),        
             ]
         )
@@ -87,7 +91,7 @@ class ConfServer:
             if request.raw_path == "/":
                 return await self.handle_base(request)
             if request.raw_path == "/lookup.do":
-                return await self.handle_lookup(request) #use bumper to handle lookup so bot gets Bumper IP and not Ecovacs
+                return await self.handle_lookup(request) #use bumper to handle lookup so bot gets Bumper IP and not Ecovacs  
             
             matchproxy = bumper.config_proxyMode_getServerIP("app", request.host)
 
