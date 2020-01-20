@@ -474,6 +474,9 @@ class BumperMQTTServer_Plugin:
                         (topic, qos)                    
                     ]
                 )
+            else:
+                proxymodelog.info(f"MQTT Proxy Mode - New MQTT Topic Subscription - Client: {client_id} - Topic: {topic}")
+
         #return
         #pass
 
