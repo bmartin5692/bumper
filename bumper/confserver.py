@@ -137,13 +137,18 @@ class ConfServer:
                 else:
                     proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
                     async with session.request(request.method, ecorequest) as resp:
-                        ecoresp = await resp.text()  
+                        if resp.content_type == "application/octet-stream":
+                            ecoresp = await resp.read()
+                        else:
+                            ecoresp = await resp.text()  
                         proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                     
                 if resp.status == 200:
                     if resp.content_type == "application/json":
                         ecoresp = json.loads(ecoresp)
                         return web.json_response(ecoresp)
+                    elif resp.content_type == "application/octet-stream":
+                        return web.Response(body=ecoresp)
                     else:
                         return web.Response(text=ecoresp)
             
