@@ -105,6 +105,16 @@ mqttserverlog.addHandler(mqtt_rotate)
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
 
+proxymodelog = logging.getLogger("proxymode")
+proxymode_rotate = RotatingFileHandler(
+    "logs/proxymode.log", maxBytes=5000000, backupCount=5
+)
+proxymode_rotate.setFormatter(logformat)
+proxymodelog.addHandler(proxymode_rotate)
+
+# Override the logging level
+# mqttserverlog.setLevel(logging.INFO)
+
 ### Additional MQTT Logs
 translog = logging.getLogger("transitions")
 translog.addHandler(mqtt_rotate)
@@ -207,6 +217,8 @@ async def start():
     # Start MQTT Server
     asyncio.create_task(mqtt_server.broker_coro())
 
+    await asyncio.sleep(0.5) #Wait half a sec for broker to start
+
     # Start MQTT Helperbot
     asyncio.create_task(mqtt_helperbot.start_helper_bot())
 
@@ -225,6 +237,7 @@ async def start():
         conf_server.confserver_proxy_app()
     else:
         conf_server.confserver_app()
+
     asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf1_listen_port, usessl=True))
     asyncio.create_task(conf_server.start_site(conf_server.app, address=bumper_listen, port=conf2_listen_port, usessl=False))
 

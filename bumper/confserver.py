@@ -19,6 +19,7 @@ import uuid
 import xml.etree.ElementTree as ET
 
 
+
 class aiohttp_filter(logging.Filter):
     def filter(self, record):
         if (
@@ -41,6 +42,7 @@ logging.getLogger("aiohttp.access").addFilter(
     aiohttp_filter()
 )  # Add logging filter above to aiohttp.access
 
+proxymodelog = logging.getLogger("proxymode")
 
 class ConfServer:
     def __init__(self, address, usessl=False):
@@ -56,9 +58,11 @@ class ConfServer:
         return int(round(timetoconvert * 1000))
 
     def confserver_proxy_app(self):
-        self.app = web.Application(loop=asyncio.get_event_loop(), middlewares=[
+        
+        self.app = web.Application(middlewares=[
             self.log_all_requests,
             ])
+        aiohttp_jinja2.setup(self.app, loader=jinja2.FileSystemLoader(os.path.join(bumper.bumper_dir,"bumper","web","templates")))
         
 
         self.app.add_routes(
@@ -66,6 +70,8 @@ class ConfServer:
                 web.route("*", "/{path:.*}", self.handle_proxy, name="confserver_proxy"),        
             ]
         )
+        
+        return self.app
 
     async def handle_proxy(self, request):
         
@@ -88,10 +94,9 @@ class ConfServer:
                         server_port = request.transport._extra["sockname"][1]
            
             if request.raw_path == "/":
-                return web.Response(text="Bumper in Proxy Mode")
+                return await self.handle_base(request)
             if request.raw_path == "/lookup.do":
-                return await self.handle_lookup(request)                
-                #ecorequest = f"{request.scheme}://{ecouser_net_ip}"
+                return await self.handle_lookup(request) #use bumper to handle lookup so bot gets Bumper IP and not Ecovacs
             elif "ecovacs.com" in request.host:                
                 ecorequest = f"{request.scheme}://{ecovacs_com_ip}"
             elif "ecouser.net" in request.host:                
@@ -116,29 +121,38 @@ class ConfServer:
             requestheaders = {'host': request.host}
             async with aiohttp.ClientSession(headers=requestheaders, connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
                 if request.content.total_bytes > 0:
-                    confserverlog.debug(f"Proxy Request to EcoVacs (body=true) (host:{request.host}) - {ecorequest} - {request._read_bytes}")
-                    jdata = json.loads(request._read_bytes.decode('utf8').replace("'",'"')) #convert bytes to json for sending
+                    proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=true) (host:{request.host}) - {ecorequest} - {request._read_bytes}")            
+                    jdata = request._read_bytes.decode('utf8')
+                    jdata = json.loads(jdata)
                     async with session.request(request.method, ecorequest, json=jdata) as resp:
                         ecoresp = await resp.text()
+                        ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)
+                        proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                         
                 else:
-                    confserverlog.debug(f"Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
+                    proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
                     async with session.request(request.method, ecorequest) as resp:
-                        ecoresp = await resp.text()
-                
-                confserverlog.debug(f"Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
-                
+                        ecoresp = await asyncio.shield(resp.text())
+                        ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)            
+                        proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
+                    
                 if resp.status == 200:
-                    ecoresp = json.loads(ecoresp)
-                
-                if resp.status == 200:
-                    return web.json_response(ecoresp)               
+                    if resp.content_type == "application/json":
+                        ecoresp = json.loads(ecoresp)
+                        return web.json_response(ecoresp)
+                    else:
+                        return web.Response(text=ecoresp)
+            
                 else:
                     return web.Response(text=ecoresp)
-                
-            
+                    
+        except asyncio.CancelledError as e:
+            proxymodelog.error(f"Request cancelled or timeout - {ecorequest} - {jdata}")
+            return web.Response(text="")
+            pass
+
         except Exception as e:
-            confserverlog.exception("{}".format(e))
+            proxymodelog.exception("{}".format(e))
             return web.Response(text="")
    
 
@@ -198,9 +212,11 @@ class ConfServer:
 
  
     async def start_site(self, app, address='localhost', port=8080, usessl=False):
+        
         runner = web.AppRunner(app)
         self.runners.append(runner)
         await runner.setup()
+
         if usessl:
             ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
             ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
@@ -217,6 +233,36 @@ class ConfServer:
             )
 
         await site.start()
+        
+    def start_site_thread(self, app, address='localhost', port=8080, usessl=False):
+        #test for new thread and loop
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        runner = web.AppRunner(app)
+        self.runners.append(runner)
+        #await runner.setup()
+        loop.run_until_complete(runner.setup()) #for thread test
+
+        if usessl:
+            ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
+            site = web.TCPSite(
+                runner,
+                host=address,
+                port=port,
+                ssl_context=ssl_ctx,
+            )
+
+        else:
+            site = web.TCPSite(
+                runner, host=address, port=port
+            )
+
+        #await site.start()
+        #for thread test
+        loop.run_until_complete(site.start())
+        loop.run_forever()        
 
     async def start_server(self):
         try:
