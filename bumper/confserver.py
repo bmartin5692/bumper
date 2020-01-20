@@ -122,18 +122,22 @@ class ConfServer:
             async with aiohttp.ClientSession(headers=requestheaders, connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
                 if request.content.total_bytes > 0:
                     proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=true) (host:{request.host}) - {ecorequest} - {request._read_bytes}")            
-                    jdata = request._read_bytes.decode('utf8')
-                    jdata = json.loads(jdata)
-                    async with session.request(request.method, ecorequest, json=jdata) as resp:
-                        ecoresp = await resp.text()
-                        #ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)
-                        proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
+                    if request.content_type == "application/x-www-form-urlencoded": # android apps use form
+                        fdata = await request.post()
+                        async with session.request(request.method, ecorequest, data=fdata) as resp:
+                            ecoresp = await resp.text()
+                            proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
+                    else: # handle json
+                        jdata = request._read_bytes.decode('utf8')
+                        jdata = json.loads(jdata)
+                        async with session.request(request.method, ecorequest, json=jdata) as resp:
+                            ecoresp = await resp.text()
+                            proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                         
                 else:
                     proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
                     async with session.request(request.method, ecorequest) as resp:
-                        ecoresp = await asyncio.shield(resp.text())
-                        #ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)            
+                        ecoresp = await resp.text()  
                         proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                     
                 if resp.status == 200:

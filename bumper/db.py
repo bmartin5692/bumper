@@ -42,12 +42,12 @@ def config_proxyMode_deleteTable():
 
 def config_proxyMode_defaults():
     defaults = [
-        {"type":"app","host":"gl-us-api.ecovacs.com","ip":"47.252.51.29","match":"gl-us-"},
+        {"type":"app","host":"gl-us-api.ecovacs.com","ip":"47.252.51.29","match":"gl-"},
         {"type":"app","host":"gl-us-openapi.ecovacs.com","ip":"47.252.51.29"},
         {"type":"app","host":"portal-ww.ecouser.net","ip":"47.88.66.164","match":"portal-"},
         {"type":"app","host":"bigdata-northamerica.ecovacs.com","ip":"47.88.66.111"},
-        {"type":"app","host":"bigdata-international.ecovacs.com","ip":"47.88.132.151"},
-        {"type":"app","host":"eco-us-api.ecovacs.com","ip":"47.89.135.130","match":"eco-us-"},
+        {"type":"app","host":"bigdata-international.ecovacs.com","ip":"47.88.132.151","match":"bigdata-"},
+        {"type":"app","host":"eco-us-api.ecovacs.com","ip":"47.89.135.130","match":"eco-"},
         {"type":"app","host":"ecovacs.com","ip":"47.90.210.46"},
         {"type":"app","host":"ecouser.net","ip":"116.62.93.217"},
         {"type":"mqtt_server","host":"mq-ww.ecouser.net","ip":"47.254.52.46"},
