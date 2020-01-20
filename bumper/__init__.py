@@ -171,6 +171,9 @@ xmpp_listen_port = 5223
 
 
 async def start():
+    #Reset xmpp/mqtt to false in database for bots and clients
+    bot_reset_connectionStatus()
+    client_reset_connectionStatus()
 
     try:
         loop = asyncio.get_event_loop()

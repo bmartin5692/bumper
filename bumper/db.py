@@ -289,6 +289,11 @@ def bot_remove(did):
     if bot:
         bots.remove(doc_ids=[bot.doc_id])
 
+def bot_reset_connectionStatus():
+    bots = db_get().table("bots")
+    for bot in bots:
+        bot_set_mqtt(bot["did"], False)
+        bot_set_xmpp(bot["did"], False)
 
 def bot_get(did):
     bots = db_get().table("bots")
@@ -344,6 +349,12 @@ def client_add(userid, realm, resource):
     if not client:
         bumperlog.info("Adding new client with resource {}".format(newclient.resource))
         client_full_upsert(newclient.asdict())
+
+def client_reset_connectionStatus():
+    clients = db_get().table("clients")
+    for client in clients:
+        client_set_mqtt(client["resource"], False)
+        client_set_xmpp(client["resource"], False)        
 
 def client_remove(resource):
     clients = db_get().table("clients")
