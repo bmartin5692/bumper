@@ -55,11 +55,7 @@ class MQTTHelperBot:
             )
             await self.Client.subscribe(
                 [
-                    ("iot/p2p/+/+/+/+/helperbot/bumper/helperbot/+/+/+", QOS_0),
-                    ("iot/p2p/+/+/+/+/+/+/+/+/+/+", QOS_0),
-                    ("iot/p2p/+", QOS_0),
-                    ("iot/atr/+", QOS_0),
-                    
+                    ("iot/#", QOS_0),                    
                 ]
             )
 
