@@ -377,7 +377,14 @@ class BumperMQTTServer_Plugin:
                     )
                     mqttserverlog.info(f"Bumper Authentication Success - Bot - SN: {username} - DID: {didsplit[0]} - Class: {tmpbotdetail[0]}")                    
                     authenticated = True
-                    mq_na_ip = "47.254.52.46"
+                    mqtt_server = bumper.config_proxyMode_getServerIP("mqtt_server","")
+                    if mqtt_server:
+                        proxymodelog.info(f"MQTT Proxy Mode - Using server {mqtt_server}")
+                    else:
+                        proxymodelog.error(f"MQTT Proxy Mode - No server found! Load defaults or set mqtt_server in config_proxymode table!")
+                        proxymodelog.exception(f"MQTT Proxy Mode - Exiting due to no MQTT Server configured!")
+                        exit(1)
+
                     if authenticated and bumper.bumper_proxy_mode:
                         proxymodelog.info(f"MQTT Proxy Mode - Proxy Bot to MQTT - Client_id: {client_id} - Username: {username}")
       
@@ -387,7 +394,7 @@ class BumperMQTTServer_Plugin:
                         
                         try:
                             await self.proxyclients[client_id].connect(
-                                f"mqtts://{username}:{password}@{mq_na_ip}:8883",
+                                f"mqtts://{username}:{password}@{mqtt_server}:8883",
                             )
                         except Exception as e:
                             mqttserverlog.error(f"MQTT Proxy Mode - Exception connecting with proxy to ecovacs - {e}")

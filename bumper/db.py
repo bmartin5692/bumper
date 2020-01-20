@@ -32,9 +32,65 @@ def db_get():
     db.table("clients", cache_size=0)
     db.table("bots", cache_size=0)
     db.table("tokens", cache_size=0)
+    db.table("config_proxymode", cache_size=0)
 
     return db
 
+def config_proxyMode_deleteTable():
+    opendb = db_get()
+    opendb.purge_table("config_proxymode")
+
+def config_proxyMode_defaults():
+    defaults = [
+        {"type":"app","host":"gl-us-api.ecovacs.com","ip":"47.252.51.29","match":"gl-us-"},
+        {"type":"app","host":"gl-us-openapi.ecovacs.com","ip":"47.252.51.29"},
+        {"type":"app","host":"portal-ww.ecouser.net","ip":"47.88.66.164","match":"portal-"},
+        {"type":"app","host":"bigdata-northamerica.ecovacs.com","ip":"47.88.66.111"},
+        {"type":"app","host":"bigdata-international.ecovacs.com","ip":"47.88.132.151"},
+        {"type":"app","host":"eco-us-api.ecovacs.com","ip":"47.89.135.130","match":"eco-us-"},
+        {"type":"app","host":"ecovacs.com","ip":"47.90.210.46"},
+        {"type":"app","host":"ecouser.net","ip":"116.62.93.217"},
+        {"type":"mqtt_server","host":"mq-ww.ecouser.net","ip":"47.254.52.46"},
+        ]
+    opendb = db_get()
+    with opendb:
+        config = opendb.table("config_proxymode")
+        config.insert_multiple(defaults)
+
+def config_proxyMode_getServerIP(type, host):
+    opendb = db_get()
+    with opendb:
+        proxyconfig = opendb.table("config_proxymode")
+        proxy = Query()
+        if type == "mqtt_server":
+            entry = proxyconfig.get((proxy.type == type))
+            
+        else:
+            entry = proxyconfig.get((proxy.type == type) & (proxy.host == host))
+        
+        if entry:
+            return entry["ip"]
+        
+        else:
+            proxylist = proxyconfig.search(Query())
+            for proxy in proxylist: # check for sub matches
+                if "match" in proxy:
+                    if proxy["match"] in host:
+                        return proxy["ip"]
+            return None
+
+def config_proxyMode_countEntries():
+    opendb = db_get()
+    with opendb:
+        config = opendb.table("config_proxymode")
+        return len(config)
+        
+def config_proxyMode_getall():
+    opendb = db_get()
+    with opendb:
+        config = opendb.table("config_proxymode")
+        return config.search(Query())
+        
 
 def user_add(userid):
     newuser = BumperUser()

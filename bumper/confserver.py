@@ -78,15 +78,6 @@ class ConfServer:
         try:
             ecoresp = ""
 
-            # Ecovacs IP for proxy mode testing
-            ecouser_net_ip = "47.88.66.164"
-            ecovacs_com_ip = "47.252.51.29"
-            eco_us_api = "47.89.135.130"
-            mq_na_ip = "47.254.52.46"
-            recommender_ip = "47.111.101.11"
-            bigdata_international_ip = "47.88.132.151"
-            bigdata_northamerica_ip = "47.88.66.111"
-            
             server_port = 443 #default to 443
             if "_SSLProtocolTransport" != type(request.transport).__name__ and "_SelectorSocketTransport" != type(request.transport).__name__: #check not ssl transport class
                 if "_extra" in request.transport:
@@ -97,26 +88,31 @@ class ConfServer:
                 return await self.handle_base(request)
             if request.raw_path == "/lookup.do":
                 return await self.handle_lookup(request) #use bumper to handle lookup so bot gets Bumper IP and not Ecovacs
-            elif "ecovacs.com" in request.host:                
-                ecorequest = f"{request.scheme}://{ecovacs_com_ip}"
-            elif "ecouser.net" in request.host:                
-                ecorequest = f"{request.scheme}://{ecouser_net_ip}"
-            elif "eco-us-api" in request.host:
-                ecorequest = f"{request.scheme}://{eco_us_api}"
-            elif "mq-" in request.host:                
-                ecorequest = f"{request.scheme}://{mq_na_ip}"                
-            elif "recommender" in request.host:                
-                ecorequest = f"{request.scheme}://{recommender_ip}"              
-            elif "bigdata-international" in request.host:                
-                ecorequest = f"{request.scheme}://{bigdata_international_ip}"     
-            elif "bigdata-northamerica" in request.host:                
-                ecorequest = f"{request.scheme}://{bigdata_northamerica_ip}"                   
+            
+            matchproxy = bumper.config_proxyMode_getServerIP("app", request.host)
+
+            if matchproxy:
+                proxymodelog.info(f"Matched {request.host} to entry in proxyconfig!")
+                ecorequest = f"{request.scheme}://{matchproxy}"
             else:
-                ecorequest = f"{request.scheme}://{request.host}"
+                proxymodelog.info(f"No match for {request.host} in proxyconfig!")
+                if "ecovacs.com" in request.host:
+                    proxymodelog.info(f"ecovacs.com in {request.host} defaulting to ecovacs.com IP!")
+                    matchproxy = bumper.config_proxyMode_getServerIP("app", "ecovacs.com")
+                    ecorequest = f"{request.scheme}://{matchproxy}"
+                elif "ecouser.net" in request.host:
+                    proxymodelog.info(f"ecouser.net in {request.host} defaulting to ecouser.net IP!")
+                    matchproxy = bumper.config_proxyMode_getServerIP("app", "ecouser.net")
+                    ecorequest = f"{request.scheme}://{matchproxy}"
+                else:
+                    proxymodelog.info(f"No matches for {request.host} defaulting to ecovacs.com IP!")
+                    matchproxy = bumper.config_proxyMode_getServerIP("app", "ecovacs.com")
+                    ecorequest = f"{request.scheme}://{matchproxy}"
 
             if server_port != 443:
                 ecorequest = f"{ecorequest}:{server_port}"
 
+            proxymodelog.info(f"{request.host} - {ecorequest}")
             ecorequest = f"{ecorequest}{request.path_qs}"    
             requestheaders = {'host': request.host}
             async with aiohttp.ClientSession(headers=requestheaders, connector=aiohttp.TCPConnector(verify_ssl=False)) as session:
@@ -126,14 +122,14 @@ class ConfServer:
                     jdata = json.loads(jdata)
                     async with session.request(request.method, ecorequest, json=jdata) as resp:
                         ecoresp = await resp.text()
-                        ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)
+                        #ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)
                         proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                         
                 else:
                     proxymodelog.info(f"HTTP Proxy Request to EcoVacs (body=false) (host:{request.host}) - {ecorequest}")
                     async with session.request(request.method, ecorequest) as resp:
                         ecoresp = await asyncio.shield(resp.text())
-                        ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)            
+                        #ecoresp = ecoresp.replace("portal-ww.ecouser.net", ecouser_net_ip)            
                         proxymodelog.info(f"HTTP Proxy Response from EcoVacs (URL: {ecorequest}) - (Status: {resp.status}) - {ecoresp}")
                     
                 if resp.status == 200:

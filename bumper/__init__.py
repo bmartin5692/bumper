@@ -171,6 +171,8 @@ xmpp_listen_port = 5223
 
 
 async def start():
+    #config_proxyMode_deleteTable() #delete existing proxymode table
+    
     #Reset xmpp/mqtt to false in database for bots and clients
     bot_reset_connectionStatus()
     client_reset_connectionStatus()
@@ -237,6 +239,17 @@ async def start():
 
     # Start web servers
     if bumper_proxy_mode:
+        bumperlog.info("Proxy Mode Enabled")        
+        if config_proxyMode_countEntries() == 0: # check if proxymode servers are entered
+            bumperlog.info("Proxy Mode - No Servers, Loading Defaults (US)")
+            config_proxyMode_defaults() # set defaults if 0
+        
+        configproxy = config_proxyMode_getall()
+        cntentries = len(configproxy)
+        proxymodelog.info(f"Loaded {cntentries} entries from proxyconfig")
+        for entry in configproxy:
+            proxymodelog.info(f"Config Entry {entry}")
+
         conf_server.confserver_proxy_app()
     else:
         conf_server.confserver_app()
