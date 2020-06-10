@@ -28,3 +28,5 @@ certs/*
 !logs/README.md
 !data/README.md
 !certs/README.md
+
+.idea
