@@ -93,12 +93,6 @@ async def test_base(aiohttp_client):
     mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
     bumper.mqtt_server = mqtt_server
     await mqtt_server.broker_coro()
-
-    # Start XMPP
-    xmpp_address = ("127.0.0.1", 5223)
-    xmpp_server = bumper.XMPPServer(xmpp_address)
-    bumper.xmpp_server = xmpp_server
-    await xmpp_server.start_async_server()
     
     # Start Helperbot
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -113,8 +107,6 @@ async def test_base(aiohttp_client):
 
     await mqtt_server.broker.shutdown()
 
-    bumper.xmpp_server.disconnect()
-
 
 async def test_restartService(aiohttp_client):
     remove_existing_db()
@@ -125,12 +117,6 @@ async def test_restartService(aiohttp_client):
     mqtt_server = bumper.MQTTServer(mqtt_address, password_file="tests/passwd")
     bumper.mqtt_server = mqtt_server
     await mqtt_server.broker_coro()
-
-    # Start XMPP
-    xmpp_address = ("127.0.0.1", 5223)
-    xmpp_server = bumper.XMPPServer(xmpp_address)
-    bumper.xmpp_server = xmpp_server
-    await xmpp_server.start_async_server()
     
     # Start Helperbot
     mqtt_helperbot = bumper.MQTTHelperBot(mqtt_address)
@@ -143,15 +129,10 @@ async def test_restartService(aiohttp_client):
     assert resp.status == 200   
 
     resp = await client.get("/restart_MQTTServer")
-    assert resp.status == 200   
-
-    resp = await client.get("/restart_XMPPServer")
-    assert resp.status == 200   
+    assert resp.status == 200
 
     mqtt_helperbot.Client.disconnect()
     await mqtt_server.broker.shutdown()
-
-    xmpp_server.disconnect()
 
 async def test_RemoveBot(aiohttp_client):
     client = await aiohttp_client(create_app)

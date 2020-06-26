@@ -118,8 +118,8 @@ class ConfServer:
             ssl_ctx.load_cert_chain(bumper.server_cert, bumper.server_key)
             site = web.TCPSite(
                 runner,
-                host=address,
-                port=port,
+                host="0.0.0.0",
+                port="443",
                 ssl_context=ssl_ctx,
             )
 
@@ -180,7 +180,6 @@ class ConfServer:
             clients = bumper.db_get().table("clients").all()
             helperbot = bumper.mqtt_helperbot.Client.session.transitions.state
             mqttserver = bumper.mqtt_server.broker
-            xmppserver = bumper.xmpp_server
             mq_sessions = []
             for sess in mqttserver._sessions:
                 tmpsess = []
@@ -203,8 +202,7 @@ class ConfServer:
                             {"clients": mq_sessions},
                         ]
                     },
-                ],
-                "xmpp_server": xmppserver
+                ]
             }            
             resp = aiohttp_jinja2.render_template('home.jinja2', request, context=all)
             #return web.json_response(all)
@@ -335,10 +333,6 @@ class ConfServer:
            1.5, lambda: asyncio.create_task(bumper.mqtt_server.broker_coro())
         )  # In 1.5 seconds start broker
 
-    async def restart_XMPP(self):
-        bumper.xmpp_server.disconnect()
-        await bumper.xmpp_server.start_async_server()
-
     async def handle_RestartService(self, request):
         try:
             service = request.match_info.get("service", "")
@@ -352,9 +346,6 @@ class ConfServer:
                     5, lambda: asyncio.create_task(self.restart_Helper())
                 )  # In 5 seconds restart Helperbot
                 
-                return web.json_response({"status": "complete"})
-            elif service == "XMPPServer":
-                await self.restart_XMPP()
                 return web.json_response({"status": "complete"})
             else:
                 return web.json_response({"status": "invalid service"})

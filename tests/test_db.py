@@ -117,11 +117,6 @@ def test_bot_db():
         "mqtt_connection"
     ]  # Test that mqtt was set True for bot
 
-    bumper.bot_set_xmpp("did_123", True)
-    assert bumper.bot_get("did_123")[
-        "xmpp_connection"
-    ]  # Test that xmpp was set True for bot
-
     bumper.bot_remove("did_123")
     assert bumper.bot_get("did_123") == None  # Test that bot is no longer in db
 
@@ -135,14 +130,6 @@ def test_client_db():
     assert bumper.client_get("resource_123")[
         "mqtt_connection"
     ]  # Test that mqtt was set True for client
-
-    bumper.client_set_xmpp("resource_123", False)
-    assert (
-        bumper.client_get("resource_123")["xmpp_connection"] == False
-    )  # Test that xmpp was set False for client
-    assert (
-        len(bumper.get_disconnected_xmpp_clients()) > 0
-    )  # Test len of connected xmpp clients is 1
 
     bumper.client_remove("resource_123")
     assert bumper.client_get("resource_123") == None

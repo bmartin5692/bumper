@@ -13,7 +13,6 @@ class VacBotDevice(object):
         self.nick = nick
         self.resource = resource
         self.mqtt_connection = False
-        self.xmpp_connection = False
 
     def asdict(self):
         return {
@@ -24,7 +23,6 @@ class VacBotDevice(object):
             "nick": self.nick,
             "resource": self.resource,
             "mqtt_connection": self.mqtt_connection,
-            "xmpp_connection": self.xmpp_connection,
         }
 
 
@@ -52,7 +50,6 @@ class VacBotClient(object):
         self.realm = realm
         self.resource = token
         self.mqtt_connection = False
-        self.xmpp_connection = False
 
     def asdict(self):
         return {
@@ -60,7 +57,6 @@ class VacBotClient(object):
             "realm": self.realm,
             "resource": self.resource,
             "mqtt_connection": self.mqtt_connection,
-            "xmpp_connection": self.xmpp_connection,
         }
 
 

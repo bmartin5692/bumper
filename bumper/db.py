@@ -202,12 +202,6 @@ def user_revoke_authcode(userid, token, authcode):
             )
 
 
-def get_disconnected_xmpp_clients():
-    clients = db_get().table("clients")
-    Client = Query()
-    return clients.search(Client.xmpp_connection == False)
-
-
 def check_authcode(uid, authcode):
     bumperlog.debug("Checking for authcode: {}".format(authcode))
     tokens = db_get().table("tokens")
@@ -328,12 +322,6 @@ def bot_set_mqtt(did, mqtt):
     bots.upsert({"mqtt_connection": mqtt}, Bot.did == did)
 
 
-def bot_set_xmpp(did, xmpp):
-    bots = db_get().table("bots")
-    Bot = Query()
-    bots.upsert({"xmpp_connection": xmpp}, Bot.did == did)
-
-
 def client_add(userid, realm, resource):
     newclient = VacBotClient()
     newclient.userid = userid
@@ -368,8 +356,3 @@ def client_set_mqtt(resource, mqtt):
     Client = Query()
     clients.upsert({"mqtt_connection": mqtt}, Client.resource == resource)
 
-
-def client_set_xmpp(resource, xmpp):
-    clients = db_get().table("clients")
-    Client = Query()
-    clients.upsert({"xmpp_connection": xmpp}, Client.resource == resource)

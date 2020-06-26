@@ -2,7 +2,6 @@
 
 from bumper.confserver import ConfServer
 from bumper.mqttserver import MQTTServer, MQTTHelperBot
-from bumper.xmppserver import XMPPServer
 from bumper.models import *
 from bumper.db import *
 import asyncio
@@ -43,9 +42,7 @@ server_cert = os.environ.get("BUMPER_CERT") or os.path.join(certs_dir, "bumper.c
 server_key = os.environ.get("BUMPER_KEY") or os.path.join(certs_dir, "bumper.key")
 
 # Listeners
-bumper_listen = os.environ.get("BUMPER_LISTEN") or socket.gethostbyname(
-    socket.gethostname()
-)
+bumper_listen = os.environ.get("BUMPER_LISTEN") or "192.168.1.163"
 
 
 bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
@@ -60,7 +57,6 @@ mqtt_server = None
 mqtt_helperbot = None
 conf_server = None
 conf_server_2 = None
-xmpp_server = None
 
 # Plugins
 sys.path.append(os.path.join(bumper_dir, "bumper", "plugins"))
@@ -141,22 +137,12 @@ boterrorlog.addHandler(boterrorlog_rotate)
 # Override the logging level
 # boterrorlog.setLevel(logging.INFO)
 
-xmppserverlog = logging.getLogger("xmppserver")
-xmpp_rotate = RotatingFileHandler(
-    "logs/xmppserver.log", maxBytes=5000000, backupCount=5
-)
-xmpp_rotate.setFormatter(logformat)
-xmppserverlog.addHandler(xmpp_rotate)
-# Override the logging level
-# xmppserverlog.setLevel(logging.INFO)
-
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
 
 mqtt_listen_port = 8883
 conf1_listen_port = 443
 conf2_listen_port = 8007
-xmpp_listen_port = 5223
 
 
 async def start():
@@ -200,17 +186,12 @@ async def start():
     conf_server = ConfServer((bumper_listen, conf1_listen_port), usessl=True)
     global conf_server_2
     conf_server_2 = ConfServer((bumper_listen, conf2_listen_port), usessl=False)
-    global xmpp_server
-    xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
 
     # Start MQTT Server
     asyncio.create_task(mqtt_server.broker_coro())
 
     # Start MQTT Helperbot
     asyncio.create_task(mqtt_helperbot.start_helper_bot())
-
-    # Start XMPP Server
-    asyncio.create_task(xmpp_server.start_async_server())
 
     # Wait for helperbot to connect first
     while mqtt_helperbot.Client is None:
@@ -248,10 +229,6 @@ async def shutdown():
             if mqtt_server.broker.transitions.state == "started":
                 await mqtt_server.broker.shutdown()
                 await mqtt_helperbot.Client.disconnect()
-        if xmpp_server.server:
-            if xmpp_server.server._serving:
-                xmpp_server.server.close()
-            await xmpp_server.server.wait_closed()
         global shutting_down
         shutting_down = True
 
