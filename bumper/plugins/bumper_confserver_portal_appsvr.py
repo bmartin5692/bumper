@@ -13,18 +13,19 @@ class portal_api_appsvr(plugins.ConfServerApp):
 
     def __init__(self):
         self.name = "portal_api_appsvr"
-        self.plugin_type = "sub_api"        
+        self.plugin_type = "sub_api"
         self.sub_api = "portal_api"
-        
+
         self.routes = [
-      
-            web.route("*", "/appsvr/app.do", self.handle_appsvr_api, name="portal_api_appsvr_app"),
+
+            web.route("*", "/appsvr/app.do", self.handle_appsvr_app, name="portal_api_appsvr_app"),
+            web.route("*", "/appsvr/service/list", self.handle_appsvr_service_list, name="portal_api_appsvr_service_list"),
 
         ]
 
         self.get_milli_time = bumper.ConfServer.ConfServer_GeneralFunctions().get_milli_time
 
-    async def handle_appsvr_api(self, request):
+    async def handle_appsvr_app(self, request):
             if not request.method == "GET":  # Skip GET for now
                 try:
 
@@ -137,7 +138,7 @@ class portal_api_appsvr(plugins.ConfServerApp):
                         # "did": "did",
                         # "lang": "EN",
                         # "mid": "ls1ok3"
-                        # }                    
+                        # }
                     # example response
                     # {
                         # "todo": "result",
@@ -147,7 +148,7 @@ class portal_api_appsvr(plugins.ConfServerApp):
                         #     "mailTitle": "I'm sharing my DEEBOT and you're invited!"
                         # },
                         # "ret": "ok"
-                        # }   
+                        # }
 
 
                 except Exception as e:
@@ -155,7 +156,28 @@ class portal_api_appsvr(plugins.ConfServerApp):
 
             # Return fail for GET
             body = {"result": "fail", "todo": "result"}
-            return web.json_response(body)        
-  
-plugin = portal_api_appsvr()
+            return web.json_response(body)
 
+    async def handle_appsvr_service_list(self, request):
+        try:
+            body = {
+                "code": 0,
+                "data": {
+                    "account": "users-base.dc-eu.ww.ecouser.net",
+                    "jmq": "jmq-ngiot-eu.dc.ww.ecouser.net",
+                    "lb": "lbo.ecouser.net",
+                    "magw": "api-app.dc-eu.ww.ecouser.net",
+                    "msgcloud": "msg-eu.ecouser.net:5223",
+                    "ngiotLb": "jmq-ngiot-eu.area.ww.ecouser.net",
+                    "rop": "api-rop.dc-eu.ww.ecouser.net"
+                },
+                "ret": "ok",
+                "todo": "result"
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))
+
+plugin = portal_api_appsvr()
