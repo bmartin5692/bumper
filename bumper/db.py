@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import bumper
-from bumper.models import VacBotClient, VacBotDevice, BumperUser, EcoVacsHomeProducts
+from bumper.models import VacBotClient, VacBotDevice, BumperUser, EcoVacsHomeProducts, OAuth
 from tinydb import TinyDB, Query
 from tinydb.storages import MemoryStorage
 from datetime import datetime, timedelta
@@ -32,6 +32,7 @@ def db_get():
     db.table("clients", cache_size=0)
     db.table("bots", cache_size=0)
     db.table("tokens", cache_size=0)
+    db.table("oauth", cache_size=0)
 
     return db
 
@@ -200,6 +201,40 @@ def user_revoke_authcode(userid, token, authcode):
                 {"authcode": ""},
                 ((Query().userid == userid) & (Query().token == token)),
             )
+
+
+def user_revoke_expired_oauths(userid):
+    opendb = db_get()
+    with opendb:
+        table = opendb.table("oauth")
+        search = table.search(Query().userid == userid)
+        for i in search:
+            oauth = OAuth(**i)
+            if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
+                bumperlog.debug(
+                    "Removing oauth {} due to expiration".format(oauth.access_token)
+                )
+                table.remove(doc_ids=[i.doc_id])
+
+
+def user_add_oauth(userid) -> OAuth:
+    user_revoke_expired_oauths(userid)
+    opendb = db_get()
+    with opendb:
+        table = opendb.table("oauth")
+        entry = table.get(Query().userid == userid)
+        if entry:
+            return OAuth(**entry)
+        else:
+            oauth = OAuth.create_new(userid)
+            bumperlog.debug("Adding oauth {} for userid {}".format(oauth.access_token, userid))
+            table.insert(oauth.toDB())
+            return oauth
+
+
+def token_by_authcode(authcode):
+    tokens = db_get().table("tokens")
+    return tokens.get(Query().authcode == authcode)
 
 
 def get_disconnected_xmpp_clients():

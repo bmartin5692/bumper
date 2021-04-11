@@ -62,13 +62,12 @@ class ConfServer:
 
         self.app.add_routes(
             [
-                
-                web.get("", self.handle_base, name="base"),         
+                web.get("", self.handle_base, name="base"),
                 web.get("/bot/remove/{did}", self.handle_RemoveBot, name='remove-bot'),       
                 web.get("/client/remove/{resource}", self.handle_RemoveClient, name='remove-client'),      
                 web.get("/restart_{service}", self.handle_RestartService, name='restart-service'),                
                 web.post("/lookup.do", self.handle_lookup),
-        
+                web.post("/newauth.do", self.handle_newauth),
             ]
         )
 
@@ -507,6 +506,26 @@ class ConfServer:
         except Exception as e:
             confserverlog.exception("{}".format(e))
 
+    async def handle_newauth(self, request):
+        # Bumper is only returning the submitted token. No reason yet to create another new token
+        try:
+            if request.content_type == "application/x-www-form-urlencoded":
+                postbody = await request.post()
+            else:
+                postbody = json.loads(await request.text())
+
+            confserverlog.debug(postbody)
+
+            body = {
+                "authCode": postbody["itToken"],
+                "result": "ok",
+                "todo": "result"
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            confserverlog.exception("{}".format(e))
 
     async def disconnect(self):
         try:

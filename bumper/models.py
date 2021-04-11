@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 import json
+import uuid
+from datetime import datetime, timedelta
+
+import bumper
 
 
 class VacBotDevice(object):
@@ -81,6 +85,34 @@ class EcoVacsHome_Login(EcoVacs_Login):
     loginName = ""
     mobile = ""
     ucUid = ""
+
+
+class OAuth:
+    access_token = ""
+    expire_at = ""
+    refresh_token = ""
+    userId = ""
+
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
+    @classmethod
+    def create_new(cls, userId: str):
+        oauth = OAuth()
+        oauth.userId = userId
+        oauth.access_token = uuid.uuid4().hex
+        oauth.expire_at = "{}".format(datetime.utcnow() + timedelta(days=bumper.oauth_validity_days))
+        oauth.refresh_token = uuid.uuid4().hex
+        return oauth
+
+    def toDB(self):
+      return self.__dict__
+
+    def toResponse(self):
+        data = self.__dict__
+        data["expire_at"] = bumper.ConfServer.ConfServer_GeneralFunctions().get_milli_time(
+            datetime.fromisoformat(self.expire_at).timestamp())
+        return data
 
 
 # EcoVacs Home Product IOT Map - 2020-01-05

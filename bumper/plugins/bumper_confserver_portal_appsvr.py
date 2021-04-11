@@ -17,10 +17,9 @@ class portal_api_appsvr(plugins.ConfServerApp):
         self.sub_api = "portal_api"
 
         self.routes = [
-
             web.route("*", "/appsvr/app.do", self.handle_appsvr_app, name="portal_api_appsvr_app"),
             web.route("*", "/appsvr/service/list", self.handle_appsvr_service_list, name="portal_api_appsvr_service_list"),
-
+            web.route("*", "/appsvr/oauth_callback", self.handle_appsvr_oauth_callback, name="portal_api_appsvr_oauth_callback"),
         ]
 
         self.get_milli_time = bumper.ConfServer.ConfServer_GeneralFunctions().get_milli_time
@@ -171,6 +170,22 @@ class portal_api_appsvr(plugins.ConfServerApp):
                     "ngiotLb": "jmq-ngiot-eu.area.ww.ecouser.net",
                     "rop": "api-rop.dc-eu.ww.ecouser.net"
                 },
+                "ret": "ok",
+                "todo": "result"
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))
+
+    async def handle_appsvr_oauth_callback(self, request):
+        try:
+            token = bumper.token_by_authcode(request.query["code"])
+            oauth = bumper.user_add_oauth(token["userid"])
+            body = {
+                "code": 0,
+                "data": oauth.toResponse(),
                 "ret": "ok",
                 "todo": "result"
             }

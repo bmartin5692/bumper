@@ -57,6 +57,7 @@ bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
 bumper_debug = strtobool(os.environ.get("BUMPER_DEBUG")) or False
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
+oauth_validity_days = 15
 db = None
 
 mqtt_server = None
