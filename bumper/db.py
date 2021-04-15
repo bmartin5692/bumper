@@ -337,6 +337,7 @@ def bot_toEcoVacsHome_JSON(bot):  # EcoVacs Home
             bot["UILogicId"] = botprod["product"]["UILogicId"]
             bot["ota"] = botprod["product"]["ota"]
             bot["icon"] = botprod["product"]["iconUrl"]
+            bot["model"] = botprod["product"]["model"]
             return json.dumps(
                 bot, default=lambda o: o.__dict__, sort_keys=False
             )  # , indent=4)
