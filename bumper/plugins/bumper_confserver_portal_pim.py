@@ -1,29 +1,27 @@
 #!/usr/bin/env python3
-import asyncio
-from aiohttp import web
-from bumper import plugins
 import logging
-import bumper
-from bumper.models import *
-from bumper import plugins
-from datetime import datetime, timedelta
 import os
+
+from aiohttp import web
+
+from bumper import plugins
+from bumper.models import *
+
 
 class portal_api_pim(plugins.ConfServerApp):
 
     def __init__(self):
         self.name = "portal_api_pim"
-        self.plugin_type = "sub_api"        
+        self.plugin_type = "sub_api"
         self.sub_api = "portal_api"
-        
+
         self.routes = [
-                          
             web.route("*", "/pim/product/getProductIotMap", self.handle_getProductIotMap, name="portal_api_pim_getProductIotMap"),
             web.route("*", "/pim/file/get/{id}", self.handle_pimFile, name="portal_api_pim_file"),
             web.route("*", "/pim/product/getConfignetAll", self.handle_getConfignetAll, name="portal_api_pim_getConfignetAll"),
             web.route("*", "/pim/product/getConfigGroups", self.handle_getConfigGroups, name="portal_api_pim_getConfigGroups"),
             web.route("*", "/pim/dictionary/getErrDetail", self.handle_getErrDetail, name="portal_api_pim_getErrDetail"),
-
+            web.route("*", "/pim/product/software/config/batch", self.handle_product_config_batch, name="portal_api_pim_product_config_batch"),
         ]
 
         self.get_milli_time = bumper.ConfServer.ConfServer_GeneralFunctions().get_milli_time
@@ -43,10 +41,10 @@ class portal_api_pim(plugins.ConfServerApp):
         try:
             fileID = request.match_info.get("id", "")
 
-            return web.FileResponse(os.path.join(bumper.bumper_dir,"bumper","web","images","robotvac_image.jpg"))
-            
+            return web.FileResponse(os.path.join(bumper.bumper_dir, "bumper", "web", "images", "robotvac_image.jpg"))
+
         except Exception as e:
-            logging.exception("{}".format(e))          
+            logging.exception("{}".format(e))
 
     async def handle_getConfignetAll(self, request):
         try:
@@ -54,7 +52,7 @@ class portal_api_pim(plugins.ConfServerApp):
             return web.json_response(body)
 
         except Exception as e:
-            logging.exception("{}".format(e))              
+            logging.exception("{}".format(e))
 
     async def handle_getConfigGroups(self, request):
         try:
@@ -62,20 +60,48 @@ class portal_api_pim(plugins.ConfServerApp):
             return web.json_response(body)
 
         except Exception as e:
-            logging.exception("{}".format(e))           
+            logging.exception("{}".format(e))
 
     async def handle_getErrDetail(self, request):
         try:
             body = {
-                    "code": -1,
-                    "data": [],
-                    "msg": "This errcode's detail is not exists"
-                    }
+                "code": -1,
+                "data": [],
+                "msg": "This errcode's detail is not exists"
+            }
             return web.json_response(body)
 
         except Exception as e:
-            logging.exception("{}".format(e))                                  
-  
+            logging.exception("{}".format(e))
+
+    async def handle_product_config_batch(self, request):
+        try:
+            json_body = json.loads(await request.text())
+            data = []
+            for pid in json_body["pids"]:
+                for productConfig in productConfigBatch:
+                    if pid == productConfig["pid"]:
+                        data.append(productConfig)
+                        continue
+
+                # not found in productConfigBatch
+                # some devices don't have any product configuration
+                data.append({
+                    "cfg": {},
+                    "pid": pid
+                })
+
+            body = {
+                "code": 200,
+                "data": data,
+                "message": "success"
+            }
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))
+
+
 plugin = portal_api_pim()
 
 confignetAllResponse = {
@@ -2681,3 +2707,174 @@ configGroupsResponse = {
     "contactUS": "helper"
   }
 }
+
+productConfigBatch = [
+    {
+        "pid": "5e14196a6e71b80001b60fda",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5e8e8d8a032edd8457c66bfb",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5c19a91ca1e6ee000178224a",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5e8e8d2a032edd3c03c66bf7",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5de0d86ed88546000195239a",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": True,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5c19a8f3a1e6ee0001782247",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5e698a6306f6de52c264c61b",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5e699a4106f6de83ea64c620",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5edd998afdd6a30008da039b",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": True,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5edd9a4075f2fc000636086c",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": True,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5ed5e4d3a719ea460ec3216c",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5f88195e6cf8de0008ed7c11",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5f8819156cf8de0008ed7c0d",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    },
+    {
+        "pid": "5fa105c6d16a99000667eb54",
+        "cfg": {
+            "supported": {
+                "tmallstand": False,
+                "video": False,
+                "battery": True,
+                "clean": True,
+                "charge": True
+            }
+        }
+    }
+]

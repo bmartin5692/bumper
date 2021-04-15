@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import bumper
-from bumper.models import VacBotClient, VacBotDevice, BumperUser, EcoVacsHomeProducts, OAuth
-from tinydb import TinyDB, Query
-from tinydb.storages import MemoryStorage
-from datetime import datetime, timedelta
-import os
 import json
 import logging
+import os
+from datetime import datetime, timedelta
 
+from tinydb import TinyDB, Query
+
+import bumper
+from bumper.models import VacBotClient, VacBotDevice, BumperUser, EcoVacsHomeProducts, OAuth
 
 bumperlog = logging.getLogger("bumper")
 
@@ -249,8 +249,8 @@ def check_authcode(uid, authcode):
     tmpauth = tokens.get(
         (Query().authcode == authcode)
         & (  # Match authcode
-            (Query().userid == uid.replace("fuid_", ""))
-            | (Query().userid == "fuid_{}".format(uid))
+                (Query().userid == uid.replace("fuid_", ""))
+                | (Query().userid == "fuid_{}".format(uid))
         )  # Userid with or without fuid_
     )
     if tmpauth:
@@ -281,8 +281,8 @@ def check_token(uid, token):
     tmpauth = tokens.get(
         (Query().token == token)
         & (  # Match token
-            (Query().userid == uid.replace("fuid_", ""))
-            | (Query().userid == "fuid_{}".format(uid))
+                (Query().userid == uid.replace("fuid_", ""))
+                | (Query().userid == "fuid_{}".format(uid))
         )  # Userid with or without fuid_
     )
     if tmpauth:
@@ -310,7 +310,7 @@ def bot_add(sn, did, devclass, resource, company):
     bot = bot_get(did)
     if not bot:  # Not existing bot in database
         if (
-            not devclass == "" or "@" not in sn or "tmp" not in sn
+                not devclass == "" or "@" not in sn or "tmp" not in sn
         ):  # try to prevent bad additions to the bot list
             bumperlog.info(
                 "Adding new bot with SN: {} DID: {}".format(newbot.name, newbot.did)
@@ -338,6 +338,19 @@ def bot_toEcoVacsHome_JSON(bot):  # EcoVacs Home
             bot["ota"] = botprod["product"]["ota"]
             bot["icon"] = botprod["product"]["iconUrl"]
             bot["model"] = botprod["product"]["model"]
+            bot["pip"] = botprod["product"]["_id"]
+            bot["deviceName"] = botprod["product"]["name"]
+            bot["materialNo"] = botprod["product"]["materialNo"]
+            bot["product_category"] = "DEEBOT" if botprod["product"]["name"].startswith("DEEBOT") else "UNKNOWN"
+            # bot["updateInfo"] = {
+            #     "changeLog": "",
+            #     "needUpdate": False
+            # }
+            # bot["service"] = {
+            #     "jmq": "jmq-ngiot-eu.dc.ww.ecouser.net",
+            #     "mqs": "api-ngiot.dc-as.ww.ecouser.net"
+            # }
+
             return json.dumps(
                 bot, default=lambda o: o.__dict__, sort_keys=False
             )  # , indent=4)
@@ -381,11 +394,13 @@ def client_add(userid, realm, resource):
         bumperlog.info("Adding new client with resource {}".format(newclient.resource))
         client_full_upsert(newclient.asdict())
 
+
 def client_remove(resource):
     clients = db_get().table("clients")
     client = client_get(resource)
     if client:
         clients.remove(doc_ids=[client.doc_id])
+
 
 def client_get(resource):
     clients = db_get().table("clients")
