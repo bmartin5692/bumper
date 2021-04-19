@@ -350,6 +350,7 @@ def bot_toEcoVacsHome_JSON(bot):  # EcoVacs Home
             #     "jmq": "jmq-ngiot-eu.dc.ww.ecouser.net",
             #     "mqs": "api-ngiot.dc-as.ww.ecouser.net"
             # }
+            bot["status"] = 1 if bot["mqtt_connection"] or bot["xmpp_connection"] else 0
 
             return json.dumps(
                 bot, default=lambda o: o.__dict__, sort_keys=False

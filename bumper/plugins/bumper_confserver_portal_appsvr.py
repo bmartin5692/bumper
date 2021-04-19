@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-import asyncio
-from aiohttp import web
-from bumper import plugins
 import logging
-import bumper
-from bumper.models import *
+
+from aiohttp import web
+
 from bumper import plugins
-from datetime import datetime, timedelta
+from bumper.models import *
 
 
 class portal_api_appsvr(plugins.ConfServerApp):
@@ -159,17 +157,31 @@ class portal_api_appsvr(plugins.ConfServerApp):
 
     async def handle_appsvr_service_list(self, request):
         try:
+            # original urls comment out as they are sub sub domain, which the current certificate is not valid
+            # using url, where the certs is valid
+            # data = {
+            #     "account": "users-base.dc-eu.ww.ecouser.net",
+            #     "jmq": "jmq-ngiot-eu.dc.ww.ecouser.net",
+            #     "lb": "lbo.ecouser.net",
+            #     "magw": "api-app.dc-eu.ww.ecouser.net",
+            #     "msgcloud": "msg-eu.ecouser.net:5223",
+            #     "ngiotLb": "jmq-ngiot-eu.area.ww.ecouser.net",
+            #     "rop": "api-rop.dc-eu.ww.ecouser.net"
+            # }
+
+            data = {
+                "account": "users-base.ecouser.net",
+                "jmq": "jmq-ngiot-eu.ecouser.net",
+                "lb": "lbo.ecouser.net",
+                "magw": "api-app.ecouser.net",
+                "msgcloud": "msg-eu.ecouser.net:5223",
+                "ngiotLb": "jmq-ngiot-eu.ecouser.net",
+                "rop": "api-rop.ecouser.net"
+            }
+
             body = {
                 "code": 0,
-                "data": {
-                    "account": "users-base.dc-eu.ww.ecouser.net",
-                    "jmq": "jmq-ngiot-eu.dc.ww.ecouser.net",
-                    "lb": "lbo.ecouser.net",
-                    "magw": "api-app.dc-eu.ww.ecouser.net",
-                    "msgcloud": "msg-eu.ecouser.net:5223",
-                    "ngiotLb": "jmq-ngiot-eu.area.ww.ecouser.net",
-                    "rop": "api-rop.dc-eu.ww.ecouser.net"
-                },
+                "data": data,
                 "ret": "ok",
                 "todo": "result"
             }
@@ -194,5 +206,6 @@ class portal_api_appsvr(plugins.ConfServerApp):
 
         except Exception as e:
             logging.exception("{}".format(e))
+
 
 plugin = portal_api_appsvr()
