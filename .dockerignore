@@ -20,3 +20,9 @@ certs
 
 # Other
 *.yml
+
+# Github
+.github
+
+# Python virtual environment
+venv

@@ -53,9 +53,9 @@ I get it, you don't trust create_certs and want to do it manually.  The easiest 
 
 ### Create a Root CA
 
-1. Create csrconfig.txt for use in later commands
+1. Create csrconfig_ca.txt for use in later commands
 
-***csrconfig.txt***
+***csrconfig_ca.txt***
 ````
 [ req ]
 default_md = sha256
@@ -70,9 +70,9 @@ keyUsage=critical,keyCertSign,cRLSign
 basicConstraints=critical,CA:true,pathlen:1
 ````
 
-1. Create certconfig.txt for use in later commands
+1. Create certconfig_ca.txt for use in later commands
 
-***certconfig.txt***
+***certconfig_ca.txt***
 ````
 [ req ]
 default_md = sha256
@@ -91,21 +91,21 @@ basicConstraints=critical,CA:true,pathlen:1
 
 1. Generate the RSA private key 
     
-    `openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
+    `openssl genrsa -out ca.key 4096`
 
 1. Create the CSR
     
-    `openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
+    `openssl req -new -nodes -key ca.key -config csrconfig_ca.txt -out ca.csr`
 
 1. Self-sign your CSR
     
-    `openssl req -x509 -nodes -in cert.csr -days 3650 -key priv.key -config certconfig.txt -extensions req_ext -out cert.crt`
+    `openssl req -x509 -nodes -in ca.csr -days 1095 -key ca.key -config certconfig_ca.txt -extensions req_ext -out ca.crt`
 
 ### Create the Server Certificate
 
-1. Create csrconfig.txt for use in later commands
+1. Create csrconfig_bumper.txt for use in later commands
 
-***csrconfig.txt***
+***csrconfig_bumper.txt***
 ````
 [ req ]
 default_md = sha256
@@ -127,11 +127,15 @@ DNS.2 = ecouser.net
 DNS.3 = *.ecouser.net
 DNS.4 = ecovacs.net
 DNS.5 = *.ecovacs.net
+DNS.6 = *.ww.ecouser.net
+DNS.7 = *.dc-eu.ww.ecouser.net
+DNS.8 = *.dc.ww.ecouser.net
+DNS.9 = *.area.ww.ecouser.net
 ````
 
-1. Create certconfig.txt for use in later commands
+1. Create certconfig_bumper.txt for use in later commands
 
-***certconfig.txt***
+***certconfig_bumper.txt***
 ````
 [ req ]
 default_md = sha256
@@ -155,19 +159,23 @@ DNS.2 = ecouser.net
 DNS.3 = *.ecouser.net
 DNS.4 = ecovacs.net
 DNS.5 = *.ecovacs.net
+DNS.6 = *.ww.ecouser.net
+DNS.7 = *.dc-eu.ww.ecouser.net
+DNS.8 = *.dc.ww.ecouser.net
+DNS.9 = *.area.ww.ecouser.net
 ````
 
 1. Generate the RSA private key
     
-    `openssl genpkey -outform PEM -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out priv.key`
+    `openssl genrsa -out bumper.key 4096`
 
 1. Create the CSR
 
-    `openssl req -new -nodes -key priv.key -config csrconfig.txt -out cert.csr`
+    `openssl req -new -nodes -key bumper.key -config csrconfig_bumper.txt -out bumper.csr`
 
 1. Sign your CSR with a root CA cert
     
-    `openssl x509 -req -in cert.csr -days 3650 -CA ca.crt -CAkey priv.key -extfile certconfig.txt -extensions req_ext -CAserial /tmp/tmp-10593TSH1OlVSxC7C -CAcreateserial -out cert.crt`
+    `openssl x509 -req -in bumper.csr -days 365 -CA ca.crt -CAkey ca.key -extfile certconfig_bumper.txt -extensions req_ext -CAcreateserial -out bumper.crt`
 
 ## Using a Custom CA/Self
 

@@ -4,3 +4,7 @@ ecouser.net
 *.ecouser.net
 ecovacs.net
 *.ecovacs.net
+*.ww.ecouser.net
+*.dc-eu.ww.ecouser.net
+*.dc.ww.ecouser.net
+*.area.ww.ecouser.net

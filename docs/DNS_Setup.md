@@ -26,6 +26,7 @@ If overriding DNS for the top-level domains isn't an option, you'll need to conf
 **Note:** Depending on country, your phone/robot may be using a different domain.  Most of these domains contain country-specific placeholders.  
 
 Not all domains have been documented at this point, and this list will be updated as more are identified/seen. The preferred way to ensure Bumper works is to override the full domains as above.
+**Note:** The app dynamically gets the required domains from the endpoint `api/appsvr/service/list` and therefore ecovacs can use different domains for different models.
 
 Replacement Examples:
 
@@ -46,6 +47,7 @@ Replacement Examples:
 | `eco-{countrycode}-api.ecovacs.com`     | Used for Login                                 |
 | `gl-{countrycode}-api.ecovacs.com`      | Used by EcoVacs Home app                       |
 | `gl-{countrycode}-openapi.ecovacs.com`  | Used by EcoVacs Home app                       |
+| `portal.ecouser.net`                    | Used for Login and Rest API                    |
 | `portal-{countrycode}.ecouser.net`      | Used for Login and Rest API                    |
 | `portal-{region}.ecouser.net`           | Used for Login and Rest API                    |
 | `portal-ww.ecouser.net`                 | Used for various Rest APIs                     |
@@ -59,4 +61,11 @@ Replacement Examples:
 | `recommender.ecovacs.com`               | Used by Ecovacs Home app                       |
 | `bigdata-international.ecovacs.com`     | Telemetry/tracking                             |
 | `bigdata-northamerica.ecovacs.com`      | Telemetry/tracking                             |
+| `bigdata-europe.ecovacs.com`            | Telemetry/tracking                             |
 | `bigdata-{unknown regions}.ecovacs.com` | Telemetry/tracking                             |
+| `api-app.ww.ecouser.net`                | Api for App (v2+)                              |
+| `api-app.dc-{region}.ww.ecouser.net`    | Api for App (v2+)                              |
+| `users-base.dc-{region}.ww.ecouser.net` | Accounts for App (v2+)                         |
+| `jmq-ngiot-{region}.dc.ww.ecouser.net`  | MQTT for App (v2+)                             |
+| `api-rop.dc-{region}.ww.ecouser.net`    | App (v2+)                                      |
+| `jmq-ngiot-{region}.area.ww.ecouser.net`| App (v2+)                                      |
