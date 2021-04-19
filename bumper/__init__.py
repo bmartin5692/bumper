@@ -265,6 +265,7 @@ async def start():
 
 async def maintenance():
     revoke_expired_tokens()
+    revoke_expired_oauths()
 
 
 async def shutdown():

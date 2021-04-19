@@ -203,6 +203,21 @@ def user_revoke_authcode(userid, token, authcode):
             )
 
 
+def revoke_expired_oauths():
+    opendb = db_get()
+    with opendb:
+        table = opendb.table("oauth")
+        entries = table.all()
+
+        for i in entries:
+            oauth = OAuth(**i)
+            if datetime.now() >= datetime.fromisoformat(oauth.expire_at):
+                bumperlog.debug(
+                    "Removing oauth {} due to expiration".format(oauth.access_token)
+                )
+                table.remove(doc_ids=[i.doc_id])
+
+
 def user_revoke_expired_oauths(userid):
     opendb = db_get()
     with opendb:
