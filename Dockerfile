@@ -22,11 +22,13 @@ RUN apk add build-base
 
 FROM base
 
-COPY . /bumper
-
-WORKDIR /bumper
+COPY requirements.txt /requirements.txt
 
 # install required python packages
 RUN pip3 install -r requirements.txt
+
+COPY . /bumper
+
+WORKDIR /bumper
 
 ENTRYPOINT ["python3", "-m", "bumper"]
