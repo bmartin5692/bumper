@@ -12,3 +12,4 @@ Bumper has a number of environment variables to help with custom deployments and
 | BUMPER_LOGS        | {full path to logs directory}      | The directory where logs should be stored                                                                                   |
 | BUMPER_DATA        | {full path to data directory}      | The directory where persistent data should be stored (bumper.db)                                                            |
 | BUMPER_DEBUG       | true                               | Run Bumper with debug mode/logging                                                                                          |
+| LOG_TO_STDOUT      | true                               | Instead of logging to logs/, logs to to STDOUT |

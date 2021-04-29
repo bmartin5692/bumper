@@ -29,7 +29,7 @@ class portal_api_iot(plugins.ConfServerApp):
         try:
             json_body = json.loads(await request.text())
 
-            randomid = "".join(random.sample(string.ascii_letters, 6))
+            randomid = "".join(random.sample(string.ascii_letters, 4))
             did = ""
             if "toId" in json_body:  # Its a command
                 did = json_body["toId"]
