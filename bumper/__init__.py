@@ -237,7 +237,8 @@ async def start():
     xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
 
     # Start MQTT Server
-    asyncio.create_task(mqtt_server.broker_coro())
+    # await start otherwise we get an error connecting the helper bot
+    await asyncio.create_task(mqtt_server.broker_coro())
 
     # Start MQTT Helperbot
     asyncio.create_task(mqtt_helperbot.start_helper_bot())
