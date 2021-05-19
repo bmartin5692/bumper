@@ -55,9 +55,6 @@ version: "3.6"
 networks:
   bumper:
     internal: true
-    ipam:
-      config:
-        - subnet: 172.19.200.0/24
 
 services:
   nginx:
@@ -83,7 +80,6 @@ services:
     restart: unless-stopped
     networks:
       bumper:
-        ipv4_address: 172.19.200.10
 
     environment:
       PUID: 1000
@@ -102,6 +98,8 @@ services:
 
 ## Nginx configuration
 
+File stored under `./nginx/nginx.conf`
+
 ```
 error_log stderr;
 pid /var/run/nginx.pid;
@@ -109,6 +107,7 @@ pid /var/run/nginx.pid;
 events { }
 
 stream {
+        resolver 127.0.0.11 ipv6=off; #docker dns server
         map_hash_bucket_size 64;
 
         map $ssl_preread_server_name $internalport {
@@ -116,7 +115,7 @@ stream {
                 ~^.*(mq).*\.eco(vacs|user)\.(net|com)$    8883;
 
                 # the rest of eco(user|vacs) requests
-                ~^.*\.eco(vacs|user)\.(net|com)$          443;
+                ~^.*eco(vacs|user)\.(net|com)$          443;
 
                 # mapping default to MQTT as the bots are connecting directly to the ip without SNI
                 default                                   8883;
@@ -125,24 +124,54 @@ stream {
         server {
                 listen 443;
                 ssl_preread  on;
-                # Ip must match the one configurated above in the docker-compose
-                proxy_pass 172.19.200.10:$internalport;
+                proxy_pass bumper:$internalport;
         }
 
         server {
                 listen 5223;
-                proxy_pass 172.19.200.10:5223;
+                proxy_pass bumper:5223;
         }
 
         server {
                 listen 8007;
-                proxy_pass 172.19.200.10:8007;
+                proxy_pass bumper:8007;
         }
 
         server {
                 listen 8883;
-                proxy_pass 172.19.200.10:8883;
+                proxy_pass bumper:8883;
         }
 }
+```
+
+## File structure
+
+When ure are using the docker-compose example, you will have a similar file structure as below
+
+```
+.
+├── certs
+│   ├── bumper.crt
+│   ├── bumper.csr
+│   ├── bumper.key
+│   ├── ca.crt
+│   ├── ca.csr
+│   ├── ca.key
+│   ├── ca.srl
+│   ├── certconfig_bumper.txt
+│   ├── certconfig_ca.txt
+│   ├── commands.md
+│   ├── create_bumper.sh
+│   ├── create_ca.sh
+│   ├── csrconfig_bumper.txt
+│   └── csrconfig_ca.txt
+├── config
+│   ├── bumper.db
+│   └── passwd
+├── docker-compose.yml
+└── nginx
+    └── nginx.conf
+
+3 directories, 18 files
 
 ```
