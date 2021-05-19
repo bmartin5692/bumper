@@ -237,7 +237,7 @@ class ConfServer:
                     else:
                         postbody = await request.post()
 
-                to_log["request"]["body"] = postbody
+                to_log["request"]["body"] = f"{postbody}"
 
                 response = await handler(request)
                 if response is None:
@@ -249,7 +249,7 @@ class ConfServer:
                     "status": f"{response.status}",
                 }
                 if not "application/octet-stream" in response.content_type:
-                    to_log["response"]["status"] = f"{response.status}"
+                    to_log["response"]["body"] = f"{json.loads(response.body)}"
 
                 confserverlog.debug(json.dumps(to_log))
                 
