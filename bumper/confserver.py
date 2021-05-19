@@ -1,21 +1,16 @@
 #!/usr/bin/env python3
 
-import json
-import logging
-import ssl
-import string
-import random
-import bumper
-import os
-from bumper.models import *
-from bumper import plugins
-from datetime import datetime, timedelta
 import asyncio
-from aiohttp import web
+import logging
+import os
+import ssl
+
 import aiohttp_jinja2
 import jinja2
-import uuid
-import xml.etree.ElementTree as ET
+from aiohttp import web
+
+from bumper import plugins
+from bumper.models import *
 
 
 class aiohttp_filter(logging.Filter):
@@ -216,8 +211,18 @@ class ConfServer:
     async def log_all_requests(self, request, handler):
 
         if request._match_info.route.name not in self.excludelogging:
-            
+            to_log = {
+                "request": {
+                    "route_name": f"{request.match_info.route.name}",
+                    "method": f"{request.method}",
+                    "path": f"{request.path}",
+                    "query_string": f"{request.query_string}",
+                    "raw_path": f"{request.raw_path}",
+                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
+                }
+            }
             try:
+                postbody = None
                 if request.content_length:
                     if request.content_type == "application/x-www-form-urlencoded":
                         postbody = await request.post()
@@ -231,78 +236,33 @@ class ConfServer:
                     
                     else:
                         postbody = await request.post()
-                else:
-                    postbody = None
+
+                to_log["request"]["body"] = postbody
 
                 response = await handler(request)
+                if response is None:
+                    confserverlog.warning("Response was null!")
+                    confserverlog.warning(json.dumps(to_log))
+                    return response
+
+                to_log["response"] = {
+                    "status": f"{response.status}",
+                }
                 if not "application/octet-stream" in response.content_type:
-                    logall = {
-                        "request": {
-                        "route_name": f"{request.match_info.route.name}",
-                        "method": f"{request.method}",
-                        "path": f"{request.path}",
-                        "query_string": f"{request.query_string}",
-                        "raw_path": f"{request.raw_path}",
-                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                        "body": f"{postbody}",
-                            },
+                    to_log["response"]["status"] = f"{response.status}"
 
-                        "response": {
-                        "response_body": f"{json.loads(response.body)}",
-                        "status": f"{response.status}",
-                        }
-                        }
-                else:
-                    logall = {
-                        "request": {
-                        "route_name": f"{request.match_info.route.name}",
-                        "method": f"{request.method}",
-                        "path": f"{request.path}",
-                        "query_string": f"{request.query_string}",
-                        "raw_path": f"{request.raw_path}",
-                        "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                        "body": f"{postbody}",
-                            },
-
-                        "response": {
-                        "status": f"{response.status}",
-                        }
-                        }   
-
-                confserverlog.debug(json.dumps(logall))
+                confserverlog.debug(json.dumps(to_log))
                 
                 return response
 
             except web.HTTPNotFound as notfound:
                 confserverlog.debug("Request path {} not found".format(request.raw_path))
-                requestlog = {
-                    "request": {
-                    "route_name": f"{request.match_info.route.name}",
-                    "method": f"{request.method}",
-                    "path": f"{request.path}",
-                    "query_string": f"{request.query_string}",
-                    "raw_path": f"{request.raw_path}",
-                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                    "body": f"{postbody}",
-                        }
-                }
-                confserverlog.debug(json.dumps(requestlog))
+                confserverlog.debug(json.dumps(to_log))
                 return notfound
 
             except Exception as e:
-                confserverlog.exception("{}".format(e))           
-                requestlog = {
-                    "request": {
-                    "route_name": f"{request.match_info.route.name}",
-                    "method": f"{request.method}",
-                    "path": f"{request.path}",
-                    "query_string": f"{request.query_string}",
-                    "raw_path": f"{request.raw_path}",
-                    "raw_headers": f'{",".join(map("{}".format, request.raw_headers))}',
-                    "body": f"{postbody}",
-                        }
-                }
-                confserverlog.debug(json.dumps(requestlog))
+                confserverlog.exception("{}".format(e))
+                confserverlog.error(json.dumps(to_log))
                 return e 
 
         else:
