@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
-import asyncio
-from aiohttp import web
-from bumper import plugins
 import logging
-import bumper
-from bumper.models import *
-from bumper import plugins
-from datetime import datetime, timedelta
-import os
-import string
 import random
+import string
 import xml.etree.ElementTree as ET
+
+from aiohttp import web
+
+from bumper import plugins
+from bumper.models import *
+
 
 class portal_api_lg(plugins.ConfServerApp):
 
     def __init__(self):
         self.name = "portal_api_lg"
-        self.plugin_type = "sub_api"        
+        self.plugin_type = "sub_api"
         self.sub_api = "portal_api"
-        
+
         self.routes = [
 
             web.route("*", "/lg/log.do", self.handle_lg_log, name="portal_api_lg_log"),
@@ -28,10 +26,11 @@ class portal_api_lg(plugins.ConfServerApp):
         self.get_milli_time = bumper.ConfServer.ConfServer_GeneralFunctions().get_milli_time
 
     async def handle_lg_log(self, request):  # EcoVacs Home
+        randomid = "".join(random.sample(string.ascii_letters, 6))
+
         try:
             json_body = json.loads(await request.text())
 
-            randomid = "".join(random.sample(string.ascii_letters, 6))
             did = json_body["did"]
 
             botdetails = bumper.bot_get(did)
@@ -53,14 +52,14 @@ class portal_api_lg(plugins.ConfServerApp):
                     json_body["payloadType"] = "x"
 
                 if not "payload" in json_body:
-                    #json_body["payload"] = ""
+                    # json_body["payload"] = ""
                     if json_body["td"] == "GetCleanLogs":
                         json_body["td"] = "q"
                         json_body["payload"] = '<ctl count="30"/>'
 
             if did != "":
                 bot = bumper.bot_get(did)
-                if bot["company"] == "eco-ng":                    
+                if bot["company"] == "eco-ng":
                     retcmd = await bumper.mqtt_helperbot.send_command(
                         json_body, randomid
                     )
@@ -74,11 +73,11 @@ class portal_api_lg(plugins.ConfServerApp):
                         for l in cleanlogs:
                             cleanlog = {
                                 "ts": l.attrib['s'],
-                                "area": l.attrib['a'],                                
+                                "area": l.attrib['a'],
                                 "last": l.attrib['l'],
                                 "cleanType": l.attrib['t'],
-                                #imageUrl allows for providing images of cleanings, something to look into later
-                                #"imageUrl": "https://localhost:8007",                            
+                                # imageUrl allows for providing images of cleanings, something to look into later
+                                # "imageUrl": "https://localhost:8007",
                             }
                             logs.append(cleanlog)
                         body = {
@@ -98,11 +97,12 @@ class portal_api_lg(plugins.ConfServerApp):
                             json_body["toId"]
                         )
                     )
-                    body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
-                    return web.json_response(body)
 
         except Exception as e:
             logging.exception("{}".format(e))
 
-plugin = portal_api_lg()
+        body = {"id": randomid, "errno": bumper.ERR_COMMON, "ret": "fail"}
+        return web.json_response(body)
 
+
+plugin = portal_api_lg()
