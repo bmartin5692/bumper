@@ -4,8 +4,9 @@ import logging
 import asyncio
 import os
 import hbmqtt
+import websockets
 from hbmqtt.broker import Broker
-from hbmqtt.client import MQTTClient
+from hbmqtt.client import MQTTClient, ConnectException
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
 import pkg_resources
 import time
@@ -278,7 +279,7 @@ class BumperProxyModeMQTTClient(MQTTClient):
                 reader = StreamReaderAdapter(conn_reader)
                 writer = StreamWriterAdapter(conn_writer)
             elif scheme in ('ws', 'wss'):
-                websocket = await  websockets.connect(
+                websocket = await websockets.connect(
                     self.session.broker_uri,
                     subprotocols=['mqtt'],
                     loop=self._loop,
@@ -322,14 +323,18 @@ class BumperProxyModeMQTTClient(MQTTClient):
                 msgdata = str(message.data.decode("utf-8"))
 
                 proxymodelog.info(f"MQTT Proxy Client - Message Received From Ecovacs - Topic: {message.topic} - Message: {msgdata}")
-                ttopic = message.topic.split("/")
-                self.ecohelpername = ttopic[3]
-                ttopic[3] = "proxyhelper"
-                ttopic_comb = "/".join(ttopic)
-                proxymodelog.info(f"MQTT Proxy Client - Converted Topic From {message.topic} TO {ttopic_comb}")
-                proxymodelog.info(f"MQTT Proxy Client - Proxy Forward Message to Helperbot - Topic: {ttopic_comb} - Message: {msgdata.encode()}")
+                topic = message.topic
+                ttopic = topic.split("/")
+                if ttopic[1] == "p2p":
+                    self.ecohelpername = ttopic[3]
+                    ttopic[3] = "proxyhelper"
+                    topic = "/".join(ttopic)
+                    proxymodelog.info(f"MQTT Proxy Client - Converted Topic From {message.topic} TO {topic}")
+
+                proxymodelog.info(
+                    f"MQTT Proxy Client - Proxy Forward Message to Robot - Topic: {topic} - Message: {msgdata.encode()}")
                 await bumper.mqtt_helperbot.Client.publish(                    
-                    ttopic_comb, msgdata.encode(), QOS_0
+                    topic, msgdata.encode(), QOS_0
                 )
                 
         except Exception as e:
