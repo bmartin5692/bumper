@@ -400,7 +400,7 @@ class BumperMQTTServer_Plugin:
                         
                         try:
                             await self.proxyclients[client_id].connect(
-                                f"mqtts://{username}:{password}@{mqtt_server}:8883",
+                                f"mqtts://{username}:{password}@{mqtt_server}:443",
                             )
                         except Exception as e:
                             mqttserverlog.error(f"MQTT Proxy Mode - Exception connecting with proxy to ecovacs - {e}")
