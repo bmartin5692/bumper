@@ -3,6 +3,8 @@
 import logging
 import asyncio
 import os
+from typing import Dict
+
 import hbmqtt
 import websockets
 from hbmqtt.broker import Broker
@@ -227,7 +229,9 @@ class MQTTServer:
             mqttserverlog.exception("{}".format(e))
 
 class BumperProxyModeMQTTClient(MQTTClient):
-    ecohelpername = ""
+
+    eco_helper_names: Dict[str, str] = {}
+
     async def _connect_coro(self): #Override default to ignore ssl verification
         kwargs = dict()
 
@@ -326,7 +330,7 @@ class BumperProxyModeMQTTClient(MQTTClient):
                 topic = message.topic
                 ttopic = topic.split("/")
                 if ttopic[1] == "p2p":
-                    self.ecohelpername = ttopic[3]
+                    self.eco_helper_names[ttopic[10]] = ttopic[3]
                     ttopic[3] = "proxyhelper"
                     topic = "/".join(ttopic)
                     proxymodelog.info(f"MQTT Proxy Client - Converted Topic From {message.topic} TO {topic}")
@@ -341,7 +345,7 @@ class BumperProxyModeMQTTClient(MQTTClient):
             proxymodelog.error(f"MQTT Proxy Client - get_msg Exception - {e}")
 
 class BumperMQTTServer_Plugin:
-    proxyclients = {}
+    proxyclients: Dict[str, BumperProxyModeMQTTClient] = {}
     def __init__(self, context):
         self.context = context        
         try:
@@ -519,7 +523,7 @@ class BumperMQTTServer_Plugin:
                     if not str(message.topic).split("/")[3] == "proxyhelper":  # if from proxyhelper, don't send back to ecovacs...yet                
                         if str(message.topic).split("/")[6] == "proxyhelper":                    
                             ttopic = message.topic.split("/")
-                            ttopic[6] = self.proxyclients[client_id].ecohelpername
+                            ttopic[6] = self.proxyclients[client_id].eco_helper_names.pop(ttopic[10], "")
                             ttopic_join = "/".join(ttopic)
                             proxymodelog.info(f"MQTT Proxy Client - Bot Message Converted Topic From {message.topic} TO {ttopic_join} with message: {msgdata}")                    
                         else:
