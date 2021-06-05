@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 hbmqtt = "~=0.9"
-aiohttp = "~=3.6"
+aiohttp = "~=3.7"
 tinydb = "~=3.15"
 pyyaml = "~=5.2"
 atomicwrites = "~=1.3"
