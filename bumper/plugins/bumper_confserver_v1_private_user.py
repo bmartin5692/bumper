@@ -27,6 +27,9 @@ class v1_private_user(plugins.ConfServerApp):
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/checkAgreementBatch", self.handle_checkAgreement,name="v1_user_checkAgreementBatch"),
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserAccountInfo", authhandler.getUserAccountInfo,name="v1_user_getUserAccountInfo"),
             web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/getUserMenuInfo", self.handle_getUserMenuInfo,name="v1_user_getUserMenuInfo"),
+            web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/changeArea", self.handle_changeArea, name="v1_user_changeArea"),
+            web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/queryChangeArea", self.handle_changeArea, name="v1_user_queryChangeArea"),
+            web.route("*", "/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/acceptAgreementBatch", self.handle_acceptAgreementBatch, name="v1_user_acceptAgreementBatch"),
        # Direct register from app:
         # /{apiversion}/private/{country}/{language}/{devid}/{apptype}/{appversion}/{devtype}/{aid}/user/directRegister
         #Register by email
@@ -143,6 +146,38 @@ class v1_private_user(plugins.ConfServerApp):
 
         except Exception as e:
             logging.exception("{}".format(e))                    
+
+    async def handle_changeArea(self, request):
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": {
+                    "isNeedReLogin": "N"
+                },
+                "msg": "操作成功",
+                "success": True,
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))
+
+    async def handle_acceptAgreementBatch(self, request):
+        try:
+            body = {
+                "code": bumper.RETURN_API_SUCCESS,
+                "data": None,
+                "msg": "操作成功",
+                "success": True,
+                "time": self.get_milli_time(datetime.utcnow().timestamp()),
+            }
+
+            return web.json_response(body)
+
+        except Exception as e:
+            logging.exception("{}".format(e))
 
 plugin = v1_private_user()
 

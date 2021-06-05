@@ -1,20 +1,3 @@
-# Logs
-logs
-
-# Tests
-tests
-
-# Examples
-examples
-
-# Docs
-docs
-
-# Certs
-certs
-
-.coverage
-
 # Markdown
 *.md
 

@@ -1,0 +1,45 @@
+---
+version: "3.6"
+
+networks:
+  bumper:
+    internal: true
+
+services:
+  nginx:
+    depends_on:
+      - bumper
+    image: nginx:alpine
+    networks:
+      default:
+      bumper:
+    ports:
+      - 443:443
+      - 5223:5223
+      - 8007:8007
+      - 8883:8883
+    restart: unless-stopped
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./nginx/:/etc/nginx:ro # See config file below
+
+  bumper:
+    image: bmartin5692/bumper
+    restart: unless-stopped
+    networks:
+      bumper:
+
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: Europe/Rome
+      BUMPER_ANNOUNCE_IP: XXX # Insert your IP
+      BUMPER_LISTEN: 0.0.0.0
+      # BUMPER_DEBUG: "true"
+      LOG_TO_STDOUT: "true"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ./config:/bumper/data
+      - ./certs:/bumper/certs

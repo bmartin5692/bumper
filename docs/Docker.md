@@ -42,3 +42,13 @@ Optionally you can map existing directories for logs, data, and certs.
 ````
 docker run -it -e "BUMPER_ANNOUNCE_IP=X.X.X.X" -p 443:443 -p 8007:8007 -p 8883:8883 -p 5223:5223 -v /home/user/bumper/data:/bumper/data --name bumper bmartin5692/bumper
 ````
+
+# Docker-compose
+
+A docker-compose example can be found in the ["example" folder](https://github.com/bmartin5692/bumper/tree/master/example/docker-compose).
+
+The docker-compose starts two services:
+- bumper itself
+- nginx proxy, which redirects MQTT traffic on port `443` to port `8883`
+
+The redirection is required as the app v2+ and robots with a newer firmware are connecting to the mqtt server on port 433.

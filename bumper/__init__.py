@@ -57,6 +57,7 @@ bumper_announce_ip = os.environ.get("BUMPER_ANNOUNCE_IP") or bumper_listen
 bumper_debug = strtobool(os.environ.get("BUMPER_DEBUG")) or False
 use_auth = False
 token_validity_seconds = 3600  # 1 hour
+oauth_validity_days = 15
 db = None
 
 mqtt_server = None
@@ -236,7 +237,8 @@ async def start():
     xmpp_server = XMPPServer((bumper_listen, xmpp_listen_port))
 
     # Start MQTT Server
-    asyncio.create_task(mqtt_server.broker_coro())
+    # await start otherwise we get an error connecting the helper bot
+    await asyncio.create_task(mqtt_server.broker_coro())
 
     # Start MQTT Helperbot
     asyncio.create_task(mqtt_helperbot.start_helper_bot())
@@ -264,6 +266,7 @@ async def start():
 
 async def maintenance():
     revoke_expired_tokens()
+    revoke_expired_oauths()
 
 
 async def shutdown():
