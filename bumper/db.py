@@ -50,7 +50,7 @@ def config_proxyMode_defaults():
         {"type":"app","host":"eco-us-api.ecovacs.com","ip":"47.89.135.130","match":"eco-"},
         {"type":"app","host":"ecovacs.com","ip":"47.90.210.46"},
         {"type":"app","host":"ecouser.net","ip":"116.62.93.217"},
-        {"type":"mqtt_server","host":"mq-ww.ecouser.net","ip":"47.254.52.46"},
+        {"type":"mqtt_server","host":"mq-ww.ecouser.net","ip":"47.254.143.26"},
         ]
     opendb = db_get()
     with opendb:

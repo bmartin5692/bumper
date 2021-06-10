@@ -26,10 +26,13 @@ def strtobool(strbool):
 # os.environ['PYTHONASYNCIODEBUG'] = '1' # Uncomment to enable ASYNCIODEBUG
 bumper_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
+log_to_stdout = os.environ.get("LOG_TO_STDOUT")
+
 # Set defaults from environment variables first
 # Folders
-logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
-os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
+if not log_to_stdout:
+    logs_dir = os.environ.get("BUMPER_LOGS") or os.path.join(bumper_dir, "logs")
+    os.makedirs(logs_dir, exist_ok=True)  # Ensure logs directory exists or create
 data_dir = os.environ.get("BUMPER_DATA") or os.path.join(bumper_dir, "data")
 os.makedirs(data_dir, exist_ok=True)  # Ensure data directory exists or create
 certs_dir = os.environ.get("BUMPER_CERTS") or os.path.join(bumper_dir, "certs")
@@ -81,27 +84,36 @@ logformat = logging.Formatter(
 )
 
 bumperlog = logging.getLogger("bumper")
-bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
-bumper_rotate.setFormatter(logformat)
-bumperlog.addHandler(bumper_rotate)
+if not log_to_stdout:
+    bumper_rotate = RotatingFileHandler("logs/bumper.log", maxBytes=5000000, backupCount=5)
+    bumper_rotate.setFormatter(logformat)
+    bumperlog.addHandler(bumper_rotate)
+else: 
+    bumperlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # bumperlog.setLevel(logging.INFO)
 
 confserverlog = logging.getLogger("confserver")
-conf_rotate = RotatingFileHandler(
-    "logs/confserver.log", maxBytes=5000000, backupCount=5
-)
-conf_rotate.setFormatter(logformat)
-confserverlog.addHandler(conf_rotate)
+if not log_to_stdout:
+    conf_rotate = RotatingFileHandler(
+        "logs/confserver.log", maxBytes=5000000, backupCount=5
+    )
+    conf_rotate.setFormatter(logformat)
+    confserverlog.addHandler(conf_rotate)
+else:
+    confserverlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # confserverlog.setLevel(logging.INFO)
 
 mqttserverlog = logging.getLogger("mqttserver")
-mqtt_rotate = RotatingFileHandler(
-    "logs/mqttserver.log", maxBytes=5000000, backupCount=5
-)
-mqtt_rotate.setFormatter(logformat)
-mqttserverlog.addHandler(mqtt_rotate)
+if not log_to_stdout:
+    mqtt_rotate = RotatingFileHandler(
+        "logs/mqttserver.log", maxBytes=5000000, backupCount=5
+    )
+    mqtt_rotate.setFormatter(logformat)
+    mqttserverlog.addHandler(mqtt_rotate)
+else:
+    mqttserverlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # mqttserverlog.setLevel(logging.INFO)
 
@@ -117,53 +129,73 @@ proxymodelog.addHandler(proxymode_rotate)
 
 ### Additional MQTT Logs
 translog = logging.getLogger("transitions")
-translog.addHandler(mqtt_rotate)
+if not log_to_stdout:
+    translog.addHandler(mqtt_rotate)
+else:
+    translog.addHandler(logging.StreamHandler(sys.stdout))
 translog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
 logging.getLogger("passlib").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 brokerlog = logging.getLogger("hbmqtt.broker")
 #brokerlog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger #There are some sublogs that could be set if needed (.plugins)
-brokerlog.addHandler(mqtt_rotate)
+if not log_to_stdout:
+    brokerlog.addHandler(mqtt_rotate)
+else:
+    brokerlog.addHandler(logging.StreamHandler(sys.stdout))
 protolog = logging.getLogger("hbmqtt.mqtt.protocol")
 #protolog.setLevel(
 #    logging.CRITICAL + 1
 #)  # Ignore this logger
-protolog.addHandler(mqtt_rotate)
+if not log_to_stdout:
+    protolog.addHandler(mqtt_rotate)
+else:
+    protolog.addHandler(logging.StreamHandler(sys.stdout))
 clientlog = logging.getLogger("hbmqtt.client")
 #clientlog.setLevel(logging.CRITICAL + 1)  # Ignore this logger
-clientlog.addHandler(mqtt_rotate)
-
+if not log_to_stdout:
+    clientlog.addHandler(mqtt_rotate)
+else:
+    clientlog.addHandler(logging.StreamHandler(sys.stdout))
 helperbotlog = logging.getLogger("helperbot")
-helperbot_rotate = RotatingFileHandler(
-    "logs/helperbot.log", maxBytes=5000000, backupCount=5
-)
-helperbot_rotate.setFormatter(logformat)
-helperbotlog.addHandler(helperbot_rotate)
+if not log_to_stdout:
+    helperbot_rotate = RotatingFileHandler(
+        "logs/helperbot.log", maxBytes=5000000, backupCount=5
+    )
+    helperbot_rotate.setFormatter(logformat)
+    helperbotlog.addHandler(helperbot_rotate)
+else:
+    helperbotlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # helperbotlog.setLevel(logging.INFO)
 
 boterrorlog = logging.getLogger("boterror")
-boterrorlog_rotate = RotatingFileHandler(
-    "logs/boterror.log", maxBytes=5000000, backupCount=5
-)
-boterrorlog_rotate.setFormatter(logformat)
-boterrorlog.addHandler(boterrorlog_rotate)
+if not log_to_stdout:
+    boterrorlog_rotate = RotatingFileHandler(
+        "logs/boterror.log", maxBytes=5000000, backupCount=5
+    )
+    boterrorlog_rotate.setFormatter(logformat)
+    boterrorlog.addHandler(boterrorlog_rotate)
+else:
+    boterrorlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # boterrorlog.setLevel(logging.INFO)
 
 xmppserverlog = logging.getLogger("xmppserver")
-xmpp_rotate = RotatingFileHandler(
-    "logs/xmppserver.log", maxBytes=5000000, backupCount=5
-)
-xmpp_rotate.setFormatter(logformat)
-xmppserverlog.addHandler(xmpp_rotate)
+if not log_to_stdout:
+    xmpp_rotate = RotatingFileHandler(
+        "logs/xmppserver.log", maxBytes=5000000, backupCount=5
+    )
+    xmpp_rotate.setFormatter(logformat)
+    xmppserverlog.addHandler(xmpp_rotate)
+else:
+    xmppserverlog.addHandler(logging.StreamHandler(sys.stdout))
 # Override the logging level
 # xmppserverlog.setLevel(logging.INFO)
 
 logging.getLogger("asyncio").setLevel(logging.CRITICAL + 1)  # Ignore this logger
 
-
+# iptables -A PREROUTING -t nat -i wlp0s20f3 -p tcp --dport 443 -j REDIRECT --to-port 8883
 mqtt_listen_port = 8883
 conf1_listen_port = 443
 conf2_listen_port = 8007
