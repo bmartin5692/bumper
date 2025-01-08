@@ -32,8 +32,10 @@ Create_Certs is written in Go which allows cross-platform compiling. If the bina
 
 With Go installed you can:
 
-* Execute the go code - `go run create_certs/src/create_certs.go` 
+* Execute the go code - `go run create_certs/src/create_certs.go`
 * Build a new binary for your platform - `go build create_certs/src/create_certs.go`
+
+Note: since the program looks for the Bumper_SAN.txt in a location relative to the executable and the executable with `go run` is in a `tmp` directory you'll most likely need to specify it with `go run ../create_certs/src/create_certs.go --inSAN ../create_certs/Bumper_SAN.txt` if you were running it from the `certs` directory.
 
 ### Usage
 
