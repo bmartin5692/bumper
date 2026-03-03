@@ -46,6 +46,7 @@ As work to reverse the protocols and provide a self-hosted central server is sti
 | --------------- | ------------- | --------------------- | -------------------- |
 | Deebot 900/901  | MQTT          | master                | Ecovacs/Ecovacs Home |
 | Deebot 600      | MQTT          | master                | Ecovacs Home         |
+| Deebot Ozmo 920 | MQTT          | master                | Ecovacs Home         |
 | Deebot Ozmo 950 | MQTT          | master                | Ecovacs Home         |
 | Deebot Ozmo 601 | XMPP          | master                | Ecovacs              |
 | Deebot Ozmo 930 | XMPP          | master                | Ecovacs              |
