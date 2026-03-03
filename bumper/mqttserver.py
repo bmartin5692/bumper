@@ -3,11 +3,14 @@
 import logging
 import asyncio
 import os
-import hbmqtt
-from hbmqtt.broker import Broker
-from hbmqtt.client import MQTTClient
-from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
-import pkg_resources
+import amqtt as hbmqtt
+import amqtt.broker
+from amqtt.broker import Broker
+from amqtt.client import MQTTClient
+from amqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
+from amqtt.plugins.base import BaseAuthPlugin
+from dataclasses import dataclass, field
+amqtt.broker.BrokerException = Exception  # amqtt removed this; map to generic Exception
 import time
 import bumper
 import json
@@ -183,60 +186,60 @@ class MQTTServer:
                 elif key == "allow_anonymous":
                     allow_anon = kwargs["allow_anonymous"] # Set to True to allow anonymous authentication
 
-            # The below adds a plugin to the hbmqtt.broker.plugins without having to futz with setup.py
-            distribution = pkg_resources.Distribution("hbmqtt.broker.plugins")
-            bumper_plugin = pkg_resources.EntryPoint.parse(
-                "bumper = bumper.mqttserver:BumperMQTTServer_Plugin", dist=distribution
-            )
-            distribution._ep_map = {"hbmqtt.broker.plugins": {"bumper": bumper_plugin}}
-            pkg_resources.working_set.add(distribution)
-
-            # Initialize bot server
+            # Initialize bot server using amqtt's config-based plugin format
             self.default_config = {
                 "listeners": {
                     "default": {"type": "tcp"},
                     "tls1": {
                         "bind": "{}:{}".format(address[0], address[1]),
-                        "ssl": "on",
+                        "ssl": True,
+                        "certfile": bumper.server_cert,
+                        "keyfile": bumper.server_key,
+                    },
+                    "wss1": {
+                        "type": "ws",
+                        "bind": "0.0.0.0:8884",
+                        "ssl": True,
                         "certfile": bumper.server_cert,
                         "keyfile": bumper.server_key,
                     },
                 },
-                "sys_interval": 0,
-                "auth": {
-                    "allow-anonymous": allow_anon, 
-                    "password-file": passwd_file,
-                    "plugins": ["bumper"],  # Bumper plugin provides auth and handling of bots/clients connecting
+                "plugins": {
+                    "bumper.mqttserver.BumperMQTTServer_Plugin": {
+                        "allow_anonymous": allow_anon,
+                        "password_file": passwd_file,
+                    }
                 },
-                "topic-check": {"enabled": False},
             }
 
-            self.broker = hbmqtt.broker.Broker(config=self.default_config)
+            self.broker = amqtt.broker.Broker(config=self.default_config)
 
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
 
-class BumperMQTTServer_Plugin:
+class BumperMQTTServer_Plugin(BaseAuthPlugin):
+
+    @dataclass
+    class Config:
+        allow_anonymous: bool = False
+        password_file: str = ""
+
     def __init__(self, context):
-        self.context = context
+        super().__init__(context)
         try:
-            self.auth_config = self.context.config["auth"]
             self._users = dict()
+            cfg = context.config
+            self._allow_anonymous = getattr(cfg, "allow_anonymous", False)
+            self._password_file = getattr(cfg, "password_file", None)
             self._read_password_file()
-
-        except KeyError:
-            self.context.logger.warning(
-                "'bumper' section not found in context configuration"
-            )
         except Exception as e:
             mqttserverlog.exception("{}".format(e))
 
-    async def authenticate(self, *args, **kwargs):
+    async def authenticate(self, *, session=None, **kwargs):
         authenticated = False
-        
+
         try:
-            session = kwargs.get("session", None)
             username = session.username
             password = session.password
             client_id = session.client_id
@@ -295,14 +298,12 @@ class BumperMQTTServer_Plugin:
 
         except Exception as e:
             mqttserverlog.exception(
-                "Session: {} - {}".format((kwargs.get("session", None)), e)
+                "Session: {} - {}".format(session, e)
             )
             authenticated = False
 
         # Check for allow anonymous
-        allow_anonymous = self.auth_config.get(
-            "allow-anonymous", True
-        )  
+        allow_anonymous = self._allow_anonymous
         if allow_anonymous and not authenticated: # If anonymous auth is allowed and it isn't already authenticated
             authenticated = True
             self.context.logger.debug(f"Anonymous Authentication Success: config allows anonymous - Username: {username}")
@@ -311,7 +312,7 @@ class BumperMQTTServer_Plugin:
         return authenticated
 
     def _read_password_file(self):
-        password_file = self.auth_config.get('password-file', None)
+        password_file = self._password_file
         if password_file:
             try:
                 with open(password_file) as f:
@@ -327,7 +328,7 @@ class BumperMQTTServer_Plugin:
             except FileNotFoundError:
                 self.context.logger.warning(f"Password file {password_file} not found")
 
-    async def on_broker_client_connected(self, client_id):
+    async def on_broker_client_connected(self, client_id, **kwargs):
 
         didsplit = str(client_id).split("@")
 
@@ -405,7 +406,7 @@ class BumperMQTTServer_Plugin:
                     bumper.mqtt_helperbot.command_responses.remove(msg)
 
 
-    async def on_broker_client_disconnected(self, client_id):
+    async def on_broker_client_disconnected(self, client_id, **kwargs):
 
         didsplit = str(client_id).split("@")
 
