@@ -69,3 +69,26 @@ Replacement Examples:
 | `jmq-ngiot-{region}.dc.ww.ecouser.net`  | MQTT for App (v2+)                             |
 | `api-rop.dc-{region}.ww.ecouser.net`    | App (v2+)                                      |
 | `jmq-ngiot-{region}.area.ww.ecouser.net`| App (v2+)                                      |
+
+## Newer Bots: Port 443 Redirect (jmq-ngiot protocol)
+
+Some newer robots (confirmed: OZMO 920 series) do **not** connect to Bumper on the standard MQTT port (8883). Instead they connect on **port 443**, likely to bypass firewall restrictions. The bot uses a `jmq-ngiot-{countrycode}.area.ww.ecouser.net` hostname for this connection.
+
+Because Bumper's MQTT server listens on 8883, connections arriving on 443 must be redirected using `iptables`:
+
+```bash
+# Redirect bot MQTT traffic from port 443 → 8883
+# Replace 192.168.x.x with your bot's IP address
+sudo iptables -t nat -A PREROUTING -s 192.168.x.x -p tcp --dport 443 -j REDIRECT --to-port 8883
+```
+
+**How to find your bot's IP:** Check your router's DHCP client list, or run `sudo arp-scan --localnet` on the Bumper host.
+
+**Note:** This rule does not persist across reboots. To make it permanent, use `iptables-persistent` (`sudo apt install iptables-persistent`) or add it to your startup script.
+
+**To remove the rule** (e.g. to restore normal cloud access):
+```bash
+sudo iptables -t nat -D PREROUTING -s 192.168.x.x -p tcp --dport 443 -j REDIRECT --to-port 8883
+```
+
+**How to identify if your bot uses port 443:** After setting up DNS redirection, run `sudo tcpdump -i any -n "src host <bot-ip> and (port 443 or port 8883)"` and power-cycle the bot. If you see connections on port 443 with no activity on 8883, your bot needs this redirect.
